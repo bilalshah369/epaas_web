@@ -1,0 +1,690 @@
+// Mirrors ApplicationForm from mock (App.jsx L11047). 5-step form wired to real API.
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { useAuthStore } from '@/store/authStore';
+import { COLORS, S } from '@/utils/colors';
+import Stepper from '@/components/ui/Stepper';
+import UploadBox from '@/components/ui/UploadBox';
+import {
+  emptyFormData, createDraftApplication, fetchApplication,
+  fetchMyApplications, saveDraftApplication, submitDraftApplication,
+  type AppFormData,
+} from '@/services/application.service';
+
+// ── Static options ────────────────────────────────────────────────────────────
+const STEPS = ['Ingredients & Type', 'General Info', 'Documents', 'Additional Info', 'Payment'];
+
+const APPLICATION_FOR_OPTIONS = [
+  'Novel food or novel food ingredients or processed with the use of novel technology',
+  'New additive',
+  'New processing aids including enzymes',
+  'Articles of food and food ingredients consisting of or isolated from microorganisms, bacteria, yeast, fungi, or algae',
+  'Any other non-specified food, please specify',
+];
+
+const FOOD_CATEGORIES = [
+  'Dairy & Products', 'Cereals & Pulse Products', 'Bakery Products',
+  'Beverages', 'Meat & Poultry', 'Fish & Marine Products', 'Fruits & Vegetables',
+  'Fats & Oils', 'Confectionery', 'Health & Nutritional Foods',
+  'Herbal & Ayurvedic Products', 'Novel Foods', 'Fortified Foods',
+  'Infant Foods', 'Food Additives & Processing Aids', 'Packaging Materials',
+];
+
+const INGREDIENTS = [
+  'Wheat Flour', 'Rice Flour', 'Maize Starch', 'Soybean Protein Isolate', 'Whey Protein Concentrate',
+  'Casein', 'Gelatin', 'Soya Lecithin', 'Sunflower Oil', 'Palm Oil', 'Coconut Oil', 'Butter',
+  'Cream', 'Skimmed Milk Powder', 'Sucrose', 'Glucose Syrup', 'Fructose', 'Lactose', 'Honey',
+  'Cocoa Butter', 'Cocoa Powder', 'Turmeric', 'Cumin', 'Coriander Powder', 'Black Pepper',
+  'Cardamom', 'Cinnamon', 'Cloves', 'Fennel Seeds', 'Salt (Sodium Chloride)', 'Yeast',
+  'Malt Extract', 'Vinegar', 'Tomato Paste', 'Onion Powder', 'Garlic Powder',
+  'Stevia Extract', 'Inulin', 'Psyllium Husk', 'Flaxseed', 'Chia Seeds',
+  'Spirulina', 'Moringa Powder', 'Ashwagandha Extract', 'Amla Extract',
+];
+
+const ADDITIVES = [
+  'INS 100 — Curcumin', 'INS 101 — Riboflavins', 'INS 102 — Tartrazine',
+  'INS 110 — Sunset Yellow FCF', 'INS 120 — Carmines', 'INS 122 — Azorubine / Carmoisine',
+  'INS 124 — Ponceau 4R', 'INS 129 — Allura Red AC', 'INS 133 — Brilliant Blue FCF',
+  'INS 150a — Caramel (plain)', 'INS 160a — Beta-carotene', 'INS 171 — Titanium Dioxide',
+  'INS 200 — Sorbic Acid', 'INS 202 — Potassium Sorbate', 'INS 210 — Benzoic Acid',
+  'INS 211 — Sodium Benzoate', 'INS 220 — Sulphur Dioxide', 'INS 223 — Sodium Metabisulphite',
+  'INS 270 — Lactic Acid', 'INS 296 — Malic Acid',
+  'INS 300 — Ascorbic Acid', 'INS 301 — Sodium Ascorbate', 'INS 306 — Mixed Tocopherols',
+  'INS 322 — Lecithins', 'INS 330 — Citric Acid', 'INS 331 — Sodium Citrates',
+  'INS 334 — Tartaric Acid', 'INS 338 — Phosphoric Acid',
+  'INS 401 — Sodium Alginate', 'INS 407 — Carrageenan', 'INS 410 — Locust Bean Gum',
+  'INS 412 — Guar Gum', 'INS 415 — Xanthan Gum', 'INS 420 — Sorbitol', 'INS 422 — Glycerol',
+  'INS 440 — Pectins', 'INS 460 — Cellulose', 'INS 471 — Mono- & Diglycerides of Fatty Acids',
+  'INS 500 — Sodium Carbonates', 'INS 503 — Ammonium Carbonates', 'INS 516 — Calcium Sulphate',
+  'INS 551 — Silicon Dioxide', 'INS 621 — Monosodium Glutamate',
+  'INS 900 — Polydimethylsiloxane', 'INS 941 — Nitrogen',
+  'INS 951 — Aspartame', 'INS 952 — Cyclamates', 'INS 954 — Saccharin',
+  'INS 955 — Sucralose', 'INS 960 — Steviol Glycosides', 'INS 965 — Maltitol',
+];
+
+const TYPE_FEE: Record<string, { fee: string; gst: string; total: string }> = {
+  NSF:            { fee: '₹50,000', gst: '₹9,000',  total: '₹59,000' },
+  ClaimApproval:  { fee: '₹50,000', gst: '₹9,000',  total: '₹59,000' },
+  AyurvedaAahara: { fee: '₹50,000', gst: '₹9,000',  total: '₹59,000' },
+  AnyOther:       { fee: '₹10,000', gst: '₹1,800',  total: '₹11,800' },
+};
+
+// ── Shared inline styles ──────────────────────────────────────────────────────
+const input: React.CSSProperties = {
+  width: '100%', border: `1px solid ${COLORS.border}`, borderRadius: 6,
+  padding: '8px 10px', fontSize: 13, outline: 'none', boxSizing: 'border-box',
+  fontFamily: "'Noto Sans','Segoe UI',sans-serif",
+};
+const textarea: React.CSSProperties = {
+  ...input, resize: 'vertical', minHeight: 72,
+};
+const select: React.CSSProperties = {
+  ...input, cursor: 'pointer', appearance: 'auto',
+};
+const secCard: React.CSSProperties = {
+  background: COLORS.white, border: `1px solid ${COLORS.border}`,
+  borderRadius: 10, padding: 16, marginBottom: 12,
+  boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+};
+const row: React.CSSProperties = {
+  display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
+  marginBottom: 12, alignItems: 'start',
+};
+const fieldLabel: React.CSSProperties = {
+  fontSize: 12, fontWeight: 600, color: COLORS.text,
+  paddingTop: 4, lineHeight: 1.5,
+};
+
+// ── Main component ────────────────────────────────────────────────────────────
+export default function ApplicationForm() {
+  const [params]   = useSearchParams();
+  const navigate   = useNavigate();
+  const { user }   = useAuthStore();
+
+  const typeParam = params.get('type') ?? 'NSF';
+  const idParam   = params.get('id');
+
+  const [appId, setAppId]     = useState<string | null>(idParam);
+  const [step, setStep]       = useState(0);
+  const [saving, setSaving]   = useState(false);
+  const [formData, setFormData] = useState<AppFormData>(emptyFormData);
+  const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
+
+  // Pending row state for ingredient / additive pickers
+  const [pendingIng, setPendingIng] = useState({ name: '', quantity: '', standardize: '' });
+  const [pendingAdd, setPendingAdd] = useState({ name: '', quantity: '', standardize: '' });
+
+  // Load existing draft or create a new one
+  useEffect(() => {
+    if (idParam) {
+      fetchApplication(idParam).then((app) => {
+        setAppId(app.id);
+        if (app.formData) setFormData(app.formData as AppFormData);
+      }).catch(() => toast.error('Could not load draft'));
+    } else {
+      // Reuse an existing draft of the same type rather than creating a duplicate
+      fetchMyApplications()
+        .then((apps) => {
+          const existing = apps.find(
+            (a) => a.stage === 'Draft' && a.applicationType === typeParam,
+          );
+          if (existing) {
+            setAppId(existing.id);
+            if (existing.formData) setFormData(existing.formData as AppFormData);
+          } else {
+            return createDraftApplication(typeParam, user?.username ?? '')
+              .then((app) => setAppId(app.id));
+          }
+        })
+        .catch(() => toast.error('Could not start application'));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Generic field updater
+  function set<K extends keyof AppFormData>(stepKey: K, field: keyof AppFormData[K], value: unknown) {
+    setFormData((prev) => ({
+      ...prev,
+      [stepKey]: { ...prev[stepKey], [field]: value },
+    }));
+  }
+
+  const errMsg = (field: string) =>
+    stepErrors[field] ? <div style={{ fontSize: 11, color: COLORS.danger, marginTop: 3 }}>{stepErrors[field]}</div> : null;
+
+  const eb = (base: React.CSSProperties, field: string): React.CSSProperties =>
+    stepErrors[field] ? { ...base, borderColor: COLORS.danger } : base;
+
+  // UploadBox shorthand — auto-injects applicationId; shows validation error below
+  function UB({ value, stepKey, field }: { value: string; stepKey: 'step3' | 'step4'; field: string }) {
+    return (
+      <div>
+        <UploadBox
+          value={value}
+          onChange={(v) => { set(stepKey, field as never, v); setStepErrors((p) => { const n = { ...p }; delete n[field]; return n; }); }}
+          applicationId={appId ?? undefined}
+          fieldName={field}
+        />
+        {errMsg(field)}
+      </div>
+    );
+  }
+
+  async function handleSave() {
+    if (!appId) return;
+    setSaving(true);
+    try {
+      await saveDraftApplication(appId, formData, formData.step2.productName || undefined);
+      toast.success('Draft saved');
+    } catch {
+      toast.error('Save failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSubmit() {
+    if (!appId) return;
+    setSaving(true);
+    try {
+      await saveDraftApplication(appId, formData, formData.step2.productName || undefined);
+      await submitDraftApplication(appId);
+      toast.success('Application submitted! Your reference number has been generated.');
+      navigate('/app/dashboard');
+    } catch {
+      toast.error('Submission failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function validateStep(stepIndex: number): Record<string, string> {
+    const errs: Record<string, string> = {};
+    const { step1, step2, step3, step5 } = formData;
+
+    if (stepIndex === 0) {
+      if (!step1.applicationFor) errs.applicationFor = 'Please select an application type';
+      if (step1.applicationFor === APPLICATION_FOR_OPTIONS[4] && !step1.specifyFood.trim())
+        errs.specifyFood = 'Please specify the food type';
+    }
+
+    if (stepIndex === 1) {
+      const reqFields = [
+        'applicantName', 'mobileNo', 'email', 'orgName', 'orgAddress',
+        'productName', 'justification', 'subCategory', 'genusSp', 'functionalBenefits',
+      ] as (keyof typeof step2)[];
+      reqFields.forEach((f) => {
+        if (!(step2[f] as string).trim()) errs[f as string] = 'This field is required';
+      });
+      if (!step2.authorisedPerson || step2.authorisedPerson === 'Select')
+        errs.authorisedPerson = 'Please select an authorised person';
+    }
+
+    if (stepIndex === 2) {
+      if (!step3.certOfAnalysis)          errs.certOfAnalysis       = 'Required document';
+      if (!step3.manufacturingProcess)    errs.manufacturingProcess  = 'Required document';
+      if (!step3.regulatoryStatus.trim()) errs.regulatoryStatus      = 'This field is required';
+      if (!step3.regulatoryStatusFile)    errs.regulatoryStatusFile  = 'Required document';
+      if (!step3.agreementDoc)            errs.agreementDoc          = 'Required document';
+      if (!step3.safetyFile1)             errs.safetyFile1           = 'Required document';
+      if (!step3.claimFile1)              errs.claimFile1            = 'Required document';
+      if (!step3.prototypeLabel)          errs.prototypeLabel        = 'Required document';
+      if (!step3.postMarketingDecl)       errs.postMarketingDecl     = 'Required document';
+      if (!step3.confidentialityDecl)     errs.confidentialityDecl   = 'Required document';
+    }
+
+    if (stepIndex === 4) {
+      if (!step5.paymentReference.trim()) errs.paymentReference = 'Please enter a transaction reference number';
+    }
+
+    return errs;
+  }
+
+  function advanceStep() {
+    const errs = validateStep(step);
+    if (Object.keys(errs).length > 0) { setStepErrors(errs); return; }
+    setStepErrors({});
+    setStep(step + 1);
+  }
+
+  const fee = TYPE_FEE[typeParam] ?? TYPE_FEE.NSF;
+  const { step1, step2, step3, step4, step5 } = formData;
+
+  // ── Step content ───────────────────────────────────────────────────────────
+  const stepContent = [
+    // ── Step 0: Ingredients & Type ──────────────────────────────────────────
+    <div key={0}>
+      <div style={secCard}>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12 }}>Ingredients</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+          <select style={select} value={pendingIng.name} onChange={(e) => setPendingIng((p) => ({ ...p, name: e.target.value }))}>
+            <option value="">— Select ingredient —</option>
+            {INGREDIENTS.map((o) => <option key={o} value={o}>{o}</option>)}
+          </select>
+          <input placeholder="Quantity"    style={input} value={pendingIng.quantity}    onChange={(e) => setPendingIng((p) => ({ ...p, quantity: e.target.value }))} />
+          <input placeholder="Standardize" style={input} value={pendingIng.standardize} onChange={(e) => setPendingIng((p) => ({ ...p, standardize: e.target.value }))} />
+          <button onClick={() => {
+            if (!pendingIng.name) return;
+            set('step1', 'ingredients', [...step1.ingredients, pendingIng]);
+            setPendingIng({ name: '', quantity: '', standardize: '' });
+          }} style={{ background: 'transparent', color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 6, padding: '7px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+            + Add
+          </button>
+        </div>
+        {step1.ingredients.length > 0 && (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead><tr style={{ background: COLORS.bg }}><th style={S.th}>Ingredient</th><th style={S.th}>Quantity</th><th style={S.th}>Standardize</th><th style={S.th}></th></tr></thead>
+            <tbody>
+              {step1.ingredients.map((ing, i) => (
+                <tr key={i}>
+                  <td style={S.td}>{ing.name}</td>
+                  <td style={S.td}>{ing.quantity || '—'}</td>
+                  <td style={S.td}>{ing.standardize || '—'}</td>
+                  <td style={S.td}><button onClick={() => set('step1', 'ingredients', step1.ingredients.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: COLORS.danger, cursor: 'pointer', fontSize: 14 }}>✕</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <div style={secCard}>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12 }}>Additives</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+          <select style={select} value={pendingAdd.name} onChange={(e) => setPendingAdd((p) => ({ ...p, name: e.target.value }))}>
+            <option value="">— Select additive —</option>
+            {ADDITIVES.map((o) => <option key={o} value={o}>{o}</option>)}
+          </select>
+          <input placeholder="Quantity"    style={input} value={pendingAdd.quantity}    onChange={(e) => setPendingAdd((p) => ({ ...p, quantity: e.target.value }))} />
+          <input placeholder="Standardize" style={input} value={pendingAdd.standardize} onChange={(e) => setPendingAdd((p) => ({ ...p, standardize: e.target.value }))} />
+          <button onClick={() => {
+            if (!pendingAdd.name) return;
+            set('step1', 'additives', [...step1.additives, pendingAdd]);
+            setPendingAdd({ name: '', quantity: '', standardize: '' });
+          }} style={{ background: 'transparent', color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 6, padding: '7px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+            + Add
+          </button>
+        </div>
+        {step1.additives.length > 0 && (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead><tr style={{ background: COLORS.bg }}><th style={S.th}>Additive</th><th style={S.th}>Quantity</th><th style={S.th}>Standardize</th><th style={S.th}></th></tr></thead>
+            <tbody>
+              {step1.additives.map((add, i) => (
+                <tr key={i}>
+                  <td style={S.td}>{add.name}</td>
+                  <td style={S.td}>{add.quantity || '—'}</td>
+                  <td style={S.td}>{add.standardize || '—'}</td>
+                  <td style={S.td}><button onClick={() => set('step1', 'additives', step1.additives.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: COLORS.danger, cursor: 'pointer', fontSize: 14 }}>✕</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <div style={secCard}>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12 }}>Application Type *</div>
+        <div style={row}>
+          <label style={fieldLabel}>Application For *</label>
+          <div>
+            <select style={eb(select, 'applicationFor')} value={step1.applicationFor} onChange={(e) => { set('step1', 'applicationFor', e.target.value); setStepErrors((p) => { const n = { ...p }; delete n.applicationFor; return n; }); }}>
+              <option value="">Select one</option>
+              {APPLICATION_FOR_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+            </select>
+            {errMsg('applicationFor')}
+          </div>
+        </div>
+        {step1.applicationFor === APPLICATION_FOR_OPTIONS[4] && (
+          <div style={row}>
+            <label style={fieldLabel}>Please specify <span style={{ fontWeight: 400, color: COLORS.textMuted, fontSize: 11 }}>(if "Any other non-specified food" is selected)</span></label>
+            <div>
+              <input style={eb(input, 'specifyFood')} placeholder="Specify the food type" value={step1.specifyFood} onChange={(e) => { set('step1', 'specifyFood', e.target.value); setStepErrors((p) => { const n = { ...p }; delete n.specifyFood; return n; }); }} />
+              {errMsg('specifyFood')}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>,
+
+    // ── Step 1: General Information ─────────────────────────────────────────
+    <div key={1} style={secCard}>
+      {([
+        ['applicantName',         'Name of Applicant *',                  'input',    ''],
+        ['authorisedPerson',      'Name of Authorised Person *',          'select',   ['Select', 'Other']],
+        ['authorisedPersonOther', 'Name of person (if "Other" selected)', 'input',    ''],
+        ['mobileNo',              'Mobile No. / Phone No. *',             'input',    '(+91) or (0)/(STD Code)'],
+        ['email',                 'Email *',                              'input',    'contact@company.com'],
+        ['orgName',               'Name of the Organisation *',           'input',    ''],
+        ['orgAddress',            'Address of Organisation / Registered Office *', 'textarea', ''],
+        ['licenseNumber',         'Licence Number, if any',               'input',    ''],
+        ['mfgAddress',            'Name, Address & Contact of Manufacturing Premises', 'textarea', ''],
+        ['natureOfBusiness',      'Nature of Business *',                 'select',   ['Manufacturer', 'Importer', 'Marketer', 'Other']],
+        ['productName',           'Name of the Product *',                'input',    ''],
+        ['justification',         'Justification of the Name *',          'textarea', ''],
+        ['productCategory',       'Proposed Product Category *',          'select',   FOOD_CATEGORIES],
+        ['subCategory',           'Sub-Category *',                       'input',    ''],
+        ['source',                'Source of Food Ingredient(s) *',       'select',   ['Animal', 'Chemical', 'Botanical', 'Micro-biological']],
+        ['genusSp',               'Genus and Species of organism *',      'input',    ''],
+        ['functionalBenefits',    'Functional Benefits *',                'textarea', ''],
+        ['healthBenefits',        'Health Benefits Claimed on Label',     'textarea', ''],
+      ] as Array<[keyof typeof step2, string, string, string | string[]]>).map(([field, label, type, placeholder]) => (
+        <div key={field} style={row}>
+          <label style={fieldLabel}>{label}</label>
+          <div>
+            {type === 'textarea' ? (
+              <textarea
+                style={eb(textarea, field as string)}
+                value={step2[field] as string}
+                onChange={(e) => { set('step2', field, e.target.value); setStepErrors((p) => { const n = { ...p }; delete n[field as string]; return n; }); }}
+              />
+            ) : type === 'select' ? (
+              <select
+                style={eb(select, field as string)}
+                value={step2[field] as string}
+                onChange={(e) => { set('step2', field, e.target.value); setStepErrors((p) => { const n = { ...p }; delete n[field as string]; return n; }); }}
+              >
+                {(placeholder as string[]).map((o) => <option key={o} value={o}>{o}</option>)}
+              </select>
+            ) : (
+              <input
+                style={eb(input, field as string)}
+                placeholder={placeholder as string}
+                value={step2[field] as string}
+                onChange={(e) => { set('step2', field, e.target.value); setStepErrors((p) => { const n = { ...p }; delete n[field as string]; return n; }); }}
+              />
+            )}
+            {errMsg(field as string)}
+          </div>
+        </div>
+      ))}
+    </div>,
+
+    // ── Step 2: Documents & Regulatory ─────────────────────────────────────
+    <div key={2}>
+      <div style={secCard}>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Certificate of Analysis from NABL / ILAC / Accredited Laboratories *</div>
+        <UB value={step3.certOfAnalysis} stepKey="step3" field="certOfAnalysis" />
+      </div>
+
+      <div style={secCard}>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Manufacturing Process in Brief — Flow Sheet with Complete Details *</div>
+        <UB value={step3.manufacturingProcess} stepKey="step3" field="manufacturingProcess" />
+      </div>
+
+      <div style={secCard}>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12 }}>Regulatory Status *</div>
+        <div style={row}>
+          <label style={fieldLabel}>Regulatory Status (text) *</label>
+          <div>
+            <input style={eb(input, 'regulatoryStatus')} placeholder="Enter regulatory status details" value={step3.regulatoryStatus} onChange={(e) => { set('step3', 'regulatoryStatus', e.target.value); setStepErrors((p) => { const n = { ...p }; delete n.regulatoryStatus; return n; }); }} />
+            {errMsg('regulatoryStatus')}
+          </div>
+        </div>
+        <div style={row}>
+          <label style={fieldLabel}>Regulatory Status (file upload) *</label>
+          <UB value={step3.regulatoryStatusFile} stepKey="step3" field="regulatoryStatusFile" />
+        </div>
+      </div>
+
+      <div style={secCard}>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12 }}>Copy of Agreement of Relationship *</div>
+        <div style={row}>
+          <label style={fieldLabel}>Relationship Type *</label>
+          <select style={select} value={step3.relationshipType} onChange={(e) => set('step3', 'relationshipType', e.target.value)}>
+            {['Brand Owner', 'Importer', 'Marketeer', 'Repacker', 'Supplier', 'Trader'].map((o) => <option key={o}>{o}</option>)}
+          </select>
+        </div>
+        <div style={row}>
+          <label style={fieldLabel}>Agreement Document *</label>
+          <UB value={step3.agreementDoc} stepKey="step3" field="agreementDoc" />
+        </div>
+      </div>
+
+      <div style={secCard}>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12 }}>Safety Information (Documentation on risk assessment or toxicity studies) *</div>
+        <div style={{ marginBottom: 8 }}>
+          <button style={{ background: 'transparent', color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 6, padding: '6px 14px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>⬇️ Download Soft Copy Annexure A</button>
+        </div>
+        <div style={row}>
+          <label style={fieldLabel}>Safety Information — File 1 *</label>
+          <UB value={step3.safetyFile1} stepKey="step3" field="safetyFile1" />
+        </div>
+        <div style={row}>
+          <label style={fieldLabel}>Safety Information — File 2</label>
+          <UB value={step3.safetyFile2} stepKey="step3" field="safetyFile2" />
+        </div>
+      </div>
+
+      <div style={secCard}>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12 }}>Claim Support Documentation *</div>
+        <div style={{ marginBottom: 8 }}>
+          <button style={{ background: 'transparent', color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 6, padding: '6px 14px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>⬇️ Download Template</button>
+        </div>
+        <div style={row}>
+          <label style={fieldLabel}>Claim Support — File 1 *</label>
+          <UB value={step3.claimFile1} stepKey="step3" field="claimFile1" />
+        </div>
+        <div style={row}>
+          <label style={fieldLabel}>Claim Support — File 2</label>
+          <UB value={step3.claimFile2} stepKey="step3" field="claimFile2" />
+        </div>
+      </div>
+
+      <div style={secCard}>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12 }}>Declarations & Compliance Documents</div>
+        <div style={row}>
+          <label style={fieldLabel}>Copy of Proposed Product Prototype Label (as per relevant FSS Regulations) *</label>
+          <UB value={step3.prototypeLabel} stepKey="step3" field="prototypeLabel" />
+        </div>
+        <div style={row}>
+          <label style={fieldLabel}>Declaration to conduct and provide post marketing surveillance data *</label>
+          <UB value={step3.postMarketingDecl} stepKey="step3" field="postMarketingDecl" />
+        </div>
+        <div style={row}>
+          <label style={fieldLabel}>Declaration to keep information shared by the firm as confidential *</label>
+          <UB value={step3.confidentialityDecl} stepKey="step3" field="confidentialityDecl" />
+        </div>
+        <div style={row}>
+          <label style={fieldLabel}>GST No.</label>
+          <input style={input} placeholder="Enter GST number" value={step3.gstNo} onChange={(e) => set('step3', 'gstNo', e.target.value)} />
+        </div>
+      </div>
+    </div>,
+
+    // ── Step 3: Additional Specific Information ─────────────────────────────
+    <div key={3}>
+      <div style={{ background: COLORS.primaryLight, border: `1px solid var(--color-primary-22)`, borderRadius: 8, padding: 12, fontSize: 12, color: COLORS.primary, marginBottom: 12 }}>
+        ℹ️ Complete only the section applicable to your selected Application Type. Other sections may be left blank.
+      </div>
+
+      <div style={secCard}>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12, color: COLORS.primary }}>a) Novel Food / Novel Food Ingredients / Food processed with Novel Technology</div>
+        {([
+          ['targetGroup',   'i. Target group for the proposed food', 'input'],
+          ['composition',   'ii. Detailed composition of the product (with quantity of ingredients and additives)', 'textarea'],
+          ['newTechnology', 'iii. Details of new technology', 'textarea'],
+        ] as [keyof typeof step4, string, string][]).map(([field, label, type]) => (
+          <div key={field} style={row}>
+            <label style={fieldLabel}>{label}</label>
+            {type === 'textarea'
+              ? <textarea style={textarea} value={step4[field] as string} onChange={(e) => set('step4', field, e.target.value)} />
+              : <input style={input} value={step4[field] as string} onChange={(e) => set('step4', field, e.target.value)} />}
+          </div>
+        ))}
+      </div>
+
+      <div style={secCard}>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12, color: COLORS.primary }}>b) New Additives</div>
+        {([
+          ['chemicalName',  'i. Chemical Name and INS No.'],
+          ['purity',        'ii. Purity (food grade or equivalent)'],
+          ['adi',           'iii. Acceptable Daily Intake (as specified by FAO/WHO JECFA or other risk assessment body)'],
+          ['proposedLevel', 'iv. Proposed Level of Use in Food Category'],
+          ['colorIndex',    'v. Colour Index colour number (for colouring agents, where applicable)'],
+        ] as [keyof typeof step4, string][]).map(([field, label]) => (
+          <div key={field} style={row}>
+            <label style={fieldLabel}>{label}</label>
+            <input style={input} value={step4[field] as string} onChange={(e) => set('step4', field, e.target.value)} />
+          </div>
+        ))}
+      </div>
+
+      <div style={secCard}>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12, color: COLORS.primary }}>c) New Processing Aids including Enzymes</div>
+        {([
+          ['specificationDoc', 'i. Specification'],
+          ['enzymeActivity',   'ii. Enzyme Activity'],
+        ] as [keyof typeof step4, string][]).map(([field, label]) => (
+          <div key={field} style={row}>
+            <label style={fieldLabel}>{label}</label>
+            <UB value={step4[field] as string} stepKey="step4" field={field} />
+          </div>
+        ))}
+      </div>
+
+      <div style={secCard}>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12, color: COLORS.primary }}>d) Articles of Food / Ingredients from Microorganisms / Bacteria / Yeast / Fungi / Algae</div>
+        <div style={{ marginBottom: 8 }}>
+          <button style={{ background: 'transparent', color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 6, padding: '6px 14px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>⬇️ Download Template</button>
+        </div>
+        <div style={row}>
+          <label style={fieldLabel}>Upload completed template</label>
+          <UB value={step4.microTemplate} stepKey="step4" field="microTemplate" />
+        </div>
+      </div>
+
+      <div style={secCard}>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12, color: COLORS.primary }}>Any Other</div>
+        <div style={row}>
+          <label style={fieldLabel}>Upload supporting document</label>
+          <UB value={step4.anyOtherDoc} stepKey="step4" field="anyOtherDoc" />
+        </div>
+      </div>
+    </div>,
+
+    // ── Step 4: Payment & Submit ────────────────────────────────────────────
+    <div key={4} style={secCard}>
+      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 16 }}>Payment &amp; Submission</div>
+
+      {/* Fee summary */}
+      <div style={{ background: COLORS.primaryLight, border: `1px solid var(--color-primary-22)`, borderRadius: 8, padding: 16, marginBottom: 16 }}>
+        <div style={{ fontWeight: 700, color: COLORS.primary, marginBottom: 8 }}>Fee Summary</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+          <span style={{ fontSize: 13 }}>{typeParam} Application Fee</span>
+          <span style={{ fontWeight: 700 }}>{fee.fee}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+          <span style={{ fontSize: 13 }}>GST (18%)</span>
+          <span style={{ fontWeight: 700 }}>{fee.gst}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: `1px solid var(--color-primary-22)`, paddingTop: 8, marginTop: 4 }}>
+          <span style={{ fontWeight: 700 }}>Total</span>
+          <span style={{ fontWeight: 800, fontSize: 16, color: COLORS.primary }}>{fee.total}</span>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        <label style={S.label}>Payment Method</label>
+        <select style={select} value={step5.paymentMethod} onChange={(e) => set('step5', 'paymentMethod', e.target.value)}>
+          <option>Online Payment (NEFT/RTGS/UPI)</option>
+          <option>Demand Draft</option>
+        </select>
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <label style={S.label}>Transaction Reference Number</label>
+        <div>
+          <input style={eb(input, 'paymentReference')} placeholder="Enter payment transaction reference" value={step5.paymentReference} onChange={(e) => { set('step5', 'paymentReference', e.target.value); setStepErrors((p) => { const n = { ...p }; delete n.paymentReference; return n; }); }} />
+          {errMsg('paymentReference')}
+        </div>
+      </div>
+
+      <div style={{ background: '#FFF8E1', border: '1px solid #FFE082', borderRadius: 6, padding: 12, fontSize: 12, lineHeight: 1.6 }}>
+        ℹ️ By submitting this application, I declare that the information provided is true and accurate. I understand that false information may lead to rejection or cancellation of approval.
+      </div>
+    </div>,
+  ];
+
+  const sectionTitles = ['Ingredients & Application Type', 'General Information', 'Documents & Regulatory', 'Additional Specific Information', 'Payment & Submit'];
+
+  return (
+    <div>
+      {/* ── Page header ──────────────────────────────────────────────── */}
+      <div style={{ marginBottom: 16, paddingLeft: 12, borderLeft: `4px solid ${COLORS.primary}` }}>
+        <div style={S.roleLabel}>START NEW APPLICATION</div>
+        <div style={S.pageTitle}>Application Form ({typeParam})</div>
+        <div style={S.pageDesc}>Stage-driven workspace for Draft Submission. All data is auto-saved on each step.</div>
+      </div>
+
+      {/* ── Form card ────────────────────────────────────────────────── */}
+      <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 20, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        <Stepper steps={STEPS} current={step} />
+
+        <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.primary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
+          STEP {step + 1} OF {STEPS.length}
+        </div>
+        <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16, color: COLORS.text }}>
+          {sectionTitles[step]}
+        </div>
+
+        {/* Validation error summary */}
+        {Object.keys(stepErrors).length > 0 && (
+          <div style={{ background: COLORS.dangerLight, border: `1px solid #F5C6C6`, borderLeft: `4px solid ${COLORS.danger}`, borderRadius: 7, padding: '10px 14px', marginBottom: 14, fontSize: 12, color: COLORS.danger }}>
+            <strong>Please fill in all required fields before continuing.</strong>
+            <ul style={{ margin: '4px 0 0 0', paddingLeft: 18 }}>
+              {Object.values(stepErrors).map((msg, i) => <li key={i}>{msg}</li>)}
+            </ul>
+          </div>
+        )}
+
+        {/* Step content */}
+        {stepContent[step]}
+
+        {/* Navigation bar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, paddingTop: 12, borderTop: `1px solid ${COLORS.border}` }}>
+          <button
+            onClick={() => { setStepErrors({}); step > 0 ? setStep(step - 1) : navigate('/app/apply'); }}
+            style={{ background: 'transparent', color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 8, padding: '9px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+          >
+            ← Back
+          </button>
+
+          <span style={{ color: COLORS.textMuted, fontSize: 12 }}>{step + 1} / {STEPS.length}</span>
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={handleSave}
+              disabled={saving || !appId}
+              style={{ background: 'transparent', color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 8, padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}
+            >
+              {saving ? '…' : '💾 Save'}
+            </button>
+            {step < STEPS.length - 1 ? (
+              <button
+                onClick={advanceStep}
+                style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 8, padding: '9px 24px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+              >
+                Next →
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  const errs = validateStep(step);
+                  if (Object.keys(errs).length > 0) { setStepErrors(errs); return; }
+                  handleSubmit();
+                }}
+                disabled={saving || !appId}
+                style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 8, padding: '9px 24px', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}
+              >
+                {saving ? 'Submitting…' : 'Submit Application →'}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+import type React from 'react';

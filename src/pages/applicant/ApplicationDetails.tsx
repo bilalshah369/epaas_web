@@ -1,0 +1,162 @@
+// Mirrors ApplicantApplicationDetails from mock (App.jsx L10549).
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { COLORS, S } from '@/utils/colors';
+import StatusBadge from '@/components/ui/StatusBadge';
+import { fetchMyApplications, type Application } from '@/services/application.service';
+
+const STATUS_OPTIONS = ['All Statuses', 'Draft', 'Submitted', 'Query Raised', 'Approved', 'Rejected'];
+const TYPE_OPTIONS   = ['All Types', 'NSF', 'Claim Approval', 'Ayurveda Aahara', 'rPET', 'Any Other'];
+const STATUS_MAP: Record<string, string> = { 'Query Raised': 'QuerySent', 'Claim Approval': 'ClaimApproval', 'Ayurveda Aahara': 'AyurvedaAahara', 'rPET': 'RPET', 'Any Other': 'AnyOther' };
+const TYPE_LABELS: Record<string, string> = {
+  NSF: 'NSF', ClaimApproval: 'Claim Approval', AyurvedaAahara: 'Ayurveda Aahara', RPET: 'rPET', AnyOther: 'Any Other',
+};
+
+function ActionBtn({ label, variant = 'primary', onClick }: { label: string; variant?: string; onClick?: () => void }) {
+  const vars: Record<string, React.CSSProperties> = {
+    primary: { background: COLORS.primary,  color: '#fff', border: 'none' },
+    outline:  { background: 'transparent',  color: COLORS.primary, border: `1.5px solid ${COLORS.primary}` },
+    warning:  { background: COLORS.warning, color: '#fff', border: 'none' },
+  };
+  return (
+    <button
+      onClick={onClick}
+      style={{ ...(vars[variant] ?? vars.primary), display: 'inline-flex', alignItems: 'center', padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', marginRight: 4, marginBottom: 2 }}
+    >
+      {label}
+    </button>
+  );
+}
+
+export default function ApplicationDetails() {
+  const navigate = useNavigate();
+  const [apps, setApps]           = useState<Application[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [search, setSearch]       = useState('');
+  const [filterStatus, setFilterStatus] = useState('All Statuses');
+  const [filterType, setFilterType]     = useState('All Types');
+
+  useEffect(() => {
+    fetchMyApplications()
+      .then(setApps)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const displayed = useMemo(() => {
+    let list = apps;
+    if (search) {
+      const q = search.toLowerCase();
+      list = list.filter((a) =>
+        a.referenceNumber.toLowerCase().includes(q) ||
+        a.companyName.toLowerCase().includes(q)
+      );
+    }
+    if (filterStatus !== 'All Statuses') list = list.filter((a) => a.stage === (STATUS_MAP[filterStatus] ?? filterStatus));
+    if (filterType   !== 'All Types')    list = list.filter((a) => a.applicationType === (STATUS_MAP[filterType] ?? filterType));
+    return list;
+  }, [apps, search, filterStatus, filterType]);
+
+  function fmtDate(iso: string | null) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  return (
+    <div>
+      {/* ── Page header ───────────────────────────────────────────────── */}
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <div style={S.roleLabel}>APPLICANT</div>
+          <div style={S.pageTitle}>Application Details</div>
+          <div style={S.pageDesc}>Complete list of all your E-PAAS applications across all statuses.</div>
+        </div>
+        <button
+          onClick={() => navigate('/app/apply')}
+          style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+        >
+          + New Application
+        </button>
+      </div>
+
+      {/* ── Card ─────────────────────────────────────────────────────── */}
+      <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        {/* Filters */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search applications…"
+            style={{ flex: 1, minWidth: 200, border: `1.5px solid ${COLORS.border}`, borderRadius: 8, padding: '6px 10px', fontSize: 11, outline: 'none', background: COLORS.bg }}
+          />
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            style={{ border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '6px 8px', fontSize: 11, background: '#fff', cursor: 'pointer', minWidth: 150 }}
+          >
+            {STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
+          </select>
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            style={{ border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '6px 8px', fontSize: 11, background: '#fff', cursor: 'pointer', minWidth: 150 }}
+          >
+            {TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t === 'All Types' ? t : (TYPE_LABELS[t] ?? t)}</option>)}
+          </select>
+          {(search || filterStatus !== 'All Statuses' || filterType !== 'All Types') && (
+            <button
+              onClick={() => { setSearch(''); setFilterStatus('All Statuses'); setFilterType('All Types'); }}
+              style={{ background: 'none', border: 'none', fontSize: 11, color: COLORS.primary, cursor: 'pointer', fontWeight: 600 }}
+            >
+              ✕ Clear
+            </button>
+          )}
+        </div>
+
+        {/* Record count */}
+        <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 8 }}>
+          {displayed.length} record{displayed.length !== 1 ? 's' : ''}
+          {(search || filterStatus !== 'All Statuses' || filterType !== 'All Types') && ` (filtered from ${apps.length})`}
+        </div>
+
+        {/* Table */}
+        {loading ? (
+          <div style={{ padding: '32px 0', textAlign: 'center', color: COLORS.textMuted, fontSize: 13 }}>Loading…</div>
+        ) : displayed.length === 0 ? (
+          <div style={{ padding: '32px 0', textAlign: 'center', color: COLORS.textMuted, fontSize: 13 }}>No applications found.</div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr>
+                  {['Sr. No.', 'Company Name', 'Reference No.', 'Address', 'Application Type', 'Food Category', 'Last Updated', 'Status', 'Action']
+                    .map((c) => <th key={c} style={S.th}>{c}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {displayed.map((r, i) => (
+                  <tr key={r.id} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg }}>
+                    <td style={S.td}>{i + 1}</td>
+                    <td style={S.td}><span style={{ fontWeight: 600 }}>{r.companyName}</span></td>
+                    <td style={S.td}><span style={{ color: COLORS.primary, fontWeight: 600 }}>{r.referenceNumber}</span></td>
+                    <td style={S.td}><span style={{ color: COLORS.textMuted, fontSize: 10 }}>{r.address}</span></td>
+                    <td style={S.td}>{TYPE_LABELS[r.applicationType] ?? r.applicationType}</td>
+                    <td style={S.td}>{r.foodCategory}</td>
+                    <td style={S.td}>{fmtDate(r.updatedAt)}</td>
+                    <td style={S.td}><StatusBadge status={r.stage} /></td>
+                    <td style={S.td}>
+                      <ActionBtn label="View" variant="outline" onClick={() => navigate(`/app/applications/${r.id}`)} />
+                      {r.stage === 'Draft'     && <ActionBtn label="Edit"    variant="primary" onClick={() => navigate(`/app/apply/form?id=${r.id}`)} />}
+                      {r.stage === 'QuerySent' && <ActionBtn label="Respond" variant="warning" onClick={() => navigate(`/app/applications/${r.id}?tab=2`)} />}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+import type React from 'react';
