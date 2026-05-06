@@ -10,6 +10,7 @@ export interface Application {
   productName:     string | null;
   stage:           string;
   formData:        AppFormData | null;
+  ecAssessment:    { checklist: Record<string, boolean>; notes: string } | null;
   submittedAt:     string | null;
   createdAt:       string;
   updatedAt:       string;

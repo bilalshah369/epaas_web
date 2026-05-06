@@ -37,6 +37,49 @@ import TechSearchConsole          from '@/pages/technical/TechSearchConsole';
 
 import ApplicantRequests           from '@/pages/applicant/ApplicantRequests';
 
+// ── Nodal Point B module ──────────────────────────────────────────────────────
+import NodalBLayout              from '@/layouts/NodalBLayout';
+import NodalBDashboard           from '@/pages/nodal-b/NodalBDashboard';
+import NodalBApplicationReview   from '@/pages/nodal-b/NodalBApplicationReview';
+import NodalBSearchConsole       from '@/pages/nodal-b/NodalBSearchConsole';
+
+// ── CEO module ────────────────────────────────────────────────────────────────
+import CEOLayout                 from '@/layouts/CEOLayout';
+import CEODashboard              from '@/pages/ceo/CEODashboard';
+import CEOApplicationReview      from '@/pages/ceo/CEOApplicationReview';
+import CEOReports                from '@/pages/ceo/CEOReports';
+import CEOSearchConsole          from '@/pages/ceo/CEOSearchConsole';
+import CEOExtensionOfTime        from '@/pages/ceo/CEOExtensionOfTime';
+
+// ── Chairperson module ────────────────────────────────────────────────────────
+import ChairpersonLayout              from '@/layouts/ChairpersonLayout';
+import ChairpersonDashboard           from '@/pages/chairperson/ChairpersonDashboard';
+import ChairpersonApplicationReview   from '@/pages/chairperson/ChairpersonApplicationReview';
+import ChairpersonReports             from '@/pages/chairperson/ChairpersonReports';
+import ChairpersonSearchConsole       from '@/pages/chairperson/ChairpersonSearchConsole';
+import ChairpersonExtensionOfTime     from '@/pages/chairperson/ChairpersonExtensionOfTime';
+
+// ── Admin module ─────────────────────────────────────────────────────────────
+import AdminLayout          from '@/layouts/AdminLayout';
+import AdminDashboard       from '@/pages/admin/AdminDashboard';
+import AdminAppMonitor      from '@/pages/admin/AdminAppMonitor';
+import AdminOfficers        from '@/pages/admin/AdminOfficers';
+import AdminRoles           from '@/pages/admin/AdminRoles';
+import AdminReports         from '@/pages/admin/AdminReports';
+import AdminAuditTrail      from '@/pages/admin/AdminAuditTrail';
+import AdminSearchConsole   from '@/pages/admin/AdminSearchConsole';
+
+// ── Expert Committee module ───────────────────────────────────────────────────
+import ECLayout           from '@/layouts/ECLayout';
+import ECDashboard        from '@/pages/ec/ECDashboard';
+import ECCaseDockets      from '@/pages/ec/ECCaseDockets';
+import ECDocketReview     from '@/pages/ec/ECDocketReview';
+import ECAgenda           from '@/pages/ec/ECAgenda';
+import ECReports          from '@/pages/ec/ECReports';
+import ECAppealReview     from '@/pages/ec/ECAppealReview';
+import ECExtensionOfTime  from '@/pages/ec/ECExtensionOfTime';
+import ECSearchConsole    from '@/pages/ec/ECSearchConsole';
+
 // ── Nodal Officer A module ────────────────────────────────────────────────────
 import NodalALayout               from '@/layouts/NodalALayout';
 import NodalADashboard            from '@/pages/nodalA/NodalADashboard';
@@ -143,12 +186,71 @@ export default function App() {
           </Route>
         </Route>
 
-        {/* Other roles — placeholder until their step ────────────────── */}
-        <Route path="/ec/*"           element={<DashboardPlaceholder />} />
-        <Route path="/nodalb/*"       element={<DashboardPlaceholder />} />
-        <Route path="/ceo/*"          element={<DashboardPlaceholder />} />
-        <Route path="/chairperson/*"  element={<DashboardPlaceholder />} />
-        <Route path="/admin/*"        element={<DashboardPlaceholder />} />
+        {/* ── Expert Committee ────────────────────────────────────────── */}
+        <Route element={<RoleRoute roles={['ExpertCommittee']} />}>
+          <Route element={<ECLayout />}>
+            <Route path="/ec/dashboard"    element={<ECDashboard />}       />
+            <Route path="/ec/dockets"      element={<ECCaseDockets />}     />
+            <Route path="/ec/dockets/:id"  element={<ECDocketReview />}    />
+            <Route path="/ec/agenda"       element={<ECAgenda />}          />
+            <Route path="/ec/reports"      element={<ECReports />}         />
+            <Route path="/ec/appeal-review" element={<ECAppealReview />}   />
+            <Route path="/ec/extension"    element={<ECExtensionOfTime />} />
+            <Route path="/ec/search"       element={<ECSearchConsole />}   />
+            <Route path="/ec/*"            element={<DashboardPlaceholder />} />
+          </Route>
+        </Route>
+
+        {/* ── Nodal Point B ───────────────────────────────────────────── */}
+        <Route element={<RoleRoute roles={['NodalPointB']} />}>
+          <Route element={<NodalBLayout />}>
+            <Route path="/nodalb/dashboard"    element={<NodalBDashboard />}          />
+            <Route path="/nodalb/queue"        element={<NodalBDashboard />}          />
+            <Route path="/nodalb/queue/:id"    element={<NodalBApplicationReview />}  />
+            <Route path="/nodalb/search"       element={<NodalBSearchConsole />}      />
+            <Route path="/nodalb/*"            element={<DashboardPlaceholder />}     />
+          </Route>
+        </Route>
+
+        {/* ── CEO ─────────────────────────────────────────────────────── */}
+        <Route element={<RoleRoute roles={['CEO']} />}>
+          <Route element={<CEOLayout />}>
+            <Route path="/ceo/dashboard"   element={<CEODashboard />}          />
+            <Route path="/ceo/appeals"     element={<CEODashboard />}          />
+            <Route path="/ceo/appeals/:id" element={<CEOApplicationReview />}  />
+            <Route path="/ceo/reports"     element={<CEOReports />}            />
+            <Route path="/ceo/search"      element={<CEOSearchConsole />}      />
+            <Route path="/ceo/extension"   element={<CEOExtensionOfTime />}    />
+            <Route path="/ceo/*"           element={<DashboardPlaceholder />}  />
+          </Route>
+        </Route>
+
+        {/* ── Chairperson ─────────────────────────────────────────────── */}
+        <Route element={<RoleRoute roles={['Chairperson']} />}>
+          <Route element={<ChairpersonLayout />}>
+            <Route path="/chairperson/dashboard"   element={<ChairpersonDashboard />}          />
+            <Route path="/chairperson/reviews"     element={<ChairpersonDashboard />}          />
+            <Route path="/chairperson/reviews/:id" element={<ChairpersonApplicationReview />}  />
+            <Route path="/chairperson/reports"     element={<ChairpersonReports />}            />
+            <Route path="/chairperson/search"      element={<ChairpersonSearchConsole />}      />
+            <Route path="/chairperson/extension"   element={<ChairpersonExtensionOfTime />}    />
+            <Route path="/chairperson/*"           element={<DashboardPlaceholder />}          />
+          </Route>
+        </Route>
+
+        {/* ── Admin ───────────────────────────────────────────────────── */}
+        <Route element={<RoleRoute roles={['Admin']} />}>
+          <Route element={<AdminLayout />}>
+            <Route path="/admin/dashboard" element={<AdminDashboard />}      />
+            <Route path="/admin/monitor"   element={<AdminAppMonitor />}     />
+            <Route path="/admin/officers"  element={<AdminOfficers />}       />
+            <Route path="/admin/roles"     element={<AdminRoles />}          />
+            <Route path="/admin/reports"   element={<AdminReports />}        />
+            <Route path="/admin/audit"     element={<AdminAuditTrail />}     />
+            <Route path="/admin/search"    element={<AdminSearchConsole />}  />
+            <Route path="/admin/*"         element={<DashboardPlaceholder />} />
+          </Route>
+        </Route>
       </Route>
 
       {/* ── Catch-all ───────────────────────────────────────────────── */}
