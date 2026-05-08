@@ -5,7 +5,7 @@ variables:
 before_script:
   - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
 build:
-  only: [epass-azure]
+  only: [main]
   stage: build
   script:
     - docker pull $CI_REGISTRY_IMAGE:latest || true
