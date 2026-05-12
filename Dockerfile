@@ -9,10 +9,10 @@ COPY package.json package-lock.json* ./
 # Install dependencies
 RUN npm ci
 
-# Copy source code
-COPY src ./src
-COPY index.html tsconfig.json tsconfig.node.json vite.config.ts postcss.config.js tailwind.config.js ./
+COPY . .
 
+# IMPORTANT: copy env for Vite build
+COPY .env .env
 # Build the application
 RUN npm run build
 
