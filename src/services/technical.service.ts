@@ -37,6 +37,21 @@ export async function technicalForwardToEC(appId: string): Promise<Application> 
   return data.application;
 }
 
+export async function technicalRequestClarification(appId: string, text: string): Promise<void> {
+  await api.post(`/technical/applications/${appId}/request-clarification`, { text });
+}
+
+export async function technicalRecordDecision(
+  appId: string,
+  decision: string,
+  conditions: string,
+  reasons: string,
+  form2Data: Record<string, unknown>,
+): Promise<Application> {
+  const { data } = await api.post<{ application: Application }>(`/technical/applications/${appId}/record-decision`, { decision, conditions, reasons, form2Data });
+  return data.application;
+}
+
 export async function technicalReject(appId: string, reason: string): Promise<Application> {
   const { data } = await api.post<{ application: Application }>(`/technical/applications/${appId}/reject`, { reason });
   return data.application;

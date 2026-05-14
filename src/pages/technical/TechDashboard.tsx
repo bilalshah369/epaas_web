@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { COLORS, S } from '@/utils/colors';
+import { resolveFoodCategory } from '@/utils/docResolver';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { fetchTechnicalPending, fetchTechnicalAll } from '@/services/technical.service';
 import type { Application } from '@/services/application.service';
@@ -220,7 +221,7 @@ export default function TechDashboard() {
                       <td style={S.td}>{a.companyName}</td>
                       <td style={{ ...S.td, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(a.formData as Record<string, unknown> | null) ? String((a.formData as Record<string, Record<string, unknown>> | null)?.step2?.productName ?? '—') : '—'}</td>
                       <td style={S.td}><span style={{ background: COLORS.primaryLight, color: COLORS.primary, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4 }}>New</span></td>
-                      <td style={{ ...S.td, fontSize: 11 }}>{a.foodCategory ?? '—'}</td>
+                      <td style={{ ...S.td, fontSize: 11 }}>{resolveFoodCategory(a)}</td>
                       <td style={S.td}>—</td>
                       <td style={{ ...S.td, fontSize: 11, color: COLORS.primary, fontWeight: 600 }}>Technical Officer</td>
                       <td style={S.td}>{fmtDate(a.submittedAt)}</td>
@@ -229,7 +230,7 @@ export default function TechDashboard() {
                       <td style={S.td}>
                         <div style={{ display: 'flex', gap: 4 }}>
                           <Btn label="Open"    onClick={() => navigate(`/technical/assessment/${a.id}`)} />
-                          <Btn label="Forward" variant="outline" onClick={() => navigate(`/technical/assessment/${a.id}`)} />
+                          <Btn label="Forward" variant="outline" onClick={() => navigate(`/technical/assessment/${a.id}?tab=recommendation`)} />
                         </div>
                       </td>
                     </tr>
@@ -313,7 +314,7 @@ export default function TechDashboard() {
                         <td style={S.td}>{i + 1}</td>
                         <td style={{ ...S.td, color: COLORS.primary, fontWeight: 600 }}>{a.referenceNumber}</td>
                         <td style={S.td}><span style={{ background: COLORS.primaryLight, color: COLORS.primary, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4 }}>New</span></td>
-                        <td style={{ ...S.td, fontSize: 11 }}>{a.foodCategory ?? '—'}</td>
+                        <td style={{ ...S.td, fontSize: 11 }}>{resolveFoodCategory(a)}</td>
                         <td style={S.td}>{a.companyName}</td>
                         <td style={S.td}>{TYPE_LABELS[a.applicationType] ?? a.applicationType}</td>
                         <td style={{ ...S.td, fontSize: 11, color: COLORS.primary, fontWeight: 600 }}>Technical Officer</td>
@@ -324,7 +325,7 @@ export default function TechDashboard() {
                           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                             <Btn label="Proceed"     onClick={() => navigate(`/technical/assessment/${a.id}`)} />
                             <Btn label="Draft Query" variant="outline" onClick={() => navigate(`/technical/assessment/${a.id}?tab=query`)} />
-                            <Btn label="Forward"     variant="outline" onClick={() => navigate(`/technical/assessment/${a.id}`)} />
+                            <Btn label="Forward"     variant="outline" onClick={() => navigate(`/technical/assessment/${a.id}?tab=recommendation`)} />
                           </div>
                         </td>
                       </tr>

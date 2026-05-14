@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { COLORS, S } from '@/utils/colors';
+import { resolveFoodCategory } from '@/utils/docResolver';
 import StatusBadge from '@/components/ui/StatusBadge';
-import { fetchNodalBPending, fetchNodalBAll, nodalBForwardCEO } from '@/services/nodal-b.service';
+import { fetchNodalBPending, fetchNodalBAll, nodalBUploadECDecision } from '@/services/nodal-b.service';
 import type { Application } from '@/services/application.service';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -110,15 +111,15 @@ export default function NodalBDashboard() {
     setPendingDisplay(apps); setFilterApplied(false);
   }
 
-  async function handleForwardCEO(id: string) {
+  async function handleUploadECDecision(id: string) {
     setForwarding(id);
     try {
-      await nodalBForwardCEO(id);
-      toast.success('Application forwarded to CEO for final approval');
+      await nodalBUploadECDecision(id);
+      toast.success('EC decision uploaded — forwarded to Technical Officer');
       loadData();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      toast.error(msg ?? 'Could not forward to CEO');
+      toast.error(msg ?? 'Could not upload EC decision');
     } finally { setForwarding(null); }
   }
 
@@ -184,7 +185,7 @@ export default function NodalBDashboard() {
                       <td style={S.td}>{a.companyName}</td>
                       <td style={{ ...S.td, maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.productName ?? '—'}</td>
                       <td style={S.td}><span style={{ background: COLORS.primaryLight, color: COLORS.primary, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4 }}>{TYPE_LABELS[a.applicationType] ?? a.applicationType}</span></td>
-                      <td style={{ ...S.td, fontSize: 11 }}>{a.foodCategory ?? '—'}</td>
+                      <td style={{ ...S.td, fontSize: 11 }}>{resolveFoodCategory(a)}</td>
                       <td style={{ ...S.td, fontSize: 11 }}><span style={{ color: COLORS.success, fontWeight: 600 }}>EC Recommended</span></td>
                       <td style={S.td}>{fmtDate(a.submittedAt)}</td>
                       <td style={{ ...S.td, color: (days ?? 0) > 7 ? COLORS.danger : COLORS.text, fontWeight: (days ?? 0) > 7 ? 700 : 400 }}>{days !== null ? `${days}d` : '—'}</td>
@@ -195,9 +196,9 @@ export default function NodalBDashboard() {
                             style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 5, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
                             View Details
                           </button>
-                          <button onClick={() => handleForwardCEO(a.id)} disabled={forwarding === a.id}
+                          <button onClick={() => handleUploadECDecision(a.id)} disabled={forwarding === a.id}
                             style={{ background: 'transparent', color: COLORS.primary, border: `1px solid ${COLORS.primary}`, borderRadius: 5, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: forwarding === a.id ? 'not-allowed' : 'pointer', opacity: forwarding === a.id ? 0.55 : 1 }}>
-                            {forwarding === a.id ? 'Forwarding…' : 'Forward to CEO'}
+                            {forwarding === a.id ? 'Processing…' : 'Upload EC Decision'}
                           </button>
                         </div>
                       </td>
@@ -295,7 +296,7 @@ export default function NodalBDashboard() {
                     <td style={S.td}>{i + 1}</td>
                     <td style={{ ...S.td, color: COLORS.primary, fontWeight: 600 }}>{a.referenceNumber}</td>
                     <td style={S.td}><span style={{ background: COLORS.primaryLight, color: COLORS.primary, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4 }}>{TYPE_LABELS[a.applicationType] ?? a.applicationType}</span></td>
-                    <td style={{ ...S.td, fontSize: 11 }}>{a.foodCategory ?? '—'}</td>
+                    <td style={{ ...S.td, fontSize: 11 }}>{resolveFoodCategory(a)}</td>
                     <td style={S.td}>{a.companyName}</td>
                     <td style={{ ...S.td, maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.productName ?? '—'}</td>
                     <td style={S.td}>{fmtDate(a.submittedAt)}</td>
@@ -305,9 +306,9 @@ export default function NodalBDashboard() {
                       <div style={{ display: 'flex', gap: 4 }}>
                         <button onClick={() => navigate(`/nodalb/queue/${a.id}`)}
                           style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 5, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>View Details</button>
-                        <button onClick={() => handleForwardCEO(a.id)} disabled={forwarding === a.id}
+                        <button onClick={() => handleUploadECDecision(a.id)} disabled={forwarding === a.id}
                           style={{ background: 'transparent', color: COLORS.primary, border: `1px solid ${COLORS.primary}`, borderRadius: 5, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: forwarding === a.id ? 'not-allowed' : 'pointer', opacity: forwarding === a.id ? 0.55 : 1 }}>
-                          {forwarding === a.id ? '…' : 'Forward CEO'}
+                          {forwarding === a.id ? '…' : 'Upload EC Decision'}
                         </button>
                       </div>
                     </td>

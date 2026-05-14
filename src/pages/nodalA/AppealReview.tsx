@@ -2,8 +2,9 @@
 // Wired to real API: fetchNodalAAppealReview() → combined appeal + review records.
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { COLORS, S } from '@/utils/colors';
-import { fetchNodalAAppealReview } from '@/services/officer.service';
+import { fetchNodalAAppealReview, nodalADispatchAppealDecision, nodalADispatchReviewDecision } from '@/services/officer.service';
 import type { AppealReviewRecord } from '@/services/officer.service';
 
 type TypeFilter = 'All' | 'Appeal' | 'Review';
@@ -28,9 +29,10 @@ function fmtDate(iso: string | null | undefined) {
 
 export default function AppealReview() {
   const navigate = useNavigate();
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>('All');
-  const [records,   setRecords]   = useState<AppealReviewRecord[]>([]);
-  const [loading,   setLoading]   = useState(true);
+  const [typeFilter,  setTypeFilter]  = useState<TypeFilter>('All');
+  const [records,     setRecords]     = useState<AppealReviewRecord[]>([]);
+  const [loading,     setLoading]     = useState(true);
+  const [dispatching, setDispatching] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -38,6 +40,23 @@ export default function AppealReview() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  async function handleDispatch(r: AppealReviewRecord) {
+    setDispatching(r.id);
+    try {
+      if (r.type === 'Appeal') {
+        await nodalADispatchAppealDecision(r.id);
+        toast.success('Appeal decision dispatched to applicant');
+      } else {
+        await nodalADispatchReviewDecision(r.id);
+        toast.success('Review decision dispatched to applicant');
+      }
+      await load();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'Dispatch failed');
+    } finally { setDispatching(null); }
+  }
 
   const visible = typeFilter === 'All' ? records : records.filter((r) => r.type === typeFilter);
 
@@ -115,15 +134,21 @@ export default function AppealReview() {
                       </span>
                     </td>
                     <td style={{ ...S.td, whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'flex', gap: 4 }}>
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                         <button onClick={() => navigate(`/nodal/scrutiny/${r.application.id}`)}
                           style={{ padding: '4px 12px', background: 'transparent', color: COLORS.primary, border: `1px solid ${COLORS.primary}`, borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
                           View
                         </button>
-                        <button onClick={() => navigate(`/nodal/scrutiny/${r.application.id}`)}
-                          style={{ padding: '4px 12px', background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                          Proceed
-                        </button>
+                        {((r.type === 'Appeal' && (r.status === 'AppealApproved' || r.status === 'AppealRejected')) ||
+                          (r.type === 'Review' && r.status === 'ReviewDisposed')) &&
+                          r.application.stage === 'WithNodalOfficerA' && (
+                          <button
+                            onClick={() => handleDispatch(r)}
+                            disabled={dispatching === r.id}
+                            style={{ padding: '4px 12px', background: COLORS.success, color: '#fff', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: dispatching === r.id ? 'not-allowed' : 'pointer', opacity: dispatching === r.id ? 0.6 : 1 }}>
+                            {dispatching === r.id ? '…' : '📨 Dispatch'}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

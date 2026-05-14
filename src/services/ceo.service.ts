@@ -33,16 +33,6 @@ export async function fetchCEOExtensions(): Promise<any[]> {
   return data.requests;
 }
 
-export async function ceoForwardChairperson(id: string): Promise<Application> {
-  const { data } = await api.post<{ application: Application }>(`/ceo/applications/${id}/forward-chairperson`);
-  return data.application;
-}
-
-export async function ceoRejectApplication(id: string, reason: string): Promise<Application> {
-  const { data } = await api.post<{ application: Application }>(`/ceo/applications/${id}/reject`, { reason });
-  return data.application;
-}
-
 export async function ceoApproveAppeal(id: string, decisionRemarks: string): Promise<any> {
   const { data } = await api.post(`/ceo/appeals/${id}/approve`, { decisionRemarks });
   return data;

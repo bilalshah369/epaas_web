@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { COLORS, S } from "@/utils/colors";
+import { resolveFoodCategory } from "@/utils/docResolver";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { fetchNodalAAll } from "@/services/officer.service";
 import type { Application } from "@/services/application.service";
@@ -787,7 +788,7 @@ export default function NodalADashboard() {
                         <TypeBadge type={a.applicationType} />
                       </td>
                       <td style={{ ...S.td, fontSize: 11 }}>
-                        {a.foodCategory || "—"}
+                        {resolveFoodCategory(a)}
                       </td>
                       <td style={S.td}>—</td>
                       <td style={S.td}>{fmtDate(a.submittedAt)}</td>
@@ -1117,7 +1118,7 @@ export default function NodalADashboard() {
                           <TypeBadge type={a.applicationType} />
                         </td>
                         <td style={{ ...S.td, fontSize: 11 }}>
-                          {a.foodCategory || "—"}
+                          {resolveFoodCategory(a)}
                         </td>
                         <td style={S.td}>{a.companyName}</td>
                         <td style={S.td}>{a.productName ?? "—"}</td>
@@ -1259,7 +1260,7 @@ export default function NodalADashboard() {
                         <TypeBadge type={a.applicationType} />
                       </td>
                       <td style={{ ...S.td, fontSize: 11 }}>
-                        {a.foodCategory || "—"}
+                        {resolveFoodCategory(a)}
                       </td>
                       <td style={S.td}>{a.companyName}</td>
                       <td style={S.td}>{a.productName ?? "—"}</td>

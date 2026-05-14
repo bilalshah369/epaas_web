@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { COLORS, S } from '@/utils/colors';
-import { fetchECPending, ecForwardToNodalB, ecReject } from '@/services/ec.service';
+import { resolveFoodCategory } from '@/utils/docResolver';
+import { fetchECPending, ecForwardToTechnicalOfficer, ecReject } from '@/services/ec.service';
 import { api } from '@/services/api';
 import type { Application } from '@/services/application.service';
 
@@ -52,8 +53,8 @@ export default function ECAgenda() {
     setSubmitting(true);
     try {
       if (agendaAction === 'start') {
-        await ecForwardToNodalB(selectedId);
-        toast.success(`${selectedApp?.referenceNumber} — EC recommended approval. Forwarded to Nodal Point B.`);
+        await ecForwardToTechnicalOfficer(selectedId);
+        toast.success(`${selectedApp?.referenceNumber} — EC recommended approval. Forwarded to Technical Officer.`);
       } else {
         await ecReject(selectedId, meetingNotes || 'EC decision: Rejected in committee meeting');
         toast.success(`${selectedApp?.referenceNumber} — Rejected by Expert Committee.`);
@@ -143,7 +144,7 @@ export default function ECAgenda() {
                       {selected && <span style={{ fontSize: 10, background: COLORS.primary, color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>SELECTED</span>}
                     </div>
                   </div>
-                  <div style={{ fontSize: 11, color: COLORS.textMuted }}>{a.companyName} — {a.productName ?? a.foodCategory ?? '—'}</div>
+                  <div style={{ fontSize: 11, color: COLORS.textMuted }}>{a.companyName} — {a.productName ?? resolveFoodCategory(a)}</div>
                   <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>Submitted: {fmtDate(a.submittedAt)}</div>
                 </div>
               );

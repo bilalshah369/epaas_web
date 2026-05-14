@@ -17,6 +17,10 @@ import ApplicantDashboard         from '@/pages/applicant/ApplicantDashboard';
 import ApplicationDetails         from '@/pages/applicant/ApplicationDetails';
 import ApplicationTypeSelector    from '@/pages/applicant/ApplicationTypeSelector';
 import ApplicationForm            from '@/pages/applicant/ApplicationForm';
+import NSFApplicationForm              from '@/pages/applicant/NSFApplicationForm';
+import CAApplicationForm               from '@/pages/applicant/CAApplicationForm';
+import AyurvedaAaharaApplicationForm   from '@/pages/applicant/AyurvedaAaharaApplicationForm';
+import RPETApplicationForm             from '@/pages/applicant/RPETApplicationForm';
 import ApplicationView            from '@/pages/applicant/ApplicationView';
 import TaxInvoice                 from '@/pages/applicant/TaxInvoice';
 import ApplicantProfile           from '@/pages/applicant/ApplicantProfile';
@@ -131,6 +135,10 @@ export default function App() {
             <Route path="/app/applications" element={<ApplicationDetails />}      />
             <Route path="/app/apply"        element={<ApplicationTypeSelector />} />
             <Route path="/app/apply/form"       element={<ApplicationForm />}     />
+            <Route path="/app/apply/nsf-form"   element={<NSFApplicationForm />}             />
+            <Route path="/app/apply/ca-form"    element={<CAApplicationForm />}              />
+            <Route path="/app/apply/aa-form"    element={<AyurvedaAaharaApplicationForm />}  />
+            <Route path="/app/apply/rpet-form"  element={<RPETApplicationForm />}            />
             <Route path="/app/applications/:id" element={<ApplicationView />}     />
             <Route path="/app/tax-invoice"      element={<TaxInvoice />}          />
             <Route path="/app/profile"          element={<ApplicantProfile />}    />

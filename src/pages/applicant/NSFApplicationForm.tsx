@@ -1,4 +1,4 @@
-// Mirrors ApplicationForm from mock (App.jsx L11047). 5-step form wired to real API.
+// NSF-specific application form. All logic mirrors ApplicationForm.tsx but applies only to NSF type.
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -63,12 +63,7 @@ const ADDITIVES = [
   'INS 955 — Sucralose', 'INS 960 — Steviol Glycosides', 'INS 965 — Maltitol',
 ];
 
-const TYPE_FEE: Record<string, { fee: string; gst: string; total: string }> = {
-  NSF:            { fee: '₹50,000', gst: '₹9,000',  total: '₹59,000' },
-  ClaimApproval:  { fee: '₹50,000', gst: '₹9,000',  total: '₹59,000' },
-  AyurvedaAahara: { fee: '₹50,000', gst: '₹9,000',  total: '₹59,000' },
-  AnyOther:       { fee: '₹10,000', gst: '₹1,800',  total: '₹11,800' },
-};
+const TYPE_FEE = { fee: '₹50,000', gst: '₹9,000', total: '₹59,000' };
 
 // ── Shared inline styles ──────────────────────────────────────────────────────
 const input: React.CSSProperties = {
@@ -96,13 +91,13 @@ const fieldLabel: React.CSSProperties = {
   paddingTop: 4, lineHeight: 1.5,
 };
 
-// ── Main component ────────────────────────────────────────────────────────────
-export default function ApplicationForm() {
+// ── NSF Application Form ──────────────────────────────────────────────────────
+export default function NSFApplicationForm() {
   const [params]   = useSearchParams();
   const navigate   = useNavigate();
   const { user }   = useAuthStore();
 
-  const typeParam = params.get('type') ?? 'NSF';
+  const typeParam = 'NSF';
   const idParam   = params.get('id');
 
   const [appId, setAppId]     = useState<string | null>(idParam);
@@ -123,7 +118,6 @@ export default function ApplicationForm() {
         if (app.formData) setFormData(app.formData as AppFormData);
       }).catch(() => toast.error('Could not load draft'));
     } else {
-      // Reuse an existing draft of the same type rather than creating a duplicate
       fetchMyApplications()
         .then((apps) => {
           const existing = apps.find(
@@ -156,7 +150,7 @@ export default function ApplicationForm() {
   const eb = (base: React.CSSProperties, field: string): React.CSSProperties =>
     stepErrors[field] ? { ...base, borderColor: COLORS.danger } : base;
 
-  // UploadBox shorthand — auto-injects applicationId; shows validation error below
+  // UploadBox shorthand
   function UB({ value, stepKey, field }: { value: string; stepKey: 'step2' | 'step3' | 'step4'; field: string }) {
     return (
       <div>
@@ -207,18 +201,27 @@ export default function ApplicationForm() {
       if (!step1.applicationFor) errs.applicationFor = 'Please select an application type';
       if (step1.applicationFor === APPLICATION_FOR_OPTIONS[4] && !step1.specifyFood.trim())
         errs.specifyFood = 'Please specify the food type';
+      // Block if a pending row is partially filled but not added
+      if (pendingIng.name.trim())
+        errs.pendingIng = 'Please click "+ Add" to add the pending ingredient, or clear it first';
+      if (pendingAdd.name.trim())
+        errs.pendingAdd = 'Please click "+ Add" to add the pending additive, or clear it first';
     }
 
     if (stepIndex === 1) {
       const reqFields = [
         'applicantName', 'mobileNo', 'email', 'orgName', 'orgAddress',
+        'licenseNumber', 'mfgAddress',
         'productName', 'justification', 'subCategory', 'genusSp', 'functionalBenefits',
+        'healthBenefits',
       ] as (keyof typeof step2)[];
       reqFields.forEach((f) => {
         if (!(step2[f] as string).trim()) errs[f as string] = 'This field is required';
       });
       if (!step2.authorisedPerson || step2.authorisedPerson === 'Select')
         errs.authorisedPerson = 'Please select an authorised person';
+      if (step2.authorisedPerson === 'Other' && !step2.authorisedPersonOther.trim())
+        errs.authorisedPersonOther = 'Please enter the name of the authorised person';
       if (!step2.productCategory)
         errs.productCategory = 'Please select a product category';
       if (!step2.endUseDeclaration)
@@ -232,7 +235,9 @@ export default function ApplicationForm() {
       if (!step3.regulatoryStatusFile)    errs.regulatoryStatusFile  = 'Required document';
       if (!step3.agreementDoc)            errs.agreementDoc          = 'Required document';
       if (!step3.safetyFile1)             errs.safetyFile1           = 'Required document';
+      if (!step3.safetyFile2)             errs.safetyFile2           = 'Required document';
       if (!step3.claimFile1)              errs.claimFile1            = 'Required document';
+      if (!step3.claimFile2)              errs.claimFile2            = 'Required document';
       if (!step3.prototypeLabel)          errs.prototypeLabel        = 'Required document';
       if (!step3.postMarketingDecl)       errs.postMarketingDecl     = 'Required document';
       if (!step3.confidentialityDecl)     errs.confidentialityDecl   = 'Required document';
@@ -242,13 +247,17 @@ export default function ApplicationForm() {
     if (stepIndex === 3) {
       const { step4 } = formData;
       if (step1.applicationFor === APPLICATION_FOR_OPTIONS[0]) {
+        if (!step4.targetGroup.trim())    errs.targetGroup    = 'This field is required';
+        if (!step4.composition.trim())    errs.composition    = 'This field is required';
+        if (!step4.newTechnology.trim())  errs.newTechnology  = 'This field is required';
+        if (!step4.humanStudies)          errs.humanStudies   = 'Please select an option for Safety Information';
         if (step4.humanStudies === 'Available' && !step4.humanStudiesFile)
           errs.humanStudiesFile = 'Document required when studies are Available';
         if (step4.toxicologyStudies === 'Available' && !step4.toxicologyStudiesFile)
           errs.toxicologyStudiesFile = 'Document required when studies are Available';
       }
       if (step1.applicationFor === APPLICATION_FOR_OPTIONS[1]) {
-        (['chemicalName', 'purity', 'adi', 'proposedLevel'] as (keyof typeof step4)[]).forEach((f) => {
+        (['chemicalName', 'purity', 'adi', 'proposedLevel', 'colorIndex'] as (keyof typeof step4)[]).forEach((f) => {
           if (!(step4[f] as string).trim()) errs[f as string] = 'This field is required';
         });
       }
@@ -280,7 +289,6 @@ export default function ApplicationForm() {
     setStep(step + 1);
   }
 
-  const fee = TYPE_FEE[typeParam] ?? TYPE_FEE.NSF;
   const { step1, step2, step3, step4, step5 } = formData;
 
   // ── Step content ───────────────────────────────────────────────────────────
@@ -294,16 +302,18 @@ export default function ApplicationForm() {
             <option value="">— Select ingredient —</option>
             {INGREDIENTS.map((o) => <option key={o} value={o}>{o}</option>)}
           </select>
-          <input placeholder="Quantity"    style={input} value={pendingIng.quantity}    onChange={(e) => setPendingIng((p) => ({ ...p, quantity: e.target.value }))} />
+          <input placeholder="Quantity" type="number" min="0" style={input} value={pendingIng.quantity} onChange={(e) => setPendingIng((p) => ({ ...p, quantity: e.target.value }))} />
           <input placeholder="Standardize" style={input} value={pendingIng.standardize} onChange={(e) => setPendingIng((p) => ({ ...p, standardize: e.target.value }))} />
           <button onClick={() => {
             if (!pendingIng.name) return;
             set('step1', 'ingredients', [...step1.ingredients, pendingIng]);
             setPendingIng({ name: '', quantity: '', standardize: '' });
+            setStepErrors((p) => { const n = { ...p }; delete n.pendingIng; return n; });
           }} style={{ background: 'transparent', color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 6, padding: '7px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
             + Add
           </button>
         </div>
+        {errMsg('pendingIng')}
         {step1.ingredients.length > 0 && (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead><tr style={{ background: COLORS.bg }}><th style={S.th}>Ingredient</th><th style={S.th}>Quantity</th><th style={S.th}>Standardize</th><th style={S.th}></th></tr></thead>
@@ -328,16 +338,18 @@ export default function ApplicationForm() {
             <option value="">— Select additive —</option>
             {ADDITIVES.map((o) => <option key={o} value={o}>{o}</option>)}
           </select>
-          <input placeholder="Quantity"    style={input} value={pendingAdd.quantity}    onChange={(e) => setPendingAdd((p) => ({ ...p, quantity: e.target.value }))} />
+          <input placeholder="Quantity" type="number" min="0" style={input} value={pendingAdd.quantity} onChange={(e) => setPendingAdd((p) => ({ ...p, quantity: e.target.value }))} />
           <input placeholder="Standardize" style={input} value={pendingAdd.standardize} onChange={(e) => setPendingAdd((p) => ({ ...p, standardize: e.target.value }))} />
           <button onClick={() => {
             if (!pendingAdd.name) return;
             set('step1', 'additives', [...step1.additives, pendingAdd]);
             setPendingAdd({ name: '', quantity: '', standardize: '' });
+            setStepErrors((p) => { const n = { ...p }; delete n.pendingAdd; return n; });
           }} style={{ background: 'transparent', color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 6, padding: '7px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
             + Add
           </button>
         </div>
+        {errMsg('pendingAdd')}
         {step1.additives.length > 0 && (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead><tr style={{ background: COLORS.bg }}><th style={S.th}>Additive</th><th style={S.th}>Quantity</th><th style={S.th}>Standardize</th><th style={S.th}></th></tr></thead>
@@ -431,7 +443,7 @@ export default function ApplicationForm() {
           </div>
         </div>
       ))}
-      {/* 15.2 End use declaration */}
+      {/* End use declaration */}
       <div style={row}>
         <label style={fieldLabel}>End use declaration for product / pre-mix / ingredient / additive imported or manufactured for supply to other Food Business Operators *</label>
         <div>
@@ -668,20 +680,19 @@ export default function ApplicationForm() {
     <div key={4} style={secCard}>
       <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 16 }}>Payment &amp; Submission</div>
 
-      {/* Fee summary */}
       <div style={{ background: COLORS.primaryLight, border: `1px solid var(--color-primary-22)`, borderRadius: 8, padding: 16, marginBottom: 16 }}>
         <div style={{ fontWeight: 700, color: COLORS.primary, marginBottom: 8 }}>Fee Summary</div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-          <span style={{ fontSize: 13 }}>{typeParam} Application Fee</span>
-          <span style={{ fontWeight: 700 }}>{fee.fee}</span>
+          <span style={{ fontSize: 13 }}>NSF Application Fee</span>
+          <span style={{ fontWeight: 700 }}>{TYPE_FEE.fee}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
           <span style={{ fontSize: 13 }}>GST (18%)</span>
-          <span style={{ fontWeight: 700 }}>{fee.gst}</span>
+          <span style={{ fontWeight: 700 }}>{TYPE_FEE.gst}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: `1px solid var(--color-primary-22)`, paddingTop: 8, marginTop: 4 }}>
           <span style={{ fontWeight: 700 }}>Total</span>
-          <span style={{ fontWeight: 800, fontSize: 16, color: COLORS.primary }}>{fee.total}</span>
+          <span style={{ fontWeight: 800, fontSize: 16, color: COLORS.primary }}>{TYPE_FEE.total}</span>
         </div>
       </div>
 
@@ -714,7 +725,7 @@ export default function ApplicationForm() {
       {/* ── Page header ──────────────────────────────────────────────── */}
       <div style={{ marginBottom: 16, paddingLeft: 12, borderLeft: `4px solid ${COLORS.primary}` }}>
         <div style={S.roleLabel}>START NEW APPLICATION</div>
-        <div style={S.pageTitle}>Application Form ({typeParam})</div>
+        <div style={S.pageTitle}>Application Form (NSF)</div>
         <div style={S.pageDesc}>Stage-driven workspace for Draft Submission. All data is auto-saved on each step.</div>
       </div>
 

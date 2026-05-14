@@ -2,6 +2,7 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { COLORS, S } from '@/utils/colors';
+import { resolveFoodCategory } from '@/utils/docResolver';
 import { fetchTechnicalAll } from '@/services/technical.service';
 import type { Application } from '@/services/application.service';
 
@@ -133,7 +134,7 @@ export default function TechSearchConsole() {
                       <td style={S.td}>{a.companyName}</td>
                       <td style={S.td}>{a.productName ?? '—'}</td>
                       <td style={S.td}><span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: COLORS.infoLight, color: COLORS.info }}>{TYPE_LABELS[a.applicationType] ?? a.applicationType}</span></td>
-                      <td style={S.td}>{a.foodCategory}</td>
+                      <td style={S.td}>{resolveFoodCategory(a)}</td>
                       <td style={S.td}>{fmtDate(a.submittedAt)}</td>
                       <td style={S.td}><span style={{ fontSize: 11, color: COLORS.primary, fontWeight: 600 }}>{STAGE_PENDING_WITH[a.stage] ?? a.stage}</span></td>
                       <td style={S.td}>—</td>

@@ -6,14 +6,29 @@ export interface Application {
   companyName:     string;
   address:         string;
   applicationType: string;
+  workflowType:    string;
   foodCategory:    string;
   productName:     string | null;
   stage:           string;
   formData:        AppFormData | null;
   ecAssessment:    { checklist: Record<string, boolean>; notes: string } | null;
+  toDecision:      Record<string, unknown> | null;
   submittedAt:     string | null;
   createdAt:       string;
   updatedAt:       string;
+  documents?:      ApplicationDocument[];
+}
+
+export interface ApplicationDocument {
+  id:            string;
+  applicationId: string;
+  fieldName:     string;
+  originalName:  string;
+  storedName:    string;
+  mimeType:      string;
+  size:          number;
+  uploadedById:  string;
+  uploadedAt:    string;
 }
 
 export type Bin = 'all' | 'incomplete' | 'submitted' | 'reverted' | 'rejected' | 'approved';
@@ -44,6 +59,7 @@ export interface Step2Data {
   genusSp:                string;
   functionalBenefits:     string;
   healthBenefits:         string;
+  endUseDeclaration:      string;
 }
 export interface Step3Data {
   certOfAnalysis:       string;
@@ -70,10 +86,16 @@ export interface Step4Data {
   adi:             string;
   proposedLevel:   string;
   colorIndex:      string;
-  specificationDoc: string;
-  enzymeActivity:  string;
-  microTemplate:   string;
-  anyOtherDoc:     string;
+  specificationDoc:      string;
+  enzymeActivity:        string;
+  enzymePurity:          string;
+  residualLimit:         string;
+  microTemplate:         string;
+  anyOtherDoc:           string;
+  humanStudies:          string;
+  humanStudiesFile:      string;
+  toxicologyStudies:     string;
+  toxicologyStudiesFile: string;
 }
 export interface Step5Data {
   paymentMethod:    string;
@@ -90,9 +112,9 @@ export interface AppFormData {
 export function emptyFormData(): AppFormData {
   return {
     step1: { applicationFor: '', specifyFood: '', ingredients: [], additives: [] },
-    step2: { applicantName: '', authorisedPerson: '', authorisedPersonOther: '', mobileNo: '', email: '', orgName: '', orgAddress: '', licenseNumber: '', mfgAddress: '', natureOfBusiness: 'Manufacturer', productName: '', justification: '', productCategory: '', subCategory: '', source: 'Animal', genusSp: '', functionalBenefits: '', healthBenefits: '' },
+    step2: { applicantName: '', authorisedPerson: '', authorisedPersonOther: '', mobileNo: '', email: '', orgName: '', orgAddress: '', licenseNumber: '', mfgAddress: '', natureOfBusiness: 'Manufacturer', productName: '', justification: '', productCategory: '', subCategory: '', source: 'Animal', genusSp: '', functionalBenefits: '', healthBenefits: '', endUseDeclaration: '' },
     step3: { certOfAnalysis: '', manufacturingProcess: '', regulatoryStatus: '', regulatoryStatusFile: '', relationshipType: 'Brand Owner', agreementDoc: '', safetyFile1: '', safetyFile2: '', claimFile1: '', claimFile2: '', prototypeLabel: '', postMarketingDecl: '', confidentialityDecl: '', gstNo: '' },
-    step4: { targetGroup: '', composition: '', newTechnology: '', chemicalName: '', purity: '', adi: '', proposedLevel: '', colorIndex: '', specificationDoc: '', enzymeActivity: '', microTemplate: '', anyOtherDoc: '' },
+    step4: { targetGroup: '', composition: '', newTechnology: '', chemicalName: '', purity: '', adi: '', proposedLevel: '', colorIndex: '', specificationDoc: '', enzymeActivity: '', enzymePurity: '', residualLimit: '', microTemplate: '', anyOtherDoc: '', humanStudies: '', humanStudiesFile: '', toxicologyStudies: '', toxicologyStudiesFile: '' },
     step5: { paymentMethod: 'Online Payment (NEFT/RTGS/UPI)', paymentReference: '' },
   };
 }
@@ -136,9 +158,20 @@ export interface Query {
   createdAt:           string;
 }
 
+export interface ApplicationFilters {
+  applicationType?: string;
+  workflowType?:    string;
+  stage?:           string;
+}
+
 // ── API calls ─────────────────────────────────────────────────────────────────
-export async function fetchMyApplications(): Promise<Application[]> {
-  const { data } = await api.get<{ applications: Application[] }>('/applications/my');
+export async function fetchMyApplications(filters: ApplicationFilters = {}): Promise<Application[]> {
+  const params = new URLSearchParams();
+  if (filters.applicationType) params.set('applicationType', filters.applicationType);
+  if (filters.workflowType)    params.set('workflowType', filters.workflowType);
+  if (filters.stage)           params.set('stage', filters.stage);
+  const qs = params.toString();
+  const { data } = await api.get<{ applications: Application[] }>(`/applications/my${qs ? `?${qs}` : ''}`);
   return data.applications;
 }
 
@@ -160,6 +193,10 @@ export async function saveDraftApplication(id: string, formData: AppFormData, pr
 export async function submitDraftApplication(id: string): Promise<Application> {
   const { data } = await api.post<{ application: Application }>(`/applications/${id}/submit`);
   return data.application;
+}
+
+export async function deleteDraftApplication(id: string): Promise<void> {
+  await api.delete(`/applications/${id}`);
 }
 
 export async function fetchQueries(applicationId: string): Promise<Query[]> {

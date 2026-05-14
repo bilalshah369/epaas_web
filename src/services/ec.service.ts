@@ -32,8 +32,8 @@ export async function fetchECReviewsReport(): Promise<Application[]> {
   return data.applications;
 }
 
-export async function ecForwardToNodalB(appId: string): Promise<Application> {
-  const { data } = await api.post<{ application: Application }>(`/ec/applications/${appId}/forward-nodalb`);
+export async function ecForwardToTechnicalOfficer(appId: string): Promise<Application> {
+  const { data } = await api.post<{ application: Application }>(`/ec/applications/${appId}/forward-technical`);
   return data.application;
 }
 

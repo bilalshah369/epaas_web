@@ -35,16 +35,6 @@ export async function fetchChairpersonExtensions(): Promise<any[]> {
   return data.requests;
 }
 
-export async function chairpersonApprove(id: string, remarks: string): Promise<Application> {
-  const { data } = await api.post<{ application: Application }>(`/chairperson/applications/${id}/approve`, { remarks });
-  return data.application;
-}
-
-export async function chairpersonReject(id: string, reason: string): Promise<Application> {
-  const { data } = await api.post<{ application: Application }>(`/chairperson/applications/${id}/reject`, { reason });
-  return data.application;
-}
-
 export async function chairpersonDisposeReview(id: string, decisionRemarks: string): Promise<any> {
   const { data } = await api.post(`/chairperson/reviews/${id}/dispose`, { decisionRemarks });
   return data;

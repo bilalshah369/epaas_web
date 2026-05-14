@@ -4,7 +4,8 @@ import toast from 'react-hot-toast';
 import { COLORS, S } from '@/utils/colors';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { fetchApplication, fetchQueries, nodalForwardQueryToApplicant, nodalForwardResponseToTech, type Application, type AppFormData, type Query } from '@/services/application.service';
-import { nodalAForward, nodalAReturnWithQuery } from '@/services/officer.service';
+import { getDocRows, getProfileDisplay } from '@/utils/docResolver';
+import { nodalAForward, nodalAReturnWithQuery, nodalASendDecision } from '@/services/officer.service';
 
 const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_URL ?? 'http://localhost:3000/api';
 
@@ -45,7 +46,7 @@ export default function ApplicationScrutiny() {
   const [app, setApp]           = useState<Application | null>(null);
   const [loading, setLoading]   = useState(true);
   const [checked, setChecked]   = useState<boolean[]>(Array(CHECKLIST.length).fill(false));
-  const [decision, setDecision] = useState<'forward' | 'return' | null>(null);
+  const [decision, setDecision] = useState<'forward' | 'return' | 'send-decision' | null>(null);
   const [queryText, setQueryText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [queries, setQueries]   = useState<Query[]>([]);
@@ -55,24 +56,33 @@ export default function ApplicationScrutiny() {
     fetchApplication(id)
       .then((a) => {
         setApp(a);
-        // Auto-check based on actual form data
-        const fd = a.formData as AppFormData | null;
-        const s2 = fd?.step2;
-        const s3 = fd?.step3;
-        const s5 = fd?.step5;
+        // Auto-check based on actual form data — handles NSF/CA/AA shapes
+        const _raw = a.formData as Record<string, unknown> | null;
+        const _s   = (k: string) => typeof _raw?.[k] === 'string' && (_raw[k] as string).length > 0;
+        const type = a.applicationType;
+        const _isAA = type === 'AyurvedaAahara' || type === 'AA';
+        const _isCA = type === 'ClaimApproval'  || type === 'CA';
+        const fd_   = a.formData as AppFormData | null;
+        const s2   = (!_isAA && !_isCA) ? fd_?.step2 : null;
+        const s3   = (!_isAA && !_isCA) ? fd_?.step3 : null;
+        const s5   = (!_isAA && !_isCA) ? fd_?.step5 : null;
         setChecked([
           // 1. Mandatory fields filled
-          !!(s2?.applicantName && s2.orgName && s2.mobileNo && s2.email && s2.productName && s2.productCategory),
+          _isAA ? !!(_s('applicantName') && _s('nameOfOrganization') && _s('productName'))
+                : _isCA ? !!(_s('applicantName') && _s('licenseNumber') && _s('productName'))
+                        : !!(s2?.applicantName && s2.orgName && s2.mobileNo && s2.email && s2.productName && s2.productCategory),
           // 2. FSSAI license number present
-          !!(s2?.licenseNumber),
+          _isCA ? !!_s('licenseNumber') : _isAA ? !!_s('licenseNumber') : !!(s2?.licenseNumber),
           // 3. Required documents attached
-          !!(s3?.certOfAnalysis && s3.manufacturingProcess && s3.safetyFile1),
+          _isAA ? !!(_s('certificateOfAnalysis') && _s('manufacturingProcessFile'))
+                : _isCA ? !!(_s('licenseCopy') && _s('scientificSubstantiationFile'))
+                        : !!(s3?.certOfAnalysis && s3.manufacturingProcess && s3.safetyFile1),
           // 4. Payment reference provided
-          !!(s5?.paymentReference),
+          (_isAA || _isCA) ? !!_s('paymentReference') : !!(s5?.paymentReference),
           // 5. Product category and application type identified
-          !!(s2?.productCategory && a.applicationType),
-          // 6. Prototype label submitted
-          !!(s3?.prototypeLabel),
+          (_isAA || _isCA) ? !!(_s('productCategory') && a.applicationType) : !!(s2?.productCategory && a.applicationType),
+          // 6. Prototype / product label submitted
+          _isAA ? !!_s('productLabel') : _isCA ? !!_s('licenseCopy') : !!(s3?.prototypeLabel),
         ]);
       })
       .catch(() => toast.error('Could not load application'))
@@ -96,6 +106,19 @@ export default function ApplicationScrutiny() {
     } finally { setSubmitting(false); }
   }
 
+  async function handleSendDecision() {
+    if (!app) return;
+    setSubmitting(true);
+    try {
+      await nodalASendDecision(app.id);
+      toast.success('Decision communicated to applicant — application approved');
+      navigate('/nodal/dashboard');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'Could not send decision');
+    } finally { setSubmitting(false); }
+  }
+
   async function handleReturn() {
     if (!app) return;
     if (!queryText.trim()) { toast.error('Please enter the deficiency / query details'); return; }
@@ -114,7 +137,15 @@ export default function ApplicationScrutiny() {
   if (loading) return <div style={{ padding: '60px 0', textAlign: 'center', color: COLORS.textMuted }}>Loading application…</div>;
   if (!app)    return <div style={{ padding: '60px 0', textAlign: 'center', color: COLORS.textMuted }}>Application not found.</div>;
 
-  const fd = app.formData as AppFormData | null;
+  const fd      = app.formData as AppFormData | null;
+  const display = getProfileDisplay(app);
+  const docRows = getDocRows(app);
+  console.log('========== DOCROWS DEBUG ==========');
+console.log('Application:', app);
+console.log('Application Type:', app?.applicationType);
+console.log('FormData:', app?.formData);
+console.log('Resolved docRows:', docRows);
+console.log('===================================');
 
   return (
     <div>
@@ -160,21 +191,21 @@ export default function ApplicationScrutiny() {
               Applicant &amp; Product Details
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 20px' }}>
-              <Field label="Applicant Name"       value={fd?.step2?.applicantName} />
-              <Field label="Organisation"         value={fd?.step2?.orgName} />
-              <Field label="FSSAI License No."    value={fd?.step2?.licenseNumber} />
-              <Field label="Mobile"               value={fd?.step2?.mobileNo} />
-              <Field label="Email"                value={fd?.step2?.email} />
-              <Field label="Nature of Business"   value={fd?.step2?.natureOfBusiness} />
-              <Field label="Product Name"         value={fd?.step2?.productName} />
-              <Field label="Product Category"     value={fd?.step2?.productCategory} />
-              <Field label="Sub-Category"         value={fd?.step2?.subCategory} />
-              <Field label="Source"               value={fd?.step2?.source} />
-              <Field label="GST No."              value={fd?.step3?.gstNo} />
-              <Field label="Payment Reference"    value={fd?.step5?.paymentReference} />
+              <Field label="Applicant Name"       value={display?.applicantName} />
+              <Field label="Organisation"         value={display?.orgName} />
+              <Field label="FSSAI License No."    value={display?.licenseNumber} />
+              <Field label="Mobile"               value={display?.mobileNo} />
+              <Field label="Email"                value={display?.email} />
+              <Field label="Nature of Business"   value={display?.natureOfBusiness} />
+              <Field label="Product Name"         value={display?.productName} />
+              <Field label="Product Category"     value={display?.productCategory} />
+              {display?.subCategory  && <Field label="Sub-Category"  value={display.subCategory} />}
+              {display?.source       && <Field label="Source"        value={display.source} />}
+              {display?.gstNo        && <Field label="GST No."       value={display.gstNo} />}
+              <Field label="Payment Reference"    value={display?.paymentReference} />
             </div>
-            <Field label="Manufacturing Address"  value={fd?.step2?.mfgAddress} />
-            <Field label="Justification"          value={fd?.step2?.justification} />
+            <Field label="Manufacturing Address"  value={display?.mfgAddress} />
+            <Field label="Justification"          value={display?.justification} />
           </div>
 
           {/* Query & Response History */}
@@ -301,41 +332,44 @@ export default function ApplicationScrutiny() {
             <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.primary, borderBottom: `2px solid ${COLORS.primaryLight}`, paddingBottom: 6, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
               Uploaded Documents
             </div>
-            {fd ? (
+            {docRows.length > 0 ? (
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
-                <thead><tr>{['Document', 'Status', 'Action'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                <thead><tr>{['Document', 'Action'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
                 <tbody>
-                  {[
-                    { label: 'Certificate of Analysis',     val: fd.step3.certOfAnalysis },
-                    { label: 'Manufacturing Process',       val: fd.step3.manufacturingProcess },
-                    { label: 'Regulatory Status File',      val: fd.step3.regulatoryStatusFile },
-                    { label: 'Agreement Document',          val: fd.step3.agreementDoc },
-                    { label: 'Safety Information 1',        val: fd.step3.safetyFile1 },
-                    { label: 'Safety Information 2',        val: fd.step3.safetyFile2 },
-                    { label: 'Claim Support 1',             val: fd.step3.claimFile1 },
-                    { label: 'Prototype Label',             val: fd.step3.prototypeLabel },
-                    { label: 'Post-Marketing Declaration',  val: fd.step3.postMarketingDecl },
-                    { label: 'Confidentiality Declaration', val: fd.step3.confidentialityDecl },
-                  ].map((d, i) => (
-                    <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg }}>
-                      <td style={S.td}>{d.label}</td>
-                      <td style={S.td}>
-                        {d.val
-                          ? <span style={{ color: '#065F46', fontWeight: 600 }}>✓ Provided</span>
-                          : <span style={{ color: '#DC2626' }}>✗ Missing</span>}
-                      </td>
-                      <td style={S.td}>
-                        {d.val
-                          ? <a href={`${API_BASE}/uploads/${d.val}`} target="_blank" rel="noreferrer"
-                              style={{ color: COLORS.primary, fontWeight: 600, fontSize: 11, textDecoration: 'none' }}>📥 View</a>
-                          : <span style={{ color: COLORS.textMuted }}>—</span>}
-                      </td>
-                    </tr>
-                  ))}
+                  {docRows.map((d, i) => {
+  console.log('========== DOCUMENT DEBUG ==========');
+  console.log('Full row:', d);
+  console.log('Label:', d?.label);
+  console.log('Value:', d?.val);
+  console.log('Generated URL:', `${API_BASE}/uploads/${d?.val}`);
+  console.log('Application Type:', app?.applicationType);
+  console.log('====================================');
+
+  return (
+    <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg }}>
+      <td style={S.td}>{d.label}</td>
+      <td style={S.td}>
+        <a
+          href={`${API_BASE}/uploads/${d.val}`}
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            color: COLORS.primary,
+            fontWeight: 600,
+            fontSize: 11,
+            textDecoration: 'none',
+          }}
+        >
+          📥 View
+        </a>
+      </td>
+    </tr>
+  );
+})}
                 </tbody>
               </table>
             ) : (
-              <div style={{ color: COLORS.textMuted, fontSize: 12, fontStyle: 'italic' }}>No form data submitted yet.</div>
+              <div style={{ color: COLORS.textMuted, fontSize: 12, fontStyle: 'italic' }}>No documents uploaded yet.</div>
             )}
           </div>
         </div>
@@ -391,13 +425,26 @@ export default function ApplicationScrutiny() {
             <button
               onClick={() => setDecision('return')}
               style={{
-                width: '100%', padding: '10px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', marginBottom: 12,
+                width: '100%', padding: '10px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', marginBottom: 8,
                 background: decision === 'return' ? COLORS.accent : '#FFF7ED',
                 color:      decision === 'return' ? '#fff' : COLORS.accent,
                 border:     `2px solid ${COLORS.accent}`,
               }}
             >
               ↩ Return with Deficiency Notice
+            </button>
+
+            {/* Post-EC: Send Decision */}
+            <button
+              onClick={() => setDecision('send-decision')}
+              style={{
+                width: '100%', padding: '10px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', marginBottom: 12,
+                background: decision === 'send-decision' ? COLORS.success : COLORS.successLight,
+                color:      decision === 'send-decision' ? '#fff' : COLORS.success,
+                border:     `2px solid ${COLORS.success}`,
+              }}
+            >
+              📨 Send Decision to Applicant (Post-EC)
             </button>
 
             {/* Query textarea (return mode) */}
@@ -422,15 +469,15 @@ export default function ApplicationScrutiny() {
             {/* Submit button */}
             {decision && (
               <button
-                onClick={decision === 'forward' ? handleForward : handleReturn}
+                onClick={decision === 'forward' ? handleForward : decision === 'return' ? handleReturn : handleSendDecision}
                 disabled={submitting}
                 style={{
                   width: '100%', padding: '11px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', border: 'none',
-                  background: decision === 'forward' ? COLORS.primary : COLORS.accent,
+                  background: decision === 'forward' ? COLORS.primary : decision === 'send-decision' ? COLORS.success : COLORS.accent,
                   color: '#fff', opacity: submitting ? 0.7 : 1,
                 }}
               >
-                {submitting ? 'Processing…' : decision === 'forward' ? 'Confirm Forward →' : 'Confirm Return →'}
+                {submitting ? 'Processing…' : decision === 'forward' ? 'Confirm Forward →' : decision === 'send-decision' ? 'Confirm — Approve & Dispatch →' : 'Confirm Return →'}
               </button>
             )}
 

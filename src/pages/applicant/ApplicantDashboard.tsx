@@ -1,12 +1,48 @@
 // Mirrors ApplicantDashboard from mock (App.jsx L8176).
 // Bins, welcome banner, alert banner, and table — data from real API.
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { COLORS } from '@/utils/colors';
 import BinCard from '@/components/ui/BinCard';
 import StatusBadge from '@/components/ui/StatusBadge';
-import { fetchMyApplications, getBin, type Application, type Bin } from '@/services/application.service';
+import { fetchMyApplications, deleteDraftApplication, getBin, type Application, type Bin } from '@/services/application.service';
+
+// ── Helpers: extract address/food-category from formData for any app type ─────
+function getAddress(r: Application): string {
+  if (r.address && r.address.trim()) return r.address;
+  if (!r.formData) return '—';
+  const fd = r.formData as unknown as Record<string, unknown>;
+  // NSF / RPET / AnyOther — nested step2
+  if (fd.step2 && typeof fd.step2 === 'object') {
+    const s2 = fd.step2 as Record<string, unknown>;
+    const v = s2.orgAddress ?? s2.mfgAddress;
+    if (typeof v === 'string' && v.trim()) return v;
+  }
+  // CA — flat applicantAddress
+  if (typeof fd.applicantAddress === 'string' && fd.applicantAddress.trim()) return fd.applicantAddress;
+  // AA — registeredOfficeAddress or manufacturingAddress
+  if (typeof fd.registeredOfficeAddress === 'string' && fd.registeredOfficeAddress.trim()) return fd.registeredOfficeAddress;
+  if (typeof fd.manufacturingAddress === 'string' && fd.manufacturingAddress.trim()) return fd.manufacturingAddress;
+  return '—';
+}
+
+function getFoodCategory(r: Application): string {
+  if (r.foodCategory && r.foodCategory.trim()) return r.foodCategory;
+  if (!r.formData) return '—';
+  const fd = r.formData as unknown as Record<string, unknown>;
+  // NSF / RPET / AnyOther — nested step2
+  if (fd.step2 && typeof fd.step2 === 'object') {
+    const v = (fd.step2 as Record<string, unknown>).productCategory;
+    if (typeof v === 'string' && v.trim()) return v;
+  }
+  // CA — flat productCategory
+  if (typeof fd.productCategory === 'string' && fd.productCategory.trim()) return fd.productCategory;
+  // AA — ayurvedaCategory
+  if (typeof fd.ayurvedaCategory === 'string' && fd.ayurvedaCategory.trim()) return fd.ayurvedaCategory;
+  return '—';
+}
 
 // ── Static bin definitions ────────────────────────────────────────────────────
 const BINS: Array<{ key: Bin; icon: string; label: string; color: string; alert?: boolean }> = [
@@ -20,12 +56,12 @@ const BINS: Array<{ key: Bin; icon: string; label: string; color: string; alert?
 
 // ── Column definitions per bin ────────────────────────────────────────────────
 const BIN_COLS: Record<Bin, string[]> = {
-  all:        ['Sr. No.', 'Company Name', 'Reference No.', 'Application Type', 'Status', 'Last Updated On', 'Action'],
-  incomplete: ['Sr. No.', 'Company Name', 'Reference No.', 'Address', 'Application Type', 'Food Category', 'Last Updated On', 'Action'],
-  submitted:  ['Sr. No.', 'Company Name', 'Reference No.', 'Address', 'Application Type', 'Food Category', 'Last Updated On', 'Status', 'Action'],
-  reverted:   ['Sr. No.', 'Company Name', 'Reference No.', 'Address', 'Application Type', 'Food Category', 'Last Updated On', 'Status', 'Action', 'Query / Ext. Time'],
-  rejected:   ['Sr. No.', 'Company Name', 'Reference No.', 'Address', 'Application Type', 'Food Category', 'Rejected Date', 'Status', 'Action'],
-  approved:   ['Sr. No.', 'Company Name', 'Reference No.', 'Address', 'Application Type', 'Food Category', 'Issued Date', 'Status', 'Action'],
+  all:        ['Sr. No.', 'Reference No.', 'Application Type', 'Status', 'Last Updated On', 'Action'],
+  incomplete: ['Sr. No.', 'Reference No.', 'Address', 'Application Type', 'Food Category', 'Last Updated On', 'Action'],
+  submitted:  ['Sr. No.', 'Reference No.', 'Address', 'Application Type', 'Food Category', 'Last Updated On', 'Status', 'Action'],
+  reverted:   ['Sr. No.', 'Reference No.', 'Address', 'Application Type', 'Food Category', 'Last Updated On', 'Status', 'Action', 'Query / Ext. Time'],
+  rejected:   ['Sr. No.', 'Reference No.', 'Address', 'Application Type', 'Food Category', 'Rejected Date', 'Status', 'Action'],
+  approved:   ['Sr. No.', 'Reference No.', 'Address', 'Application Type', 'Food Category', 'Issued Date', 'Status', 'Action'],
 };
 
 // ── Shared table styles ───────────────────────────────────────────────────────
@@ -70,26 +106,84 @@ function MiniTable({ cols, rows, renderRow }: { cols: string[]; rows: Applicatio
   );
 }
 
+// ── Edit path per application type ───────────────────────────────────────────
+function getEditPath(r: Application): string {
+  if (r.applicationType === 'NSF')                                              return `/app/apply/nsf-form?id=${r.id}`;
+  if (r.applicationType === 'CA' || r.applicationType === 'ClaimApproval')     return `/app/apply/ca-form?id=${r.id}`;
+  if (r.applicationType === 'AA' || r.applicationType === 'AyurvedaAahara')    return `/app/apply/aa-form?id=${r.id}`;
+  if (r.applicationType === 'RPET')                                             return `/app/apply/rpet-form?id=${r.id}`;
+  return `/app/apply/form?id=${r.id}&type=${r.applicationType}`;
+}
+
+// ── Normalize applicationType variants for display ────────────────────────────
+const NORM_TYPE: Record<string, string> = {
+  CA: 'CA', ClaimApproval: 'CA',
+  AA: 'AA', AyurvedaAahara: 'AA',
+  NSF: 'NSF', RPET: 'RPET', AnyOther: 'AnyOther',
+};
+
+const CATEGORY_OPTIONS = [
+  { value: 'NSF',      label: 'NSF' },
+  { value: 'CA',       label: 'Claim Approval (CA)' },
+  { value: 'AA',       label: 'Ayurveda Aahara (AA)' },
+  { value: 'RPET',     label: 'rPET' },
+  { value: 'AnyOther', label: 'Any Other' },
+];
+
+const WORKFLOW_OPTIONS = [
+  { value: 'New',                   label: 'New' },
+  { value: 'Appeal',                label: 'Appeal' },
+  { value: 'Review',                label: 'Review' },
+  { value: 'WithdrawalByApplicant', label: 'Withdrawal by Applicant' },
+  { value: 'WithdrawnByAuthorities',label: 'Withdrawn by Authorities' },
+];
+
+const STATUS_OPTIONS = [
+  { value: 'Submitted',            label: 'Submitted' },
+  { value: 'WithNodalOfficerA',    label: 'Document Scrutiny' },
+  { value: 'WithExpertCommittee',  label: 'Expert Committee' },
+  { value: 'QuerySent',            label: 'Query / Clarification' },
+  { value: 'Approved',             label: 'Approval' },
+  { value: 'Rejected',             label: 'Rejected' },
+];
+
+// ── Per-bin filter state ──────────────────────────────────────────────────────
+interface BinFilters {
+  search:         string;
+  filterType:     string;
+  filterWorkflow: string;
+  filterCat:      string;
+  filterStatus:   string;
+  filterRef:      string;
+  filterFrom:     string;
+  filterTo:       string;
+}
+function emptyFilters(): BinFilters {
+  return { search: '', filterType: '', filterWorkflow: '', filterCat: '', filterStatus: '', filterRef: '', filterFrom: '', filterTo: '' };
+}
+const ALL_BINS: Bin[] = ['all', 'incomplete', 'submitted', 'reverted', 'rejected', 'approved'];
+function initBinFilters(): Record<Bin, BinFilters> {
+  return Object.fromEntries(ALL_BINS.map((k) => [k, emptyFilters()])) as Record<Bin, BinFilters>;
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function ApplicantDashboard() {
   const { user }   = useAuthStore();
   const navigate   = useNavigate();
-  const [activeBin, setActiveBin] = useState<Bin>('incomplete');
-  const [search, setSearch]           = useState('');
-  const [filterType, setFilterType]   = useState('');
-  const [filterCat,  setFilterCat]    = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterRef,  setFilterRef]    = useState('');
-  const [filterFrom, setFilterFrom]   = useState('');
-  const [filterTo,   setFilterTo]     = useState('');
-  const [apps, setApps]               = useState<Application[]>([]);
-  const [loading, setLoading]     = useState(true);
+  const [activeBin, setActiveBin] = useState<Bin>('all');
+  const [binFilters, setBinFilters] = useState<Record<Bin, BinFilters>>(initBinFilters);
+  const [apps, setApps]             = useState<Application[]>([]);
+  const [loading, setLoading]       = useState(true);
 
-  useEffect(() => {
+  // Always fetch ALL apps — no backend filters so bin counts are never affected by filters
+  const loadApps = useCallback(() => {
+    setLoading(true);
     fetchMyApplications()
       .then(setApps)
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { loadApps(); }, [loadApps]);
 
   const binned = useMemo(() => {
     const groups: Record<Bin, Application[]> = { all: apps, incomplete: [], submitted: [], reverted: [], rejected: [], approved: [] };
@@ -97,27 +191,44 @@ export default function ApplicantDashboard() {
     return groups;
   }, [apps]);
 
+  // Only the active bin's own filters affect the displayed list
+  const f = binFilters[activeBin];
   const displayed = useMemo(() => {
     let list = activeBin === 'all' ? apps : binned[activeBin];
-    if (search)       list = list.filter((a) =>
-      a.referenceNumber.toLowerCase().includes(search.toLowerCase()) ||
-      a.companyName.toLowerCase().includes(search.toLowerCase())
-    );
-    if (filterRef)    list = list.filter((a) => a.referenceNumber.toLowerCase().includes(filterRef.toLowerCase()));
-    if (filterType)   list = list.filter((a) => a.applicationType === filterType);
-    if (filterCat)    list = list.filter((a) => (a.foodCategory ?? '').toLowerCase().includes(filterCat.toLowerCase()));
-    if (filterStatus) list = list.filter((a) => a.stage === filterStatus);
-    if (filterFrom)   list = list.filter((a) => a.submittedAt && new Date(a.submittedAt) >= new Date(filterFrom));
-    if (filterTo)     list = list.filter((a) => a.submittedAt && new Date(a.submittedAt) <= new Date(filterTo + 'T23:59:59'));
+    if (f.search)       list = list.filter((a) => a.referenceNumber.toLowerCase().includes(f.search.toLowerCase()));
+    if (f.filterRef)    list = list.filter((a) => a.referenceNumber.toLowerCase().includes(f.filterRef.toLowerCase()));
+    if (f.filterType)   list = list.filter((a) => (NORM_TYPE[a.applicationType] ?? a.applicationType) === f.filterType);
+    if (f.filterCat)    list = list.filter((a) => getFoodCategory(a).toLowerCase().includes(f.filterCat.toLowerCase()));
+    if (f.filterWorkflow) list = list.filter((a) => a.workflowType === f.filterWorkflow);
+    if (f.filterStatus) list = list.filter((a) => a.stage === f.filterStatus);
+    if (f.filterFrom)   list = list.filter((a) => a.submittedAt && new Date(a.submittedAt) >= new Date(f.filterFrom));
+    if (f.filterTo)     list = list.filter((a) => a.submittedAt && new Date(a.submittedAt) <= new Date(f.filterTo + 'T23:59:59'));
     return list;
-  }, [activeBin, binned, apps, search, filterRef, filterType, filterCat, filterStatus, filterFrom, filterTo]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBin, binned, apps, f]);
+
+  function setFilter<K extends keyof BinFilters>(key: K, value: BinFilters[K]) {
+    setBinFilters((prev) => ({ ...prev, [activeBin]: { ...prev[activeBin], [key]: value } }));
+  }
+  function clearFilters() {
+    setBinFilters((prev) => ({ ...prev, [activeBin]: emptyFilters() }));
+  }
 
   const activeBinDef  = BINS.find((b) => b.key === activeBin)!;
   const revertedCount = binned.reverted.length;
-  const appTypes      = [...new Set(apps.map((a) => a.applicationType))];
-  const foodCats      = [...new Set(apps.map((a) => a.foodCategory).filter(Boolean))] as string[];
-  const hasFilters    = !!(search || filterRef || filterType || filterCat || filterStatus || filterFrom || filterTo);
-  function clearFilters() { setSearch(''); setFilterRef(''); setFilterType(''); setFilterCat(''); setFilterStatus(''); setFilterFrom(''); setFilterTo(''); }
+  const foodCats      = [...new Set(apps.map(getFoodCategory).filter((c) => c !== '—'))];
+  const hasFilters    = Object.values(f).some(Boolean);
+
+  async function handleDeleteDraft(id: string) {
+    if (!window.confirm('Delete this draft? This action cannot be undone.')) return;
+    try {
+      await deleteDraftApplication(id);
+      toast.success('Draft deleted');
+      loadApps();
+    } catch {
+      toast.error('Could not delete draft');
+    }
+  }
 
   function fmtDate(iso: string | null) {
     if (!iso) return '—';
@@ -130,19 +241,18 @@ export default function ApplicantDashboard() {
       return (
         <tr key={r.id} style={{ background: rowBg }}>
           <td style={td}>{i + 1}</td>
-          <td style={td}><span style={{ fontWeight: 600 }}>{r.companyName}</span></td>
           <td style={td}><span style={{ color: COLORS.primary, fontWeight: 600 }}>{r.referenceNumber}</span></td>
-          {bin !== 'all' && <td style={td}><span style={{ color: COLORS.textMuted }}>{r.address}</span></td>}
-          <td style={td}>{r.applicationType}</td>
-          {bin !== 'all' && <td style={td}>{r.foodCategory}</td>}
+          {bin !== 'all' && <td style={td}><span style={{ color: COLORS.primary, fontWeight: 600 }}>{getAddress(r)}</span></td>}
+          <td style={td}>{CATEGORY_OPTIONS.find((o) => o.value === (NORM_TYPE[r.applicationType] ?? r.applicationType))?.label ?? r.applicationType}</td>
+          {bin !== 'all' && <td style={td}><span style={{ color: COLORS.primary, fontWeight: 600 }}>{getFoodCategory(r)}</span></td>}
           {bin === 'all' && <td style={td}><StatusBadge status={r.stage} /></td>}
           <td style={td}>{fmtDate(bin === 'rejected' || bin === 'approved' ? r.submittedAt : r.updatedAt)}</td>
           {(bin === 'submitted' || bin === 'reverted' || bin === 'rejected' || bin === 'approved') && (
             <td style={td}><StatusBadge status={r.stage} /></td>
           )}
           <td style={td}>
-            {bin === 'incomplete' && <ActionBtn label="Edit Draft" onClick={() => navigate(`/app/apply/form?id=${r.id}`)} />}
-            {bin === 'submitted'  && <ActionBtn label="View" variant="outline" onClick={() => navigate(`/app/applications/${r.id}`)} />}
+            {bin === 'incomplete' && <ActionBtn label="Delete Draft" variant="danger" onClick={() => handleDeleteDraft(r.id)} />}
+            {bin === 'submitted'  && <ActionBtn label="View / Respond" variant="outline" onClick={() => navigate(`/app/applications/${r.id}`)} />}
             {bin === 'reverted'   && <>
               <ActionBtn label="Respond"        onClick={() => navigate(`/app/applications/${r.id}?tab=2`)} />
               <ActionBtn label="View Query"     variant="info"    onClick={() => navigate(`/app/applications/${r.id}?tab=2`)} />
@@ -159,7 +269,13 @@ export default function ApplicantDashboard() {
               <ActionBtn label="View History"  variant="outline" onClick={() => navigate(`/app/applications/${r.id}`)} />
               <ActionBtn label="Tax Invoice"   variant="info"    onClick={() => navigate('/app/tax-invoice')} />
             </>}
-            {bin === 'all'        && <ActionBtn label="View" variant="outline" onClick={() => navigate(`/app/applications/${r.id}`)} />}
+            {bin === 'all' && r.stage === 'Draft'      && <ActionBtn label="Edit"         variant="primary" onClick={() => navigate(getEditPath(r))} />}
+            {bin === 'all' && r.stage === 'Draft'      && <ActionBtn label="Delete Draft" variant="danger"  onClick={() => handleDeleteDraft(r.id)} />}
+            {bin === 'all' && r.stage === 'QuerySent'  && <>
+              <ActionBtn label="Respond"    onClick={() => navigate(`/app/applications/${r.id}?tab=2`)} />
+              <ActionBtn label="View Query" variant="info" onClick={() => navigate(`/app/applications/${r.id}?tab=2`)} />
+            </>}
+            {bin === 'all' && r.stage !== 'Draft' && r.stage !== 'QuerySent' && <ActionBtn label="View" variant="outline" onClick={() => navigate(`/app/applications/${r.id}`)} />}
           </td>
           {bin === 'reverted' && <td style={td}>—</td>}
         </tr>
@@ -256,9 +372,9 @@ export default function ApplicantDashboard() {
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search reference, company…"
+              value={f.search}
+              onChange={(e) => setFilter('search', e.target.value)}
+              placeholder="Search by reference number…"
               style={{ border: `1.5px solid ${COLORS.border}`, borderRadius: 8, padding: '6px 10px', fontSize: 11, outline: 'none', background: COLORS.bg, width: 210 }}
             />
             <button style={{ background: 'transparent', color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 6, fontSize: 11, padding: '6px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -277,56 +393,51 @@ export default function ApplicantDashboard() {
             {BINS.map((b) => <option key={b.key} value={b.key}>{b.label}</option>)}
           </select>
 
-          {/* Application Type */}
-          <select value={filterType} onChange={(e) => setFilterType(e.target.value)}
-            style={{ border: `1px solid ${filterType ? COLORS.primary : COLORS.border}`, borderRadius: 6, padding: '5px 10px', fontSize: 11, background: '#fff', cursor: 'pointer', color: filterType ? COLORS.primary : 'inherit', fontWeight: filterType ? 600 : 400 }}>
-            <option value="">All App. Types</option>
-            <option value="NSF">NSF</option>
-            <option value="ClaimApproval">Claim Approval (CA)</option>
-            <option value="AyurvedaAahara">Ayurveda Aahara (AA)</option>
-            <option value="RPET">rPET</option>
-            <option value="AnyOther">Any Other</option>
-            {appTypes.filter((t) => !['NSF','ClaimApproval','AyurvedaAahara','RPET','AnyOther'].includes(t)).map((t) => <option key={t} value={t}>{t}</option>)}
+          {/* Application Category */}
+          <select value={f.filterType} onChange={(e) => setFilter('filterType', e.target.value)}
+            style={{ border: `1px solid ${f.filterType ? COLORS.primary : COLORS.border}`, borderRadius: 6, padding: '5px 10px', fontSize: 11, background: '#fff', cursor: 'pointer', color: f.filterType ? COLORS.primary : 'inherit', fontWeight: f.filterType ? 600 : 400 }}>
+            <option value="">All Application Categories</option>
+            {CATEGORY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+
+          {/* Application Type / Workflow */}
+          <select value={f.filterWorkflow} onChange={(e) => setFilter('filterWorkflow', e.target.value)}
+            style={{ border: `1px solid ${f.filterWorkflow ? COLORS.primary : COLORS.border}`, borderRadius: 6, padding: '5px 10px', fontSize: 11, background: '#fff', cursor: 'pointer', color: f.filterWorkflow ? COLORS.primary : 'inherit', fontWeight: f.filterWorkflow ? 600 : 400 }}>
+            <option value="">All Application Types</option>
+            {WORKFLOW_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
 
           {/* Food Category */}
-          <select value={filterCat} onChange={(e) => setFilterCat(e.target.value)}
-            style={{ border: `1px solid ${filterCat ? COLORS.primary : COLORS.border}`, borderRadius: 6, padding: '5px 10px', fontSize: 11, background: '#fff', cursor: 'pointer', color: filterCat ? COLORS.primary : 'inherit', fontWeight: filterCat ? 600 : 400 }}>
+          <select value={f.filterCat} onChange={(e) => setFilter('filterCat', e.target.value)}
+            style={{ border: `1px solid ${f.filterCat ? COLORS.primary : COLORS.border}`, borderRadius: 6, padding: '5px 10px', fontSize: 11, background: '#fff', cursor: 'pointer', color: f.filterCat ? COLORS.primary : 'inherit', fontWeight: f.filterCat ? 600 : 400 }}>
             <option value="">All Food Categories</option>
             {foodCats.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
 
           {/* Status */}
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
-            style={{ border: `1px solid ${filterStatus ? COLORS.primary : COLORS.border}`, borderRadius: 6, padding: '5px 10px', fontSize: 11, background: '#fff', cursor: 'pointer', color: filterStatus ? COLORS.primary : 'inherit', fontWeight: filterStatus ? 600 : 400 }}>
-            <option value="">All Statuses</option>
-            <option value="Draft">Draft / Incomplete</option>
-            <option value="WithNodalOfficerA">Document Scrutiny</option>
-            <option value="WithTechnicalOfficer">Technical Review</option>
-            <option value="WithExpertCommittee">Expert Committee</option>
-            <option value="QuerySent">Query Raised</option>
-            <option value="Approved">Approved</option>
-            <option value="Rejected">Rejected</option>
-            <option value="Withdrawn">Withdrawn</option>
+          <select value={f.filterStatus} onChange={(e) => setFilter('filterStatus', e.target.value)}
+            style={{ border: `1px solid ${f.filterStatus ? COLORS.primary : COLORS.border}`, borderRadius: 6, padding: '5px 10px', fontSize: 11, background: '#fff', cursor: 'pointer', color: f.filterStatus ? COLORS.primary : 'inherit', fontWeight: f.filterStatus ? 600 : 400 }}>
+            <option value="">All Application Statuses</option>
+            {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
 
           {/* Reference No. */}
-          <input value={filterRef} onChange={(e) => setFilterRef(e.target.value)}
+          <input value={f.filterRef} onChange={(e) => setFilter('filterRef', e.target.value)}
             placeholder="Reference No."
-            style={{ border: `1px solid ${filterRef ? COLORS.primary : COLORS.border}`, borderRadius: 6, padding: '5px 10px', fontSize: 11, width: 130, outline: 'none', background: '#fff' }} />
+            style={{ border: `1px solid ${f.filterRef ? COLORS.primary : COLORS.border}`, borderRadius: 6, padding: '5px 10px', fontSize: 11, width: 130, outline: 'none', background: '#fff' }} />
 
           {/* Date From */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <span style={{ fontSize: 10, color: COLORS.textMuted, fontWeight: 600 }}>From</span>
-            <input type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)}
-              style={{ border: `1px solid ${filterFrom ? COLORS.primary : COLORS.border}`, borderRadius: 6, padding: '5px 8px', fontSize: 11, outline: 'none' }} />
+            <input type="date" value={f.filterFrom} onChange={(e) => setFilter('filterFrom', e.target.value)}
+              style={{ border: `1px solid ${f.filterFrom ? COLORS.primary : COLORS.border}`, borderRadius: 6, padding: '5px 8px', fontSize: 11, outline: 'none' }} />
           </div>
 
           {/* Date To */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <span style={{ fontSize: 10, color: COLORS.textMuted, fontWeight: 600 }}>To</span>
-            <input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)}
-              style={{ border: `1px solid ${filterTo ? COLORS.primary : COLORS.border}`, borderRadius: 6, padding: '5px 8px', fontSize: 11, outline: 'none' }} />
+            <input type="date" value={f.filterTo} onChange={(e) => setFilter('filterTo', e.target.value)}
+              style={{ border: `1px solid ${f.filterTo ? COLORS.primary : COLORS.border}`, borderRadius: 6, padding: '5px 8px', fontSize: 11, outline: 'none' }} />
           </div>
 
           {/* Clear */}

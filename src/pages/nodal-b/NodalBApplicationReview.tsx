@@ -4,7 +4,9 @@ import toast from 'react-hot-toast';
 import type React from 'react';
 import { COLORS, S } from '@/utils/colors';
 import { fetchApplication, type Application, type AppFormData } from '@/services/application.service';
-import { nodalBForwardCEO, nodalBReject } from '@/services/nodal-b.service';
+import { getDocRows } from '@/utils/docResolver';
+import { nodalBUploadECDecision, nodalBReject } from '@/services/nodal-b.service';
+import { API_BASE } from '@/services/api';
 
 const card: React.CSSProperties = {
   background: COLORS.white, border: `1px solid ${COLORS.border}`,
@@ -29,21 +31,7 @@ function daysSince(iso: string | null | undefined) {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
 }
 
-const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_URL ?? 'http://localhost:3000/api';
 
-const DOC_FIELDS: { label: string; key: keyof AppFormData['step3'] }[] = [
-  { label: 'Certificate of Analysis',        key: 'certOfAnalysis'       },
-  { label: 'Manufacturing Process Flow',     key: 'manufacturingProcess' },
-  { label: 'Regulatory Status Document',     key: 'regulatoryStatusFile' },
-  { label: 'Agreement Document',             key: 'agreementDoc'         },
-  { label: 'Safety Information — File 1',    key: 'safetyFile1'          },
-  { label: 'Safety Information — File 2',    key: 'safetyFile2'          },
-  { label: 'Claim Support — File 1',         key: 'claimFile1'           },
-  { label: 'Claim Support — File 2',         key: 'claimFile2'           },
-  { label: 'Prototype Label',                key: 'prototypeLabel'       },
-  { label: 'Post-Marketing Declaration',     key: 'postMarketingDecl'    },
-  { label: 'Confidentiality Declaration',    key: 'confidentialityDecl'  },
-];
 
 type Tab = 'dossier' | 'documents' | 'decision';
 const TABS: { key: Tab; label: string }[] = [
@@ -58,7 +46,7 @@ export default function NodalBApplicationReview() {
   const [app,     setApp]     = useState<Application | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>('dossier');
-  const [decision,  setDecision]  = useState('Forward to CEO');
+  const [decision,  setDecision]  = useState('Upload EC Decision');
   const [remarks,   setRemarks]   = useState('');
   const [saving,    setSaving]    = useState(false);
 
@@ -77,9 +65,9 @@ export default function NodalBApplicationReview() {
     if (remarks.trim().length < 10) { toast.error('Remarks must be at least 10 characters'); return; }
     setSaving(true);
     try {
-      if (decision === 'Forward to CEO') {
-        await nodalBForwardCEO(appId);
-        toast.success('Application forwarded to CEO for final approval');
+      if (decision === 'Upload EC Decision') {
+        await nodalBUploadECDecision(appId);
+        toast.success('EC decision uploaded — application forwarded to Technical Officer for communication letter');
       } else {
         await nodalBReject(appId, remarks);
         toast.success('Application rejected — grounds recorded');
@@ -171,38 +159,27 @@ export default function NodalBApplicationReview() {
       {activeTab === 'documents' && (
         <div style={card}>
           <div style={cardTitle}>DOSSIER — DOCUMENT VIEWER</div>
-          {!fd ? (
-            <div style={{ color: COLORS.textMuted, fontSize: 12, fontStyle: 'italic' }}>No documents found.</div>
+          {(() => { const rows = getDocRows(app); return rows.length === 0 ? (
+            <div style={{ color: COLORS.textMuted, fontSize: 12, fontStyle: 'italic' }}>No documents uploaded yet.</div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
-                <tr>{['#', 'Document Name', 'Type', 'Status', 'Action'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
+                <tr>{['#', 'Document Name', 'Action'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
               </thead>
               <tbody>
-                {DOC_FIELDS.map((d, i) => {
-                  const storedName = fd.step3?.[d.key] as string | undefined;
-                  return (
-                    <tr key={d.key} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg }}>
-                      <td style={S.td}>{i + 1}</td>
-                      <td style={{ ...S.td, fontWeight: 600 }}>{d.label}</td>
-                      <td style={S.td}>PDF</td>
-                      <td style={S.td}>
-                        {storedName
-                          ? <span style={{ color: COLORS.success, fontWeight: 700, fontSize: 11 }}>✓ Uploaded</span>
-                          : <span style={{ color: COLORS.danger, fontSize: 11 }}>✗ Missing</span>}
-                      </td>
-                      <td style={S.td}>
-                        {storedName
-                          ? <a href={`${API_BASE}/uploads/${storedName}`} target="_blank" rel="noreferrer"
-                              style={{ background: 'transparent', color: COLORS.primary, border: `1px solid ${COLORS.primary}`, borderRadius: 5, padding: '3px 8px', fontSize: 11, fontWeight: 600, cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}>📥 View</a>
-                          : <span style={{ fontSize: 11, color: COLORS.textMuted }}>—</span>}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {rows.map((d, i) => (
+                  <tr key={d.label} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg }}>
+                    <td style={S.td}>{i + 1}</td>
+                    <td style={{ ...S.td, fontWeight: 600 }}>{d.label}</td>
+                    <td style={S.td}>
+                      <a href={`${API_BASE}/uploads/${String(d.val).replace(/^\/?(api\/)?uploads\/?/, '')}`}target="_blank" rel="noreferrer"
+                          style={{ background: 'transparent', color: COLORS.primary, border: `1px solid ${COLORS.primary}`, borderRadius: 5, padding: '3px 8px', fontSize: 11, fontWeight: 600, cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}>📥 View</a>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
-          )}
+          ); })()}
         </div>
       )}
 
@@ -214,7 +191,7 @@ export default function NodalBApplicationReview() {
             <label style={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>Action</label>
             <select value={decision} onChange={(e) => setDecision(e.target.value)}
               style={{ padding: '7px 10px', border: `1px solid ${COLORS.border}`, borderRadius: 6, fontSize: 12, background: COLORS.bg, cursor: 'pointer', width: '100%' }}>
-              <option>Forward to CEO</option>
+              <option>Upload EC Decision</option>
               <option>Reject Application</option>
             </select>
           </div>
@@ -228,10 +205,10 @@ export default function NodalBApplicationReview() {
               style={{ ...textarea, minHeight: 120, borderColor: remarks.length > 0 && remarks.trim().length < 10 ? COLORS.danger : COLORS.border }} />
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
-            {decision === 'Forward to CEO' ? (
+            {decision === 'Upload EC Decision' ? (
               <button onClick={handleSubmit} disabled={saving}
                 style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 6, padding: '8px 20px', fontSize: 12, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
-                {saving ? 'Processing…' : '✅ Forward to CEO'}
+                {saving ? 'Processing…' : '✅ Upload EC Decision'}
               </button>
             ) : (
               <button onClick={handleSubmit} disabled={saving}
@@ -247,7 +224,7 @@ export default function NodalBApplicationReview() {
           <div style={{ marginTop: 16, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '12px 14px', fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6 }}>
             <strong style={{ color: COLORS.text }}>Stage transitions:</strong>
             <ul style={{ margin: '6px 0 0 0', paddingLeft: 16 }}>
-              <li><strong>Forward to CEO</strong> → application moves to WithCEO stage for appeal review</li>
+              <li><strong>Upload EC Decision</strong> → application returns to Technical Officer for communication letter preparation</li>
               <li><strong>Reject Application</strong> → application closed with grounds recorded</li>
             </ul>
           </div>

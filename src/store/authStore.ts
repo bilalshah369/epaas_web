@@ -7,6 +7,8 @@ import type {
   LoginAuthorityRequest,
   RegisterRequest,
 } from '@/types/auth.types';
+// Re-export so consumers can import from one place
+export type { AuthUser };
 
 interface AuthState {
   user:            AuthUser | null;
@@ -20,6 +22,7 @@ interface AuthState {
   register:        (data: RegisterRequest) => Promise<void>;
   logout:          () => void;
   restoreSession:  () => Promise<void>;
+  updateUser:      (partial: Partial<AuthUser>) => void;
 }
 
 function persist(token: string) {
@@ -70,6 +73,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: () => {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     set({ user: null, token: null, isAuthenticated: false });
+  },
+
+  updateUser: (partial) => {
+    set((state) => ({ user: state.user ? { ...state.user, ...partial } : null }));
   },
 
   // Called on app init to re-hydrate user object from a stored token

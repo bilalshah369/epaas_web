@@ -26,3 +26,8 @@ export async function getMe(): Promise<AuthUser> {
   const res = await api.get<{ user: AuthUser }>('/auth/me');
   return res.data.user;
 }
+
+export async function updateOrgName(orgName: string): Promise<AuthUser> {
+  const res = await api.patch<{ user: AuthUser }>('/auth/me', { orgName });
+  return res.data.user;
+}

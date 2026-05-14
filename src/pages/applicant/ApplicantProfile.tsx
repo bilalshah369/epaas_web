@@ -1,11 +1,11 @@
-// Mirrors ApplicantProfile from mock (App.jsx L24433).
-// Wired to useAuthStore for user info and fetchMyApplications for stats.
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type React from 'react';
+import toast from 'react-hot-toast';
 import { COLORS } from '@/utils/colors';
 import { useAuthStore } from '@/store/authStore';
 import { fetchMyApplications, type Application } from '@/services/application.service';
+import { updateOrgName } from '@/services/auth.service';
 
 function btn(variant: 'solid' | 'outline' = 'solid', extra?: React.CSSProperties): React.CSSProperties {
   return {
@@ -17,55 +17,57 @@ function btn(variant: 'solid' | 'outline' = 'solid', extra?: React.CSSProperties
   };
 }
 
-function Field({ label, value, span }: { label: string; value: string; span?: boolean }) {
+function ReadField({ label, value, span }: { label: string; value: string; span?: boolean }) {
   return (
     <div style={{ gridColumn: span ? 'span 2' : undefined }}>
       <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
         {label}
       </div>
-      <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.text, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 7, padding: '9px 12px' }}>
+      <div style={{ fontSize: 13, fontWeight: 500, color: COLORS.text, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 7, padding: '9px 12px' }}>
         {value || '—'}
       </div>
     </div>
   );
 }
 
-const TABS = [
-  { key: 'business', label: 'Business Details' },
-  { key: 'contact',  label: 'Contact & Login' },
-  { key: 'licence',  label: 'FSSAI Licence' },
-  { key: 'docs',     label: 'KYC Documents' },
-];
-
-const KYC_DOCS = [
-  { name: 'Certificate of Incorporation',  status: 'Verified',      date: 'Uploaded 12 Jan 2024', icon: '📄' },
-  { name: 'PAN Card (Entity)',             status: 'Verified',      date: 'Uploaded 12 Jan 2024', icon: '🪪' },
-  { name: 'GSTIN Certificate',            status: 'Verified',      date: 'Uploaded 15 Jan 2024', icon: '📋' },
-  { name: 'FSSAI Licence Copy',           status: 'Verified',      date: 'Uploaded 15 Jan 2024', icon: '🏛️' },
-  { name: 'Authorised Signatory Letter',  status: 'Pending Review', date: 'Uploaded 02 Apr 2026', icon: '✍️' },
-];
-
 export default function ApplicantProfile() {
-  const navigate = useNavigate();
-  const { user } = useAuthStore();
-  const [activeTab, setActiveTab] = useState('business');
+  const navigate        = useNavigate();
+  const { user, updateUser } = useAuthStore();
   const [apps, setApps] = useState<Application[]>([]);
+  const [editing, setEditing]   = useState(false);
+  const [orgNameDraft, setOrgNameDraft] = useState('');
+  const [saving, setSaving]     = useState(false);
 
   useEffect(() => {
     fetchMyApplications().then(setApps).catch(() => {});
   }, []);
 
-  // Business info from the most recent non-draft application's formData
-  const submittedApp = apps.find((a) => a.formData?.step2 && a.stage !== 'Draft');
-  const step2 = submittedApp?.formData?.step2;
-
-  const businessName  = step2?.orgName ?? user?.username ?? '—';
-  const licenseNumber = user?.licenseNumber ?? step2?.licenseNumber ?? '—';
-  const initials      = businessName.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || 'AP';
+  const displayName = user?.orgName || user?.name || user?.username || '—';
+  const initials    = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase() || 'AP';
 
   const totalApps    = apps.length;
   const approvedApps = apps.filter((a) => a.stage === 'Approved').length;
-  const actionReq    = apps.filter((a) => ['QuerySent'].includes(a.stage)).length;
+  const actionReq    = apps.filter((a) => a.stage === 'QuerySent').length;
+
+  function startEdit() {
+    setOrgNameDraft(user?.orgName || '');
+    setEditing(true);
+  }
+
+  async function saveOrgName() {
+    if (!orgNameDraft.trim()) { toast.error('Business name cannot be empty'); return; }
+    setSaving(true);
+    try {
+      const updated = await updateOrgName(orgNameDraft.trim());
+      updateUser({ orgName: updated.orgName });
+      toast.success('Business name updated');
+      setEditing(false);
+    } catch {
+      toast.error('Could not update business name');
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div>
@@ -76,7 +78,7 @@ export default function ApplicantProfile() {
           <h2 style={{ fontSize: 18, fontWeight: 700, fontFamily: "'Libre Baskerville', Georgia, serif", color: COLORS.text, margin: 0 }}>
             My Profile
           </h2>
-          <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 3 }}>Manage your business information and account settings</div>
+          <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 3 }}>Your registered account information</div>
         </div>
         <button style={btn('outline')} onClick={() => navigate('/app/dashboard')}>← Back to Dashboard</button>
       </div>
@@ -87,9 +89,9 @@ export default function ApplicantProfile() {
           {initials}
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', fontFamily: "'Libre Baskerville', Georgia, serif" }}>{businessName}</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', fontFamily: "'Libre Baskerville', Georgia, serif" }}>{displayName}</div>
           <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 3 }}>
-            Applicant &nbsp;·&nbsp; FSSAI Licence: <strong style={{ color: '#fff' }}>{licenseNumber}</strong>
+            Applicant &nbsp;·&nbsp; {user?.licenseNumber ? <>FSSAI Licence: <strong style={{ color: '#fff' }}>{user.licenseNumber}</strong></> : <span>No licence assigned yet</span>}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -106,99 +108,54 @@ export default function ApplicantProfile() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 0, borderBottom: `2px solid ${COLORS.border}`, marginBottom: 20 }}>
-        {TABS.map((t) => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)}
-            style={{ background: 'none', border: 'none', borderBottom: activeTab === t.key ? `2px solid ${COLORS.primary}` : '2px solid transparent', marginBottom: -2, padding: '10px 20px', fontSize: 13, fontWeight: activeTab === t.key ? 700 : 500, color: activeTab === t.key ? COLORS.primary : COLORS.textMuted, cursor: 'pointer' }}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab content */}
+      {/* Business Details card */}
       <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville', Georgia, serif" }}>Business Details</div>
+          {!editing && (
+            <button style={btn('outline', { fontSize: 11, padding: '6px 14px' })} onClick={startEdit}>
+              Edit Business Name
+            </button>
+          )}
+        </div>
 
-        {activeTab === 'business' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <Field label="Business / Entity Name" value={step2?.orgName ?? businessName} span />
-            <Field label="Type of Entity"         value={step2?.natureOfBusiness ?? '—'} />
-            <Field label="PAN Number"             value="—" />
-            <Field label="GSTIN"                  value={step2 ? '—' : '—'} />
-            <Field label="Industry Sector"        value="Food Manufacturing" />
-            <Field label="Year of Incorporation"  value="—" />
-            <Field label="Registered Address"     value={step2?.orgAddress ?? '—'} span />
-          </div>
-        )}
-
-        {activeTab === 'contact' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <Field label="Primary Contact Person" value={step2?.applicantName ?? '—'} />
-            <Field label="Designation"            value={step2?.authorisedPerson ?? '—'} />
-            <Field label="Mobile Number"          value={step2?.mobileNo ?? '—'} />
-            <Field label="Alternate Mobile"       value="—" />
-            <Field label="Email Address"          value={step2?.email ?? user?.email ?? '—'} />
-            <Field label="Official Website"       value="—" />
-            <div style={{ gridColumn: 'span 2', borderTop: `1px solid ${COLORS.border}`, paddingTop: 16, marginTop: 4 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.text, marginBottom: 14 }}>Login Credentials</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <Field label="Login Email / Username" value={user?.email ?? '—'} />
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Password</div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <div style={{ flex: 1, fontSize: 13, fontWeight: 600, color: COLORS.text, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 7, padding: '9px 12px' }}>
-                      ••••••••••
-                    </div>
-                    <button style={btn('outline', { fontSize: 11, padding: '9px 14px' })}>Change</button>
-                  </div>
-                </div>
-              </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          {/* Business / Organisation Name — editable */}
+          <div style={{ gridColumn: 'span 2' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+              Name of Organisation / Business
             </div>
-          </div>
-        )}
-
-        {activeTab === 'licence' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <Field label="FSSAI Licence Number"      value={licenseNumber} />
-            <Field label="Licence Type"              value="Central Licence" />
-            <Field label="Issued Date"               value="—" />
-            <Field label="Valid Until"               value="—" />
-            <Field label="Licensing Authority"       value="FSSAI Central, New Delhi" />
-            <Field label="Licence Status"            value="Active ✓" />
-            <Field label="Licensed Premises Address" value={step2?.mfgAddress ?? '—'} span />
-            <div style={{ gridColumn: 'span 2' }}>
-              <div style={{ background: COLORS.successLight, border: '1px solid #A5D6A7', borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 18 }}>✅</span>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.success }}>Licence is valid and in good standing</div>
-                  <div style={{ fontSize: 11, color: COLORS.success, marginTop: 2 }}>Renewal can be initiated 6 months before expiry</div>
-                </div>
+            {editing ? (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  value={orgNameDraft}
+                  onChange={(e) => setOrgNameDraft(e.target.value)}
+                  style={{ flex: 1, border: `1.5px solid ${COLORS.primary}`, borderRadius: 7, padding: '9px 12px', fontSize: 13, outline: 'none', fontFamily: "'Noto Sans','Segoe UI',sans-serif" }}
+                  autoFocus
+                />
+                <button style={btn('solid', { fontSize: 11, padding: '9px 16px', opacity: saving ? 0.7 : 1 })} onClick={saveOrgName} disabled={saving}>
+                  {saving ? 'Saving…' : 'Save'}
+                </button>
+                <button style={btn('outline', { fontSize: 11, padding: '9px 14px' })} onClick={() => setEditing(false)} disabled={saving}>
+                  Cancel
+                </button>
               </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'docs' && (
-          <div>
-            {KYC_DOCS.map((d, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0', borderBottom: `1px solid ${COLORS.border}` }}>
-                <div style={{ width: 40, height: 40, borderRadius: 8, background: COLORS.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
-                  {d.icon}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.text }}>{d.name}</div>
-                  <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>{d.date}</div>
-                </div>
-                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: d.status === 'Verified' ? COLORS.successLight : COLORS.warningLight, color: d.status === 'Verified' ? COLORS.success : COLORS.warning }}>
-                  {d.status}
-                </span>
-                <button style={btn('outline', { fontSize: 11, padding: '5px 12px' })}>View</button>
+            ) : (
+              <div style={{ fontSize: 13, fontWeight: 500, color: COLORS.text, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 7, padding: '9px 12px' }}>
+                {user?.orgName || '—'}
               </div>
-            ))}
-            <button style={btn('solid', { marginTop: 16, fontSize: 12 })}>+ Upload New Document</button>
+            )}
           </div>
-        )}
 
+          <ReadField label="Applicant Name"      value={user?.name            || '—'} />
+          <ReadField label="Nature of Business"  value={user?.natureOfBusiness || '—'} />
+          <ReadField label="Mobile Number"       value={user?.mobile          || '—'} />
+          <ReadField label="Email ID"            value={user?.email           || '—'} />
+        </div>
+
+        <div style={{ marginTop: 20, padding: '12px 14px', background: COLORS.bg, borderRadius: 8, border: `1px solid ${COLORS.border}`, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6 }}>
+          ℹ To update your mobile number, email, or nature of business, please contact the FSSAI E-PAAS helpdesk.
+        </div>
       </div>
     </div>
   );

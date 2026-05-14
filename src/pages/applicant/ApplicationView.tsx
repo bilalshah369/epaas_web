@@ -9,6 +9,7 @@ import {
   fetchApplication, fetchQueries, respondToQuery,
   type Application, type AppFormData, type Query,
 } from '@/services/application.service';
+import { API_BASE } from '@/services/api';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const TABS = ['Details', 'Documents', 'Queries', 'Decision History', 'Timeline'];
@@ -37,6 +38,81 @@ const STAGE_LABELS: Record<string, string> = {
   Closed: 'Closed',
 };
 
+// AA document fields (flat structure) — must match field keys in AyurvedaAaharaApplicationForm
+const AA_DOC_FIELDS: { key: string; label: string }[] = [
+  // Step 0 — Basic product info
+  { key: 'functionalUseFile',              label: 'Functional Use Supporting Document' },
+  { key: 'certificateOfAnalysis',          label: 'Certificate of Analysis' },
+  { key: 'manufacturingProcessFile',       label: 'Manufacturing Process Document' },
+  // Step 1 — Ingredients / Composition
+  { key: 'compositionFile',                label: 'Composition of Proposed Ayurveda Aahara' },
+  { key: 'ingredientListFile',             label: 'Ingredient List PDF' },
+  { key: 'specificationsFile',             label: 'Specifications Document' },
+  // Traditional reference (per category)
+  { key: 'authoritativeBookScanFile',      label: 'Scanned Pages of Authoritative Book (Cat. A)' },
+  { key: 'catBAuthoritativeBookScanFile',  label: 'Scanned Pages of Authoritative Book (Cat. B)' },
+  { key: 'catB1AuthoritativeBookScanFile', label: 'Scanned Pages of Authoritative Book (Cat. B1)' },
+  { key: 'catB2AuthoritativeBookScanFile', label: 'Scanned Pages of Authoritative Book (Cat. B2)' },
+  { key: 'otherBotanicalsRationaleFile',   label: 'Other Botanicals Supporting Document' },
+  // Step 2 — Claims / Usage
+  { key: 'productLabel',                   label: 'Product Label' },
+  { key: 'servingSizeFile',                label: 'Serving Size Document' },
+  { key: 'targetPopulationFile',           label: 'Target Population Document' },
+  { key: 'directionsForUseFile',           label: 'Directions for Use Document' },
+  { key: 'durationOfUseFile',              label: 'Duration of Use Document' },
+  // Category A — Label Claims
+  { key: 'catAHealthBenefitFile',          label: 'Health Benefit Claim Document (Cat. A)' },
+  { key: 'catADiseaseRiskFile',            label: 'Disease Risk Claim Document (Cat. A)' },
+  // Category B — Label Claims
+  { key: 'catBHealthBenefitFile',          label: 'Health Benefit Claim Document (Cat. B)' },
+  { key: 'catBDiseaseRiskFile',            label: 'Disease Risk Claim Document (Cat. B)' },
+  { key: 'catBSafetyDataFile',             label: 'Safety Data Document (Cat. B)' },
+  // Category B1 — Label Claims
+  { key: 'b1HealthBenefitFile',            label: 'Health Benefit Document (Cat. B1)' },
+  { key: 'b1LabelDiseaseRiskFile',         label: 'Disease Risk Reduction Document (Cat. B1)' },
+  // Category B2 — Health Benefit Claims
+  { key: 'catB2HealthBenefit1File',        label: 'Specified Health Benefit Document (Cat. B2)' },
+  { key: 'catB2HealthBenefit2File',        label: 'Non-specified Health Benefit Document (Cat. B2)' },
+  // Category B2 — Disease Risk Claims
+  { key: 'catB2DiseaseRisk1File',          label: 'Disease Risk Claim 1 Document (Cat. B2)' },
+  { key: 'catB2DiseaseRisk2File',          label: 'Disease Risk Claim 2 Document (Cat. B2)' },
+  // Step 3 — Scientific Support (B1)
+  { key: 'differentFormatRationaleFile',   label: 'Format Rationale Supporting Document (Cat. B1)' },
+  { key: 'efficacyDataFile',               label: 'Efficacy Data Document (Cat. B1)' },
+  { key: 'catB1SafetyDataFile',            label: 'Safety Data Document (Cat. B1)' },
+  // Part III — Registration
+  { key: 'registrationCertificate',        label: 'Registration Certificate' },
+  { key: 'licenseCertificate',             label: 'License Certificate' },
+];
+
+// RPET document fields (flat structure) — must match field keys in RPETApplicationForm
+const RPET_DOC_FIELDS: { key: string; label: string }[] = [
+  { key: 'factoryLicensesFile',         label: 'All Licences – Factory' },
+  { key: 'labourLicenseFile',           label: 'Labour Licence' },
+  { key: 'pollutionLicenseFile',        label: 'Pollution Licence' },
+  { key: 'gstLicenseFile',             label: 'GST Certificate' },
+  { key: 'recyclingTechnologyFile',    label: 'Recycling Technology Document' },
+  { key: 'plantMachineryFile',         label: 'Plant & Machinery Document' },
+  { key: 'globalRegulatoryFile',       label: 'NOL/NOC/Safety Assessment Document' },
+  { key: 'facilityApprovalFile',       label: 'Facility Approval/Clearance (Competent Authority)' },
+  { key: 'vendorAuditFile',            label: 'Vendor & Internal Audit Reports' },
+  { key: 'qualitySafetyTestReportFile', label: 'Quality & Safety Test Reports (NABL Accredited)' },
+  { key: 'fssPackagingRegFile',        label: 'FSS(Packaging) Regulations 2018 Compliance' },
+  { key: 'sensoryAnalysisFile',        label: 'Sensory Analysis (ISO 13302 / GMP/QMS)' },
+];
+
+// CA document fields (flat structure)
+const CA_DOC_FIELDS: { key: string; label: string }[] = [
+  { key: 'licenseCopy',                  label: 'Central/State License Copy' },
+  { key: 'approvalLetter',               label: 'FSSAI Approval Letter' },
+  { key: 'iprSupportingDoc',             label: 'IPR Supporting Document' },
+  { key: 'scientificSubstantiationFile', label: 'Scientific Substantiation Document' },
+  { key: 'diseaseRiskStudiesFile',       label: 'Disease Risk Studies Document' },
+  { key: 'analysisMethodFile',           label: 'Analysis Method Document' },
+  { key: 'adverseEffectsFile',           label: 'Safety / Adverse Effects Document' },
+  { key: 'additionalInfoFile',           label: 'Additional Information Document' },
+];
+
 // Document field → display label mapping (step3 + step4)
 const DOC_FIELDS: { key: keyof AppFormData['step3'] | keyof AppFormData['step4']; label: string; step: 'step3' | 'step4' }[] = [
   { step: 'step3', key: 'certOfAnalysis',      label: 'Certificate of Analysis' },
@@ -56,6 +132,14 @@ const DOC_FIELDS: { key: keyof AppFormData['step3'] | keyof AppFormData['step4']
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+function getCatKey(cat: string): string {
+  if (cat.startsWith('Category B2')) return 'B2';
+  if (cat.startsWith('Category B1')) return 'B1';
+  if (cat.startsWith('Category B'))  return 'B';
+  if (cat.startsWith('Category A'))  return 'A';
+  return '';
+}
+
 function fmtDate(iso: string | null) {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -92,7 +176,242 @@ function TwoCol({ children }: { children: React.ReactNode }) {
 }
 
 // ── Tab: Details ──────────────────────────────────────────────────────────────
-function TabSummary({ fd }: { fd: AppFormData }) {
+function TabSummary({ fd, applicationType }: { fd: AppFormData; applicationType: string }) {
+  if (applicationType === 'AyurvedaAahara') {
+    const aa = fd as unknown as Record<string, unknown>;
+    const cat = getCatKey((aa.ayurvedaCategory as string) ?? '');
+    const CAT_LABEL: Record<string, string> = {
+      A: 'Category A — Classical Ayurvedic Formulations',
+      B: 'Category B — Proprietary Ayurvedic Products',
+      B1: 'Category B1 — New Ayurvedic Ingredients',
+      B2: 'Category B2 — Traditional System Ingredients',
+    };
+    function str(k: string) { return (aa[k] as string) || undefined; }
+    return (
+      <div>
+        <SectionHead title="Ayurveda Category" />
+        <Field label="Category" value={cat ? CAT_LABEL[cat] : str('ayurvedaCategory')} />
+
+        <SectionHead title="Applicant Details" />
+        <TwoCol>
+          <Field label="Applicant Name"         value={str('applicantName')} />
+          <Field label="Authorised Person"       value={str('authorisedPerson')} />
+          <Field label="Email"                   value={str('authorisedEmail')} />
+          <Field label="Contact Number"          value={str('authorisedContact')} />
+          <Field label="FSSAI License Number"    value={str('licenseNumber')} />
+        </TwoCol>
+        <Field label="Address"                   value={str('applicantAddress')} />
+
+        <SectionHead title="Product Details" />
+        <TwoCol>
+          <Field label="Product Name"            value={str('productName')} />
+          <Field label="Product Category"        value={str('productCategory')} />
+        </TwoCol>
+        <Field label="Product Description"       value={str('productDescription')} />
+        <Field label="Proposed Usage"            value={str('proposedUsage')} />
+
+        <SectionHead title="Ingredients" />
+        {Array.isArray(aa.ingredients) && (aa.ingredients as Record<string, string>[]).length > 0 ? (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, marginBottom: 8 }}>
+            <thead>
+              <tr>{['#', 'Ingredient Name', 'Quantity', 'Unit', 'Reference Book'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {(aa.ingredients as Record<string, string>[]).map((ing, i) => (
+                <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#F8F9FA' }}>
+                  <td style={S.td}>{i + 1}</td>
+                  <td style={S.td}>{ing.ingredientName}</td>
+                  <td style={S.td}>{ing.quantity}</td>
+                  <td style={S.td}>{ing.unit}</td>
+                  <td style={S.td}>{ing.referenceBook}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : <div style={{ fontSize: 12, color: '#9CA3AF', fontStyle: 'italic', marginBottom: 8 }}>No ingredients listed.</div>}
+
+        {Array.isArray(aa.additives) && (aa.additives as Record<string, string>[]).length > 0 && (
+          <>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', marginBottom: 4 }}>Additives</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, marginBottom: 8 }}>
+              <thead>
+                <tr>{['#', 'Additive Name', 'Quantity', 'Purpose'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {(aa.additives as Record<string, string>[]).map((add, i) => (
+                  <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#F8F9FA' }}>
+                    <td style={S.td}>{i + 1}</td>
+                    <td style={S.td}>{add.additiveName}</td>
+                    <td style={S.td}>{add.quantity}</td>
+                    <td style={S.td}>{add.purpose}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+
+        <TwoCol>
+          <Field label="Nutritional Composition"  value={str('nutritionalComposition')} />
+          <Field label="Active Ingredients"        value={str('activeIngredients')} />
+        </TwoCol>
+        <Field label="Formulation Details"         value={str('formulationDetails')} />
+
+        <SectionHead title="Claims / Usage" />
+        <Field label="Claim Statement 1"           value={str('claimStatement1')} />
+        {str('claimStatement2') && <Field label="Claim Statement 2" value={str('claimStatement2')} />}
+        {str('claimStatement3') && <Field label="Claim Statement 3" value={str('claimStatement3')} />}
+        <TwoCol>
+          <Field label="Target Population"         value={str('targetPopulation')} />
+          <Field label="Serving Size"              value={str('servingSize')} />
+          <Field label="Frequency of Use"          value={str('frequencyOfUse')} />
+          <Field label="Duration of Use"           value={str('durationOfUse')} />
+        </TwoCol>
+        <Field label="Directions for Use"          value={str('directionsForUse')} />
+        <Field label="Warnings"                    value={str('warnings')} />
+        <Field label="Contraindications"           value={str('contraindications')} />
+
+        {cat === 'A' && (
+          <>
+            <SectionHead title="Category A — Traditional Reference" />
+            <TwoCol>
+              <Field label="Reference Book"        value={str('ayurvedaReferenceBook')} />
+              <Field label="Chapter (Adhyaya)"     value={str('referenceChapter')} />
+              <Field label="Verse (Shloka)"        value={str('referenceVerse')} />
+            </TwoCol>
+            <Field label="Traditional Usage"       value={str('traditionalUsage')} />
+            <Field label="Classical Claim Basis"   value={str('classicalClaimBasis')} />
+            <Field label="Historical Consumption Evidence" value={str('historicalConsumptionEvidence')} />
+            <Field label="Traditional Preparation Method" value={str('traditionalPreparationMethod')} />
+          </>
+        )}
+
+        {cat === 'B' && (
+          <>
+            <SectionHead title="Category B — Nutritional Evidence &amp; Consumption" />
+            <Field label="Nutritional Benefit"     value={str('nutritionalBenefit')} />
+            <Field label="Scientific Rationale"    value={str('scientificRationale')} />
+            <Field label="Supporting Studies"      value={str('supportingStudies')} />
+            <TwoCol>
+              <Field label="Recommended Serving"   value={str('recommendedServing')} />
+              <Field label="Maximum Daily Usage"   value={str('maximumDailyUsage')} />
+              <Field label="Intended Users"        value={str('intendedUsers')} />
+              <Field label="Restrictions"          value={str('restrictions')} />
+            </TwoCol>
+          </>
+        )}
+
+        {cat === 'B1' && (
+          <>
+            <SectionHead title="Category B1 — Disease Risk Reduction &amp; Clinical Evidence" />
+            <Field label="Disease Risk Claim"      value={str('diseaseRiskClaim')} />
+            <Field label="Mechanism of Action"     value={str('mechanismOfAction')} />
+            <Field label="Human Intervention Studies" value={str('humanInterventionStudies')} />
+            <Field label="Cause-Effect Relationship" value={str('causeEffectRelationship')} />
+            <Field label="Scientific Consensus"    value={str('b1ScientificConsensus')} />
+            <TwoCol>
+              <Field label="Study Type"            value={str('studyType')} />
+              <Field label="Study Duration"        value={str('studyDuration')} />
+              <Field label="Study Population"      value={str('studyPopulation')} />
+              <Field label="Outcome Summary"       value={str('outcomeSummary')} />
+            </TwoCol>
+          </>
+        )}
+
+        {cat === 'B2' && (
+          <>
+            <SectionHead title="Category B2 — Special Population Claims &amp; Safety" />
+            <Field label="Target Condition"        value={str('targetCondition')} />
+            <Field label="Target Population Details" value={str('targetPopulationDetails')} />
+            <Field label="Physiological Benefit"   value={str('physiologicalBenefit')} />
+            <Field label="Scientific Substantiation" value={str('b2ScientificSubstantiation')} />
+            <Field label="Contraindication Details" value={str('contraindicationDetails')} />
+            <Field label="Drug/Herb Interactions"  value={str('interactionDetails')} />
+            <Field label="Adverse Reaction Monitoring" value={str('adverseReactionMonitoring')} />
+            <Field label="Medical Supervision Requirement" value={str('medicalSupervisionRequirement')} />
+          </>
+        )}
+
+        <SectionHead title="Scientific Support" />
+        <Field label="Scientific Justification"    value={str('scientificJustification')} />
+        <Field label="Traditional Reference"       value={str('traditionalReference')} />
+        <Field label="Published Research"          value={str('publishedResearch')} />
+        <Field label="Safety Evidence"             value={str('safetyEvidence')} />
+        <Field label="Additional Information"      value={str('additionalInfo')} />
+
+        {str('hasExistingRegistration') && (
+          <>
+            <SectionHead title="Part III — Existing Registration" />
+            <Field label="Has Existing Registration"  value={str('hasExistingRegistration')} />
+            {str('hasExistingRegistration') === 'Yes' && (
+              <TwoCol>
+                <Field label="Registration Number"    value={str('registrationNumber')} />
+                <Field label="Registration Date"      value={str('registrationDate')} />
+                <Field label="License Number"         value={str('licenseNumberExisting')} />
+                <Field label="License Date"           value={str('licenseDate')} />
+              </TwoCol>
+            )}
+          </>
+        )}
+
+        <SectionHead title="Payment" />
+        <TwoCol>
+          <Field label="Payment Method"            value={str('paymentMethod')} />
+          <Field label="Payment Reference"         value={str('paymentReference')} />
+        </TwoCol>
+      </div>
+    );
+  }
+
+  if (applicationType === 'CA') {
+    const ca = fd as unknown as Record<string, string>;
+    return (
+      <div>
+        <SectionHead title="Applicant Details" />
+        <TwoCol>
+          <Field label="Applicant Name"            value={ca.applicantName} />
+          <Field label="Authorised Signatory"      value={ca.authorisedSignatory} />
+          <Field label="Email"                     value={ca.authorisedEmail} />
+          <Field label="Contact Number"            value={ca.authorisedContact} />
+        </TwoCol>
+        <Field label="Address"                     value={ca.applicantAddress} />
+
+        <SectionHead title="License Information" />
+        <TwoCol>
+          <Field label="License Number"            value={ca.licenseNumber} />
+          <Field label="License Category"          value={ca.licenseCategory} />
+        </TwoCol>
+
+        <SectionHead title="Product Information" />
+        <TwoCol>
+          <Field label="Product Name"              value={ca.productName} />
+          <Field label="Product Category"          value={ca.productCategory} />
+          <Field label="Non-specified Category"    value={ca.nonSpecifiedCategory} />
+        </TwoCol>
+        <Field label="Product Composition"         value={ca.productComposition} />
+
+        <SectionHead title="Claim & IPR Details" />
+        <TwoCol>
+          <Field label="Claim Type"                value={ca.claimType} />
+          <Field label="Claim Ingredient/Substance" value={ca.claimIngredient} />
+          <Field label="IPR Protected"             value={ca.isIPRProtected} />
+          <Field label="Claim Functions IPR Protected" value={ca.claimFunctionProtected} />
+        </TwoCol>
+        <Field label="Claim Statement"             value={ca.claimStatement} />
+        <Field label="Claim Justification"         value={ca.claimJustification} />
+        {ca.claimFunctionProtected === 'Yes' && (
+          <Field label="IPR Details"               value={ca.iprDetails} />
+        )}
+
+        <SectionHead title="Payment" />
+        <TwoCol>
+          <Field label="Payment Method"            value={ca.paymentMethod} />
+          <Field label="Payment Reference"         value={ca.paymentReference} />
+        </TwoCol>
+      </div>
+    );
+  }
+
   return (
     <div>
       <SectionHead title="Step 1 — Ingredients & Application Type" />
@@ -192,7 +511,149 @@ function TabSummary({ fd }: { fd: AppFormData }) {
 }
 
 // ── Tab: Documents ────────────────────────────────────────────────────────────
-function TabDocuments({ fd }: { fd: AppFormData }) {
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-/i;
+function isStored(v: string) { return UUID_RE.test(v); }
+function cleanName(v: string) { return v.replace(UUID_RE, ''); }
+
+function TabDocuments({ fd, applicationType }: { fd: AppFormData; applicationType: string }) {
+  if (applicationType === 'AyurvedaAahara') {
+    const aa = fd as unknown as Record<string, string>;
+    const files = AA_DOC_FIELDS.filter((d) => {
+      const val = aa[d.key];
+      return val && typeof val === 'string' && val.trim() !== '';
+    });
+    if (files.length === 0) {
+      return (
+        <div style={{ padding: '48px 0', textAlign: 'center', color: COLORS.textMuted, fontSize: 13 }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>📁</div>
+          No documents uploaded yet.
+        </div>
+      );
+    }
+    return (
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+        <thead>
+          <tr>{['#', 'Document', 'File Name', 'Action'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
+        </thead>
+        <tbody>
+          {files.map((d, i) => {
+            const val = aa[d.key];
+            const stored = isStored(val);
+            return (
+              <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg }}>
+                <td style={S.td}>{i + 1}</td>
+                <td style={S.td}><span style={{ fontWeight: 600 }}>{d.label}</span></td>
+                <td style={S.td}><span style={{ color: COLORS.primary }}>📎 {stored ? cleanName(val) : val}</span></td>
+                <td style={S.td}>
+                  {stored ? (
+                    <a href={`${API_BASE}/uploads/${val}`} target="_blank" rel="noreferrer"
+                      style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 5, fontSize: 10, padding: '4px 10px', cursor: 'pointer', textDecoration: 'none', fontWeight: 600 }}>
+                      ⬇ Download
+                    </a>
+                  ) : (
+                    <span style={{ fontSize: 10, color: COLORS.textMuted, fontStyle: 'italic' }}>Re-upload to enable download</span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    );
+  }
+
+  if (applicationType === 'CA') {
+    const ca = fd as unknown as Record<string, string>;
+    const files = CA_DOC_FIELDS.filter((d) => {
+      const val = ca[d.key];
+      return val && typeof val === 'string' && val.trim() !== '';
+    });
+    if (files.length === 0) {
+      return (
+        <div style={{ padding: '48px 0', textAlign: 'center', color: COLORS.textMuted, fontSize: 13 }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>📁</div>
+          No documents uploaded yet.
+        </div>
+      );
+    }
+    return (
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+        <thead>
+          <tr>{['#', 'Document', 'File Name', 'Action'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
+        </thead>
+        <tbody>
+          {files.map((d, i) => {
+            const val = ca[d.key];
+            const stored = isStored(val);
+            return (
+              <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg }}>
+                <td style={S.td}>{i + 1}</td>
+                <td style={S.td}><span style={{ fontWeight: 600 }}>{d.label}</span></td>
+                <td style={S.td}><span style={{ color: COLORS.primary }}>📎 {stored ? cleanName(val) : val}</span></td>
+                <td style={S.td}>
+                  {stored ? (
+                    <a href={`${API_BASE}/uploads/${val}`} target="_blank" rel="noreferrer"
+                      style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 5, fontSize: 10, padding: '4px 10px', cursor: 'pointer', textDecoration: 'none', fontWeight: 600 }}>
+                      ⬇ Download
+                    </a>
+                  ) : (
+                    <span style={{ fontSize: 10, color: COLORS.textMuted, fontStyle: 'italic' }}>Re-upload to enable download</span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    );
+  }
+
+  if (applicationType === 'RPET') {
+    const rpet = fd as unknown as Record<string, string>;
+    const files = RPET_DOC_FIELDS.filter((d) => {
+      const val = rpet[d.key];
+      return val && typeof val === 'string' && val.trim() !== '';
+    });
+    if (files.length === 0) {
+      return (
+        <div style={{ padding: '48px 0', textAlign: 'center', color: COLORS.textMuted, fontSize: 13 }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>📁</div>
+          No documents uploaded yet.
+        </div>
+      );
+    }
+    return (
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+        <thead>
+          <tr>{['#', 'Document', 'File Name', 'Action'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
+        </thead>
+        <tbody>
+          {files.map((d, i) => {
+            const val = rpet[d.key];
+            const stored = isStored(val);
+            return (
+              <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg }}>
+                <td style={S.td}>{i + 1}</td>
+                <td style={S.td}><span style={{ fontWeight: 600 }}>{d.label}</span></td>
+                <td style={S.td}><span style={{ color: COLORS.primary }}>📎 {stored ? cleanName(val) : val}</span></td>
+                <td style={S.td}>
+                  {stored ? (
+                    <a href={`${API_BASE}/uploads/${val}`} target="_blank" rel="noreferrer"
+                      style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 5, fontSize: 10, padding: '4px 10px', cursor: 'pointer', textDecoration: 'none', fontWeight: 600 }}>
+                      ⬇ Download
+                    </a>
+                  ) : (
+                    <span style={{ fontSize: 10, color: COLORS.textMuted, fontStyle: 'italic' }}>Re-upload to enable download</span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    );
+  }
+
   const files = DOC_FIELDS.filter((d) => {
     const val = d.step === 'step3'
       ? (fd.step3 as unknown as Record<string, unknown>)[d.key as string]
@@ -208,11 +669,6 @@ function TabDocuments({ fd }: { fd: AppFormData }) {
       </div>
     );
   }
-
-  // UUID-prefixed storedName → display name + download URL
-  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-/i;
-  function isStored(v: string) { return UUID_RE.test(v); }
-  function cleanName(v: string) { return v.replace(UUID_RE, ''); }
 
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
@@ -233,7 +689,7 @@ function TabDocuments({ fd }: { fd: AppFormData }) {
               <td style={S.td}>
                 {stored ? (
                   <a
-                    href={`/api/uploads/${val}`}
+                    href={`${API_BASE}/uploads/${val}`}
                     target="_blank"
                     rel="noreferrer"
                     style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 5, fontSize: 10, padding: '4px 10px', cursor: 'pointer', textDecoration: 'none', fontWeight: 600 }}
@@ -515,7 +971,16 @@ export default function ApplicationView() {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {app.stage === 'Draft' && (
               <button
-                onClick={() => navigate(`/app/apply/form?id=${app.id}`)}
+                onClick={() => {
+                  let path: string;
+                  if (app.applicationType === 'NSF')      path = `/app/apply/nsf-form?id=${app.id}`;
+                  else if (app.applicationType === 'CA')  path = `/app/apply/ca-form?id=${app.id}`;
+                  else if (app.applicationType === 'AyurvedaAahara' || app.applicationType === 'AA')
+                                                          path = `/app/apply/aa-form?id=${app.id}`;
+                  else if (app.applicationType === 'RPET') path = `/app/apply/rpet-form?id=${app.id}`;
+                  else                                    path = `/app/apply/form?id=${app.id}&type=${app.applicationType}`;
+                  navigate(path);
+                }}
                 style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
               >
                 ✏ Edit Draft
@@ -555,10 +1020,10 @@ export default function ApplicationView() {
 
         {activeTab === 0 && (
           fd
-            ? <TabSummary fd={fd} />
+            ? <TabSummary fd={fd} applicationType={app.applicationType} />
             : <div style={{ padding: '40px 0', textAlign: 'center', color: COLORS.textMuted, fontSize: 13 }}>No form data saved yet.</div>
         )}
-        {activeTab === 1 && (fd ? <TabDocuments fd={fd} /> : <TabDocuments fd={{ step1: { applicationFor: '', specifyFood: '', ingredients: [], additives: [] }, step2: {} as never, step3: {} as never, step4: {} as never, step5: {} as never }} />)}
+        {activeTab === 1 && (fd ? <TabDocuments fd={fd} applicationType={app.applicationType} /> : <TabDocuments fd={{ step1: { applicationFor: '', specifyFood: '', ingredients: [], additives: [] }, step2: {} as never, step3: {} as never, step4: {} as never, step5: {} as never }} applicationType={app.applicationType} />)}
         {activeTab === 2 && <TabQueries app={app} onResponded={() => fetchApplication(app.id).then(setApp)} />}
         {activeTab === 3 && (
           <div style={{ padding: '16px 0' }}>

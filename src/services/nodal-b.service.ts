@@ -33,8 +33,8 @@ export async function fetchNodalBExtensions(): Promise<any[]> {
   return data.requests;
 }
 
-export async function nodalBForwardCEO(id: string): Promise<Application> {
-  const { data } = await api.post<{ application: Application }>(`/nodal-b/applications/${id}/forward-ceo`);
+export async function nodalBUploadECDecision(id: string): Promise<Application> {
+  const { data } = await api.post<{ application: Application }>(`/nodal-b/applications/${id}/upload-ec-decision`);
   return data.application;
 }
 

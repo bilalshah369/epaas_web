@@ -4,7 +4,8 @@ import toast from 'react-hot-toast';
 import type React from 'react';
 import { COLORS, S } from '@/utils/colors';
 import { fetchApplication, fetchQueries, type Application, type AppFormData, type Query } from '@/services/application.service';
-import { ecForwardToNodalB, ecReject, ecRequestClarification, ecSaveAssessment } from '@/services/ec.service';
+import { getDocRows } from '@/utils/docResolver';
+import { ecForwardToTechnicalOfficer, ecReject, ecRequestClarification, ecSaveAssessment } from '@/services/ec.service';
 
 const card: React.CSSProperties = {
   background: COLORS.white, border: `1px solid ${COLORS.border}`,
@@ -58,19 +59,6 @@ const EC_CHECKLIST = [
   { label: 'All committee members have reviewed dossier',   key: 'members'     },
 ];
 
-const DOC_FIELDS: { label: string; key: keyof AppFormData['step3'] }[] = [
-  { label: 'Certificate of Analysis',        key: 'certOfAnalysis'      },
-  { label: 'Manufacturing Process Flow',     key: 'manufacturingProcess' },
-  { label: 'Regulatory Status Document',     key: 'regulatoryStatusFile' },
-  { label: 'Agreement Document',             key: 'agreementDoc'         },
-  { label: 'Safety Information — File 1',    key: 'safetyFile1'          },
-  { label: 'Safety Information — File 2',    key: 'safetyFile2'          },
-  { label: 'Claim Support — File 1',         key: 'claimFile1'           },
-  { label: 'Claim Support — File 2',         key: 'claimFile2'           },
-  { label: 'Prototype Label',                key: 'prototypeLabel'       },
-  { label: 'Post-Marketing Declaration',     key: 'postMarketingDecl'    },
-  { label: 'Confidentiality Declaration',    key: 'confidentialityDecl'  },
-];
 
 const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_URL ?? 'http://localhost:3000/api';
 
@@ -112,16 +100,16 @@ export default function ECDocketReview() {
   const fd    = app?.formData as AppFormData | null | undefined;
   const appId = id ?? '';
 
-  async function handleForwardNodalB() {
+  async function handleForwardTechnicalOfficer() {
     if (!remarks.trim()) { toast.error('Please enter EC remarks before forwarding'); return; }
     setSaving(true);
     try {
-      await ecForwardToNodalB(appId);
-      toast.success('Application forwarded to Nodal Point B — EC recommends approval');
+      await ecForwardToTechnicalOfficer(appId);
+      toast.success('Application forwarded to Technical Officer — EC recommends approval');
       navigate('/ec/dashboard');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      toast.error(msg ?? 'Could not forward to Nodal Point B');
+      toast.error(msg ?? 'Could not forward to Technical Officer');
       setSaving(false);
     }
   }
@@ -131,7 +119,7 @@ export default function ECDocketReview() {
     setSaving(true);
     try {
       await ecReject(appId, remarks);
-      toast.success('Application rejected by Expert Committee');
+      toast.success('Rejection recommendation forwarded to Technical Officer');
       navigate('/ec/dashboard');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -258,38 +246,27 @@ export default function ECDocketReview() {
       {activeTab === 'documents' && (
         <div style={card}>
           <div style={cardTitle}>DOSSIER — DOCUMENT VIEWER</div>
-          {!fd ? (
-            <div style={{ color: COLORS.textMuted, fontSize: 12, fontStyle: 'italic' }}>No documents found — form data not yet submitted.</div>
+          {(() => { const rows = getDocRows(app); return rows.length === 0 ? (
+            <div style={{ color: COLORS.textMuted, fontSize: 12, fontStyle: 'italic' }}>No documents uploaded yet.</div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
-                <tr>{['#', 'Document Name', 'Type', 'Status', 'Action'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
+                <tr>{['#', 'Document Name', 'Action'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
               </thead>
               <tbody>
-                {DOC_FIELDS.map((d, i) => {
-                  const storedName = fd.step3?.[d.key] as string | undefined;
-                  return (
-                    <tr key={d.key} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg }}>
-                      <td style={S.td}>{i + 1}</td>
-                      <td style={{ ...S.td, fontWeight: 600 }}>{d.label}</td>
-                      <td style={S.td}>PDF</td>
-                      <td style={S.td}>
-                        {storedName
-                          ? <span style={{ color: COLORS.success, fontWeight: 700, fontSize: 11 }}>✓ Uploaded</span>
-                          : <span style={{ color: COLORS.danger, fontSize: 11 }}>✗ Missing</span>}
-                      </td>
-                      <td style={S.td}>
-                        {storedName
-                          ? <a href={`${API_BASE}/uploads/${storedName}`} target="_blank" rel="noreferrer"
-                              style={{ ...btn('outline', true), textDecoration: 'none', display: 'inline-block' }}>📥 View</a>
-                          : <span style={{ fontSize: 11, color: COLORS.textMuted }}>—</span>}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {rows.map((d, i) => (
+                  <tr key={d.label} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg }}>
+                    <td style={S.td}>{i + 1}</td>
+                    <td style={{ ...S.td, fontWeight: 600 }}>{d.label}</td>
+                    <td style={S.td}>
+                      <a href={`${API_BASE}/uploads/${d.val}`} target="_blank" rel="noreferrer"
+                          style={{ ...btn('outline', true), textDecoration: 'none', display: 'inline-block' }}>📥 View</a>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
-          )}
+          ); })()}
         </div>
       )}
 
@@ -385,14 +362,14 @@ export default function ECDocketReview() {
               </>
             ) : decision === 'Recommend Approval' ? (
               <div style={{ display: 'flex', gap: 10 }}>
-                <button style={btn()} disabled={saving} onClick={handleForwardNodalB}>
-                  {saving ? 'Processing…' : '✅ Recommend Approval — Forward to Nodal Point B'}
+                <button style={btn()} disabled={saving} onClick={handleForwardTechnicalOfficer}>
+                  {saving ? 'Processing…' : '✅ Recommend Approval — Forward to Technical Officer'}
                 </button>
               </div>
             ) : (
               <div style={{ display: 'flex', gap: 10 }}>
                 <button style={btn('danger')} disabled={saving} onClick={handleReject}>
-                  {saving ? 'Processing…' : '✗ Record Rejection Decision'}
+                  {saving ? 'Processing…' : '✗ Recommend Rejection — Forward to Technical Officer'}
                 </button>
               </div>
             )}
@@ -400,8 +377,8 @@ export default function ECDocketReview() {
             <div style={{ marginTop: 16, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '12px 14px', fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6 }}>
               <strong style={{ color: COLORS.text }}>Stage transitions:</strong>
               <ul style={{ margin: '6px 0 0 0', paddingLeft: 16 }}>
-                <li><strong>Recommend Approval</strong> → forwards to Nodal Point B for decision dispatch</li>
-                <li><strong>Recommend Rejection</strong> → closes application with EC grounds recorded</li>
+                <li><strong>Recommend Approval</strong> → forwards to Technical Officer for decision preparation</li>
+                <li><strong>Recommend Rejection</strong> → forwards to Technical Officer with EC rejection grounds</li>
                 <li><strong>Request Clarification</strong> → returns to applicant via Nodal Officer A</li>
               </ul>
             </div>

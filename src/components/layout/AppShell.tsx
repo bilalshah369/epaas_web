@@ -53,7 +53,7 @@ export default function AppShell({ menu }: Props) {
   function handleLogout() {
     logout();
     toast.success('Logged out successfully');
-    navigate('/login', { replace: true });
+    navigate('/', { replace: true });
   }
 
   function toggleMenu(path: string) {

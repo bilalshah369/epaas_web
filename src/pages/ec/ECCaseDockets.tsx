@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { COLORS, S } from '@/utils/colors';
+import { resolveFoodCategory } from '@/utils/docResolver';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { fetchECPending } from '@/services/ec.service';
 import type { Application } from '@/services/application.service';
@@ -142,7 +143,7 @@ export default function ECCaseDockets() {
                     <td style={S.td}>{i + 1}</td>
                     <td style={{ ...S.td, color: COLORS.primary, fontWeight: 600 }}>{a.referenceNumber}</td>
                     <td style={S.td}><span style={{ background: COLORS.primaryLight, color: COLORS.primary, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4 }}>{TYPE_LABELS[a.applicationType] ?? a.applicationType}</span></td>
-                    <td style={{ ...S.td, fontSize: 11 }}>{a.foodCategory ?? '—'}</td>
+                    <td style={{ ...S.td, fontSize: 11 }}>{resolveFoodCategory(a)}</td>
                     <td style={S.td}>{a.companyName}</td>
                     <td style={{ ...S.td, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.productName ?? '—'}</td>
                     <td style={S.td}>{fmtDate(a.submittedAt)}</td>

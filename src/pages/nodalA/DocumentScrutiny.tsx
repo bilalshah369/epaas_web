@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { COLORS, S } from '@/utils/colors';
+import { resolveFoodCategory } from '@/utils/docResolver';
 import { fetchNodalAPending, nodalAForward } from '@/services/officer.service';
 import type { Application } from '@/services/application.service';
 
@@ -106,7 +107,7 @@ function AssignForwardModal({ app, type, onClose, onSubmit }: ModalProps) {
               ['Company',         app.companyName],
               ['Product',         app.productName ?? '—'],
               ['App. Type',       TYPE_LABELS[app.applicationType] ?? app.applicationType],
-              ['Food Category',   app.foodCategory || '—'],
+              ['Food Category',   resolveFoodCategory(app)],
               ['Current Handler', 'Nodal Officer A'],
             ] as [string, string][]).map(([k, v]) => (
               <div key={k}>
@@ -174,7 +175,7 @@ function ViewPurposeModal({ app, onClose }: { app: Application; onClose: () => v
               ['Company',         app.companyName],
               ['Product',         app.productName ?? '—'],
               ['Application Type', TYPE_LABELS[app.applicationType] ?? app.applicationType],
-              ['Food Category',   app.foodCategory || '—'],
+              ['Food Category',   resolveFoodCategory(app)],
               ['Submitted On',    app.submittedAt ? fmtDate(app.submittedAt) : '—'],
             ] as [string, string][]).map(([k, v]) => (
               <div key={k}>
@@ -338,7 +339,7 @@ export default function DocumentScrutiny() {
                     <td style={S.td}>{i + 1}</td>
                     <td style={{ ...S.td, color: COLORS.primary, fontWeight: 600 }}>{a.referenceNumber}</td>
                     <td style={S.td}><TypeBadge type={a.applicationType} /></td>
-                    <td style={{ ...S.td, fontSize: 11 }}>{a.foodCategory || '—'}</td>
+                    <td style={{ ...S.td, fontSize: 11 }}>{resolveFoodCategory(a)}</td>
                     <td style={S.td}>{a.companyName}</td>
                     <td style={S.td}>{a.productName ?? '—'}</td>
                     <td style={{ ...S.td, fontSize: 11, color: COLORS.primary, fontWeight: 600 }}>Nodal Officer A</td>

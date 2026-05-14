@@ -155,7 +155,7 @@ export default function LoginPage() {
             <p style={{ fontSize: 13, color: COLORS.textMuted, lineHeight: 1.6 }}>
               {isAuthority
                 ? 'Enter your official FSSAI credentials to access the officer dashboard.'
-                : 'Enter your credentials to manage your food product approvals.'}
+                : 'Enter your credentials to login'}
             </p>
           </div>
 
@@ -179,12 +179,12 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: COLORS.text, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>
-                {isAuthority ? 'Username' : 'License Number / Email'}
+                {isAuthority ? 'Username' : 'Username'}
               </label>
               <input
                 value={identifier}
                 onChange={(e) => setId(e.target.value)}
-                placeholder={isAuthority ? 'Enter your username' : 'FBO-XX-XXXX-XXXXX or email'}
+                placeholder={isAuthority ? 'Enter your username' : 'License Number / Email'}
                 style={fieldStyle}
                 required
                 autoFocus

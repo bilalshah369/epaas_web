@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { COLORS, S } from '@/utils/colors';
 import StatusBadge from '@/components/ui/StatusBadge';
-import { fetchMyApplications, type Application } from '@/services/application.service';
+import { fetchMyApplications, deleteDraftApplication, type Application } from '@/services/application.service';
 
 const STATUS_OPTIONS = ['All Statuses', 'Draft', 'Submitted', 'Query Raised', 'Approved', 'Rejected'];
 const TYPE_OPTIONS   = ['All Types', 'NSF', 'Claim Approval', 'Ayurveda Aahara', 'rPET', 'Any Other'];
@@ -17,6 +17,7 @@ function ActionBtn({ label, variant = 'primary', onClick }: { label: string; var
     primary: { background: COLORS.primary,  color: '#fff', border: 'none' },
     outline:  { background: 'transparent',  color: COLORS.primary, border: `1.5px solid ${COLORS.primary}` },
     warning:  { background: COLORS.warning, color: '#fff', border: 'none' },
+    danger:   { background: '#d32f2f',       color: '#fff', border: 'none' },
   };
   return (
     <button
@@ -28,6 +29,51 @@ function ActionBtn({ label, variant = 'primary', onClick }: { label: string; var
   );
 }
 
+function getAddress(r: Application): string {
+  if (r.address && r.address.trim()) return r.address;
+  if (!r.formData) return '—';
+  const fd = r.formData as unknown as Record<string, unknown>;
+  // NSF / RPET / AnyOther — nested step2
+  if (fd.step2 && typeof fd.step2 === 'object') {
+    const s2 = fd.step2 as Record<string, unknown>;
+    const v = s2.orgAddress ?? s2.mfgAddress;
+    if (typeof v === 'string' && v.trim()) return v;
+  }
+  // CA — flat applicantAddress
+  if (typeof fd.applicantAddress === 'string' && fd.applicantAddress.trim()) return fd.applicantAddress;
+  // RPET — flat addressOfPremise
+  if (typeof fd.addressOfPremise === 'string' && fd.addressOfPremise.trim()) return fd.addressOfPremise;
+  // AA — registeredOfficeAddress or manufacturingAddress
+  if (typeof fd.registeredOfficeAddress === 'string' && fd.registeredOfficeAddress.trim()) return fd.registeredOfficeAddress;
+  if (typeof fd.manufacturingAddress === 'string' && fd.manufacturingAddress.trim()) return fd.manufacturingAddress;
+  return '—';
+}
+
+function getFoodCategory(r: Application): string {
+  if (r.foodCategory && r.foodCategory.trim()) return r.foodCategory;
+  if (!r.formData) return '—';
+  const fd = r.formData as unknown as Record<string, unknown>;
+  // NSF / RPET / AnyOther — nested step2
+  if (fd.step2 && typeof fd.step2 === 'object') {
+    const v = (fd.step2 as Record<string, unknown>).productCategory;
+    if (typeof v === 'string' && v.trim()) return v;
+  }
+  // CA — flat productCategory
+  if (typeof fd.productCategory === 'string' && fd.productCategory.trim()) return fd.productCategory;
+  // AA — ayurvedaCategory
+  if (typeof fd.ayurvedaCategory === 'string' && fd.ayurvedaCategory.trim()) return fd.ayurvedaCategory;
+  return '—';
+}
+
+function getEditPath(r: Application): string {
+  if (r.applicationType === 'NSF')             return `/app/apply/nsf-form?id=${r.id}`;
+  if (r.applicationType === 'CA')              return `/app/apply/ca-form?id=${r.id}`;
+  if (r.applicationType === 'AyurvedaAahara' || r.applicationType === 'AA')
+                                               return `/app/apply/aa-form?id=${r.id}`;
+  if (r.applicationType === 'RPET')            return `/app/apply/rpet-form?id=${r.id}`;
+  return `/app/apply/form?id=${r.id}&type=${r.applicationType}`;
+}
+
 export default function ApplicationDetails() {
   const navigate = useNavigate();
   const [apps, setApps]           = useState<Application[]>([]);
@@ -35,6 +81,7 @@ export default function ApplicationDetails() {
   const [search, setSearch]       = useState('');
   const [filterStatus, setFilterStatus] = useState('All Statuses');
   const [filterType, setFilterType]     = useState('All Types');
+  const [deleting, setDeleting]         = useState<string | null>(null);
 
   useEffect(() => {
     fetchMyApplications()
@@ -55,6 +102,17 @@ export default function ApplicationDetails() {
     if (filterType   !== 'All Types')    list = list.filter((a) => a.applicationType === (STATUS_MAP[filterType] ?? filterType));
     return list;
   }, [apps, search, filterStatus, filterType]);
+
+  async function handleDelete(id: string) {
+    if (!window.confirm('Delete this draft application? This cannot be undone.')) return;
+    setDeleting(id);
+    try {
+      await deleteDraftApplication(id);
+      setApps((prev) => prev.filter((a) => a.id !== id));
+    } finally {
+      setDeleting(null);
+    }
+  }
 
   function fmtDate(iso: string | null) {
     if (!iso) return '—';
@@ -138,14 +196,15 @@ export default function ApplicationDetails() {
                     <td style={S.td}>{i + 1}</td>
                     <td style={S.td}><span style={{ fontWeight: 600 }}>{r.companyName}</span></td>
                     <td style={S.td}><span style={{ color: COLORS.primary, fontWeight: 600 }}>{r.referenceNumber}</span></td>
-                    <td style={S.td}><span style={{ color: COLORS.textMuted, fontSize: 10 }}>{r.address}</span></td>
+                    <td style={S.td}><span style={{ color: COLORS.primary, fontWeight: 600 }}>{getAddress(r)}</span></td>
                     <td style={S.td}>{TYPE_LABELS[r.applicationType] ?? r.applicationType}</td>
-                    <td style={S.td}>{r.foodCategory}</td>
+                    <td style={S.td}>{getFoodCategory(r)}</td>
                     <td style={S.td}>{fmtDate(r.updatedAt)}</td>
                     <td style={S.td}><StatusBadge status={r.stage} /></td>
                     <td style={S.td}>
-                      <ActionBtn label="View" variant="outline" onClick={() => navigate(`/app/applications/${r.id}`)} />
-                      {r.stage === 'Draft'     && <ActionBtn label="Edit"    variant="primary" onClick={() => navigate(`/app/apply/form?id=${r.id}`)} />}
+                      <ActionBtn label="View / Respond" variant="outline" onClick={() => navigate(`/app/applications/${r.id}`)} />
+                      {r.stage === 'Draft'     && <ActionBtn label="Edit"    variant="primary" onClick={() => navigate(getEditPath(r))} />}
+                      {r.stage === 'Draft'     && <ActionBtn label="Delete"  variant="danger"  onClick={() => handleDelete(r.id)} />}
                       {r.stage === 'QuerySent' && <ActionBtn label="Respond" variant="warning" onClick={() => navigate(`/app/applications/${r.id}?tab=2`)} />}
                     </td>
                   </tr>

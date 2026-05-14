@@ -166,7 +166,7 @@ export default function SignUpPage() {
           {step === 1 && (
             <>
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: COLORS.text, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>Full Name</label>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: COLORS.text, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>Applicant Name</label>
                 <input value={form.name} onChange={set('name')} placeholder="Enter your full name" style={fieldStyle} />
               </div>
               <div style={{ marginBottom: 24 }}>
@@ -225,7 +225,7 @@ export default function SignUpPage() {
             <>
               <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '16px 18px', marginBottom: 20 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.primary, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 }}>Registration Summary</div>
-                {([['Full Name', form.name], ['Mobile Number', form.mobile], ['Email ID', form.email], ['Name of Organisation', form.orgName], ['Nature of Business', form.natureOfBusiness]] as [string, string][]).map(([k, v]) => (
+                {([['Applicant Name', form.name], ['Mobile Number', form.mobile], ['Email ID', form.email], ['Name of Organisation', form.orgName], ['Nature of Business', form.natureOfBusiness]] as [string, string][]).map(([k, v]) => (
                   <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: `1px solid ${COLORS.border}`, fontSize: 12 }}>
                     <span style={{ color: COLORS.textMuted, fontWeight: 500 }}>{k}</span>
                     <span style={{ color: COLORS.text, fontWeight: 600 }}>{v || '—'}</span>

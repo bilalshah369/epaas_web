@@ -70,3 +70,18 @@ export async function fetchNodalAReviewsReport(): Promise<Application[]> {
   const { data } = await api.get<{ applications: Application[] }>('/nodal-a/reports/reviews');
   return data.applications;
 }
+
+export async function nodalASendDecision(appId: string): Promise<Application> {
+  const { data } = await api.post<{ application: Application }>(`/nodal-a/applications/${appId}/send-decision`);
+  return data.application;
+}
+
+export async function nodalADispatchAppealDecision(appealId: string): Promise<Application> {
+  const { data } = await api.post<{ application: Application }>(`/nodal-a/appeals/${appealId}/dispatch`);
+  return data.application;
+}
+
+export async function nodalADispatchReviewDecision(reviewId: string): Promise<Application> {
+  const { data } = await api.post<{ application: Application }>(`/nodal-a/reviews/${reviewId}/dispatch`);
+  return data.application;
+}

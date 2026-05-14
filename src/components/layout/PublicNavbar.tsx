@@ -96,7 +96,7 @@ export default function PublicNavbar({ rightLabel, onRightClick }: Props) {
             cursor: 'pointer',
           }}
         >
-          <img src={fssaiLogo} alt="FSSAI" style={{ height: 72, width: 'auto', objectFit: 'contain', display: 'block' }} />
+          <img src={fssaiLogo} alt="FSSAI" style={{ height: 90, width: 'auto', objectFit: 'contain', display: 'block' }} />
         </div>
 
         <div
@@ -121,7 +121,7 @@ export default function PublicNavbar({ rightLabel, onRightClick }: Props) {
             <span
               key={label}
               onClick={() => navigate('/')}
-              style={{ fontSize: 13, color: '#111', cursor: 'pointer', padding: '6px 10px', fontWeight: 400 }}
+              style={{ fontSize: 15, color: '#111', cursor: 'pointer', padding: '6px 10px', fontWeight: 400 }}
             >
               {label}
             </span>
