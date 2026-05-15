@@ -60,7 +60,7 @@ export default function TechReports() {
             ))}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={lStyle}>Category</label>
-              <select style={{ ...iStyle, minWidth: 130, cursor: 'pointer' }}>{['All', 'Dairy & Products', 'Beverages', 'NSF', 'Claim Approval'].map((o) => <option key={o}>{o}</option>)}</select>
+              <select style={{ ...iStyle, minWidth: 130, cursor: 'pointer' }}>{['All', 'NSF', 'Claim Approval', 'Ayurveda Aahara', 'Any Other'].map((o) => <option key={o}>{o}</option>)}</select>
             </div>
             {['From (dd/mm/yyyy)', 'To (dd/mm/yyyy)'].map((l) => (
               <div key={l} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}><label style={lStyle}>{l}</label><input type="date" style={iStyle} /></div>

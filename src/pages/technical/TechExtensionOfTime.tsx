@@ -59,17 +59,19 @@ export default function TechExtensionOfTime() {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
-              <tr>{['App. Ref. No.', 'Company / Org.', 'Product', 'Product Category', 'Application Date', 'Requested Date', 'Status', 'Applicant Remarks', 'Documents', 'History', 'Action'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
+              <tr>{['S. No.', 'App. Ref. No.', 'Name of Company/Org', 'Name of Product', 'Product Category', 'Application Date', 'Requested Date', 'Status', 'Applicant Remarks', 'Supporting Documents', 'View Application History', 'Action'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
             </thead>
             <tbody>
-              {loading && <tr><td colSpan={11} style={{ ...S.td, textAlign: 'center', color: COLORS.textMuted, padding: 32 }}>Loading…</td></tr>}
-              {!loading && visible.length === 0 && <tr><td colSpan={11} style={{ ...S.td, textAlign: 'center', color: COLORS.textMuted, padding: 32 }}>No {statusFilter.toLowerCase()} extension requests.</td></tr>}
+              {loading && <tr><td colSpan={12} style={{ ...S.td, textAlign: 'center', color: COLORS.textMuted, padding: 32 }}>Loading…</td></tr>}
+              {!loading && visible.length === 0 && <tr><td colSpan={12} style={{ ...S.td, textAlign: 'center', color: COLORS.textMuted, padding: 32 }}>No {statusFilter.toLowerCase()} extension requests.</td></tr>}
               {visible.map((r, i) => {
                 const isApproved = r.status === 'Approved';
                 const bg = r.status === 'Pending' ? COLORS.warningLight : isApproved ? COLORS.successLight : COLORS.dangerLight;
                 const fg = r.status === 'Pending' ? COLORS.warning      : isApproved ? COLORS.success      : COLORS.danger;
                 return (
                   <tr key={r.id} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg }}>
+              
+                    <td style={S.td}>{i + 1}</td>
                     <td style={{ ...S.td, color: COLORS.primary, fontWeight: 600 }}>{r.application.referenceNumber}</td>
                     <td style={S.td}>{r.application.companyName}</td>
                     <td style={S.td}>{r.application.productName ?? '—'}</td>

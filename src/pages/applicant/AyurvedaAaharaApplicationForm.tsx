@@ -1175,7 +1175,7 @@ export default function AyurvedaAaharaApplicationForm() {
     }
 
     if (stepIndex === 3) {
-      if (!d.productLabel)                        errs.productLabel                = 'Product label is required';
+      if (cat !== 'B' && !d.productLabel)         errs.productLabel                = 'Product label is required';
       // hasExistingRegistration radio must be answered
       if (!d.hasExistingRegistration)             errs.hasExistingRegistration     = 'Please indicate whether you have an existing registration or license';
       // Part III: if existing registration selected as Yes

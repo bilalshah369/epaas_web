@@ -9,6 +9,8 @@ export interface AppealReviewRecord {
   grounds: string;
   status: string;
   filedAt: string;
+  attachmentUrl?: string | null;
+  authorityDocUrl?: string | null;
 }
 
 export interface ExtensionRecord {
@@ -84,4 +86,12 @@ export async function nodalADispatchAppealDecision(appealId: string): Promise<Ap
 export async function nodalADispatchReviewDecision(reviewId: string): Promise<Application> {
   const { data } = await api.post<{ application: Application }>(`/nodal-a/reviews/${reviewId}/dispatch`);
   return data.application;
+}
+
+export async function uploadAppealAuthorityDoc(appealId: string, authorityDocUrl: string): Promise<void> {
+  await api.patch(`/nodal-a/appeals/${appealId}/upload-authority-doc`, { authorityDocUrl });
+}
+
+export async function uploadReviewAuthorityDoc(reviewId: string, authorityDocUrl: string): Promise<void> {
+  await api.patch(`/nodal-a/reviews/${reviewId}/upload-authority-doc`, { authorityDocUrl });
 }

@@ -9,6 +9,7 @@ const MENU: MenuItem[] = [
       { icon: '✅', label: 'Granted Approval',                path: '/technical/approved'    },
       { icon: '✏️', label: 'App for Editing / Clarification',  path: '/technical/editing'     },
       { icon: '🚫', label: 'Withdrawal of Approval',          path: '/technical/withdrawal'  },
+      { icon: '📤', label: 'Forwarded to EC',                path: '/technical/forwarded-ec' },
     ],
   },
   {

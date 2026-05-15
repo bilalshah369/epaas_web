@@ -5,8 +5,6 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { COLORS } from '@/utils/colors';
-import PalettePicker from '@/components/ui/PalettePicker';
-
 export interface MenuItem {
   icon:     string;
   label:    string;
@@ -16,11 +14,6 @@ export interface MenuItem {
 
 interface Props {
   menu: MenuItem[];
-}
-
-function adjustFontSize(delta: number) {
-  const cur = parseFloat(getComputedStyle(document.documentElement).fontSize);
-  document.documentElement.style.fontSize = `${Math.min(20, Math.max(12, cur + delta))}px`;
 }
 
 export default function AppShell({ menu }: Props) {
@@ -68,31 +61,6 @@ export default function AppShell({ menu }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', fontFamily: "'Noto Sans','Segoe UI',sans-serif", background: COLORS.bg, overflow: 'hidden' }}>
-
-      {/* ── Utility bar ──────────────────────────────────────────────────── */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #e0e0e0', padding: '4px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <img src="https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg" alt="India Flag" style={{ height: 14, width: 22, objectFit: 'cover', borderRadius: 1, flexShrink: 0 }} />
-          <span style={{ fontSize: 10, fontWeight: 600, color: '#444' }}>Ministry of Health &amp; Family Welfare, Government of India</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <span style={{ fontSize: 10, color: '#666' }}>Font:</span>
-          {([['A−', -1], ['A', 0], ['A+', 1]] as [string, number][]).map(([t, d], i) => (
-            <button key={i} onClick={() => d !== 0 && adjustFontSize(d)}
-              style={{ background: '#f4f4f4', border: '1px solid #ddd', borderRadius: 3, cursor: 'pointer', fontSize: [10, 12, 14][i], fontWeight: 600, color: '#1A3D2B', width: 22, height: 22, padding: 0, lineHeight: 1 }}>
-              {t}
-            </button>
-          ))}
-          <div style={{ width: 1, height: 16, background: '#ddd', margin: '0 3px' }} />
-          <span style={{ fontSize: 10, color: '#888' }}>Last Updated: Apr 2026</span>
-          <div style={{ width: 1, height: 16, background: '#ddd', margin: '0 3px' }} />
-          <PalettePicker />
-          <div style={{ width: 1, height: 16, background: '#ddd', margin: '0 3px' }} />
-          <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#1A3D2B', fontWeight: 500, padding: '2px 6px', display: 'flex', alignItems: 'center', gap: 3 }}>
-            <span>🗺️</span><span>Sitemap</span>
-          </button>
-        </div>
-      </div>
 
       {/* ── App shell ────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>

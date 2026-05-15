@@ -1,10 +1,15 @@
 // Mirrors AppealReviewScreen from mock (App.jsx L15660).
 // Wired to real API: fetchNodalAAppealReview() → combined appeal + review records.
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { COLORS, S } from '@/utils/colors';
-import { fetchNodalAAppealReview, nodalADispatchAppealDecision, nodalADispatchReviewDecision } from '@/services/officer.service';
+import {
+  fetchNodalAAppealReview, nodalADispatchAppealDecision, nodalADispatchReviewDecision,
+  uploadAppealAuthorityDoc, uploadReviewAuthorityDoc,
+} from '@/services/officer.service';
+import { uploadFile } from '@/services/application.service';
+import { API_BASE } from '@/services/api';
 import type { AppealReviewRecord } from '@/services/officer.service';
 
 type TypeFilter = 'All' | 'Appeal' | 'Review';
@@ -33,6 +38,11 @@ export default function AppealReview() {
   const [records,     setRecords]     = useState<AppealReviewRecord[]>([]);
   const [loading,     setLoading]     = useState(true);
   const [dispatching, setDispatching] = useState<string | null>(null);
+  const [viewRecord,  setViewRecord]  = useState<AppealReviewRecord | null>(null);
+  const [uploading,   setUploading]   = useState(false);
+  const [authorityFile, setAuthorityFile] = useState<string | null>(null);
+  const [authorityFileName, setAuthorityFileName] = useState<string>('');
+  const authorityFileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -58,10 +68,172 @@ export default function AppealReview() {
     } finally { setDispatching(null); }
   }
 
+  async function handleAuthorityFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !viewRecord) return;
+    setUploading(true);
+    try {
+      const url = await uploadFile(file);
+      setAuthorityFile(url);
+      setAuthorityFileName(file.name);
+    } catch {
+      toast.error('Upload failed');
+    } finally { setUploading(false); }
+  }
+
+  async function handleSaveAuthorityDoc() {
+    if (!viewRecord || !authorityFile) return;
+    setUploading(true);
+    try {
+      if (viewRecord.type === 'Appeal') {
+        await uploadAppealAuthorityDoc(viewRecord.id, authorityFile);
+      } else {
+        await uploadReviewAuthorityDoc(viewRecord.id, authorityFile);
+      }
+      toast.success('Authority document saved');
+      await load();
+      setViewRecord((prev) => prev ? { ...prev, authorityDocUrl: authorityFile } : null);
+    } catch {
+      toast.error('Failed to save document');
+    } finally { setUploading(false); }
+  }
+
+  function openView(r: AppealReviewRecord) {
+    setViewRecord(r);
+    setAuthorityFile(r.authorityDocUrl ?? null);
+    setAuthorityFileName('');
+  }
+
+  function closeView() {
+    setViewRecord(null);
+    setAuthorityFile(null);
+    setAuthorityFileName('');
+    if (authorityFileRef.current) authorityFileRef.current.value = '';
+  }
+
   const visible = typeFilter === 'All' ? records : records.filter((r) => r.type === typeFilter);
 
   return (
     <div>
+      {/* View Purpose Modal */}
+      {viewRecord && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#fff', borderRadius: 12, width: 620, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.22)' }}>
+            {/* Header */}
+            <div style={{ background: viewRecord.type === 'Appeal' ? COLORS.primary : '#6A0572', borderRadius: '12px 12px 0 0', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>
+                {viewRecord.type === 'Appeal' ? '⚖️ Purpose of Appeal' : '📋 Purpose of Review'}
+              </div>
+              <button onClick={closeView} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.7)', fontSize: 20, padding: 0 }}>✕</button>
+            </div>
+
+            <div style={{ padding: 20 }}>
+              {/* Application info */}
+              <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '10px 14px', marginBottom: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
+                {([
+                  ['Application No.', viewRecord.application.referenceNumber],
+                  ['Company / Org.',   viewRecord.application.companyName],
+                  ['Product',          viewRecord.application.productName ?? '—'],
+                  ['Filed On',         fmtDate(viewRecord.filedAt)],
+                  ['Status',           viewRecord.status],
+                  ['Days Remaining',   `${daysLeft(viewRecord.filedAt)} days`],
+                ] as [string, string][]).map(([k, v]) => (
+                  <div key={k}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>{k}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.text, marginTop: 2 }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Grounds */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
+                  Grounds for {viewRecord.type}
+                </div>
+                <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '12px 14px', fontSize: 12, color: COLORS.text, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+                  {viewRecord.grounds}
+                </div>
+              </div>
+
+              {/* Applicant document */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
+                  Applicant Supporting Document
+                </div>
+                {viewRecord.attachmentUrl ? (
+                  <a
+                    href={`${API_BASE}/uploads/${viewRecord.attachmentUrl}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: COLORS.primaryLight, color: COLORS.primary, border: `1px solid ${COLORS.primary}`, borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none', cursor: 'pointer' }}
+                  >
+                    ⬇ Download Document
+                  </a>
+                ) : (
+                  <div style={{ fontSize: 12, color: COLORS.textMuted, fontStyle: 'italic' }}>No document attached by applicant.</div>
+                )}
+              </div>
+
+              {/* Authority document upload */}
+              <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 16 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
+                  Authority Response Document
+                </div>
+
+                {/* Existing authority doc */}
+                {(viewRecord.authorityDocUrl || authorityFile) && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    <a
+                      href={`${API_BASE}/uploads/${authorityFile ?? viewRecord.authorityDocUrl ?? ''}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: '#F0FDF4', color: '#166534', border: '1px solid #BBF7D0', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}
+                    >
+                      ⬇ {authorityFileName || 'Download Authority Document'}
+                    </a>
+                    <span style={{ fontSize: 10, color: COLORS.success, fontWeight: 600 }}>✓ Uploaded</span>
+                  </div>
+                )}
+
+                {/* Upload new */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    ref={authorityFileRef}
+                    type="file"
+                    accept=".pdf,.docx,.doc,.png,.jpg,.jpeg"
+                    style={{ display: 'none' }}
+                    onChange={handleAuthorityFileSelect}
+                  />
+                  <button
+                    onClick={() => authorityFileRef.current?.click()}
+                    disabled={uploading}
+                    style={{ padding: '7px 14px', background: 'none', border: `1.5px dashed ${COLORS.border}`, borderRadius: 6, fontSize: 12, cursor: uploading ? 'not-allowed' : 'pointer', color: COLORS.text }}
+                  >
+                    {uploading ? '⏳ Uploading…' : '📎 Attach Document (PDF / DOCX / Image)'}
+                  </button>
+                  {authorityFile && authorityFileName && (
+                    <button
+                      onClick={handleSaveAuthorityDoc}
+                      disabled={uploading}
+                      style={{ padding: '7px 14px', background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: uploading ? 'not-allowed' : 'pointer' }}
+                    >
+                      {uploading ? '…' : '💾 Save Document'}
+                    </button>
+                  )}
+                </div>
+                <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 4 }}>
+                  Upload the authority's response / decision document for this {viewRecord.type.toLowerCase()}.
+                </div>
+              </div>
+            </div>
+
+            <div style={{ padding: '12px 20px', borderTop: `1px solid ${COLORS.border}`, display: 'flex', justifyContent: 'flex-end' }}>
+              <button onClick={closeView} style={{ padding: '7px 20px', background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Page header */}
       <div style={{ marginBottom: 16 }}>
         <div style={S.roleLabel}>NODAL OFFICER A</div>
@@ -135,9 +307,13 @@ export default function AppealReview() {
                     </td>
                     <td style={{ ...S.td, whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                        <button onClick={() => navigate(`/nodal/scrutiny/${r.application.id}`)}
+                        <button onClick={() => openView(r)}
                           style={{ padding: '4px 12px', background: 'transparent', color: COLORS.primary, border: `1px solid ${COLORS.primary}`, borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                          View
+                          View Purpose
+                        </button>
+                        <button onClick={() => navigate(`/nodal/scrutiny/${r.application.id}`)}
+                          style={{ padding: '4px 12px', background: 'transparent', color: COLORS.textMuted, border: `1px solid ${COLORS.border}`, borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                          Application
                         </button>
                         {((r.type === 'Appeal' && (r.status === 'AppealApproved' || r.status === 'AppealRejected')) ||
                           (r.type === 'Review' && r.status === 'ReviewDisposed')) &&

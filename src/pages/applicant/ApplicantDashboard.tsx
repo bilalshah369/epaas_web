@@ -215,7 +215,8 @@ export default function ApplicantDashboard() {
   }
 
   const activeBinDef  = BINS.find((b) => b.key === activeBin)!;
-  const revertedCount = binned.reverted.length;
+  const revertedCount  = binned.reverted.length;
+  const approvedCount  = binned.approved.length;
   const foodCats      = [...new Set(apps.map(getFoodCategory).filter((c) => c !== '—'))];
   const hasFilters    = Object.values(f).some(Boolean);
 
@@ -317,8 +318,27 @@ export default function ApplicantDashboard() {
       </div>
 
       {/* ── Alert Banner ─────────────────────────────────────────────── */}
+      {approvedCount > 0 && (
+        <div style={{ background: '#F0FDF4', borderTop: '1px solid #BBF7D0', borderRight: '1px solid #BBF7D0', borderBottom: '1px solid #BBF7D0', borderLeft: '4px solid #16A34A', borderRadius: 8, padding: '12px 18px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 14 }}>
+          <span style={{ fontSize: 20 }}>🎉</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#14532D' }}>
+              {approvedCount} Application{approvedCount > 1 ? 's' : ''} Approved!
+            </div>
+            <div style={{ fontSize: 11, color: '#166534', marginTop: 2 }}>
+              FSSAI has issued an approval decision. You can view the approval letter and download your tax invoice.
+            </div>
+          </div>
+          <button
+            onClick={() => setActiveBin('approved')}
+            style={{ background: '#16A34A', color: '#fff', border: 'none', borderRadius: 6, padding: '7px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            View Approval →
+          </button>
+        </div>
+      )}
       {revertedCount > 0 && (
-        <div style={{ background: COLORS.warningLight, border: '1px solid rgba(246,173,85,0.44)', borderLeft: `4px solid ${COLORS.accent}`, borderRadius: 8, padding: '12px 18px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ background: COLORS.warningLight, borderTop: '1px solid rgba(246,173,85,0.44)', borderRight: '1px solid rgba(246,173,85,0.44)', borderBottom: '1px solid rgba(246,173,85,0.44)', borderLeft: `4px solid ${COLORS.accent}`, borderRadius: 8, padding: '12px 18px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 14 }}>
           <span style={{ fontSize: 20 }}>⚠️</span>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#7C2D12' }}>

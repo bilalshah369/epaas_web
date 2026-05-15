@@ -133,12 +133,20 @@ const NOTIFICATIONS = [
 
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function TechDashboard() {
-  const navigate  = useNavigate();
-  const [activeBin, setActiveBin]           = useState('dashboard');
-  const [pendingSection, setPendingSection] = useState('docscrutiny');
-  const [apps, setApps]                     = useState<Application[]>([]);
-  const [allApps, setAllApps]               = useState<Application[]>([]);
-  const [loading, setLoading]               = useState(true);
+  const navigate = useNavigate();
+  const [activeBin, setActiveBin] = useState('dashboard');
+const [pendingSection, setPendingSection] = useState('docscrutiny');
+
+const [apps, setApps] = useState<Application[]>([]);
+const [allApps, setAllApps] = useState<Application[]>([]);
+
+const [loading, setLoading] = useState(true);
+
+/* ADD THESE */
+const [dashboardSection, setDashboardSection] = useState<string | null>(null);
+const [dashSubTab, setDashSubTab] = useState<'category' | 'yearwise'>('category');
+const [statusSheet, setStatusSheet] = useState<1 | 2>(1);
+const [appealType, setAppealType] = useState('Appeal');
 
   useEffect(() => {
     fetchTechnicalPending().then(setApps).finally(() => setLoading(false));
@@ -168,12 +176,246 @@ export default function TechDashboard() {
   ];
 
   // ── Dashboard ──────────────────────────────────────────────────────────────
-  const renderDashboard = () => (
+  const renderDashboard = () => {
+    const approvedApps  = allApps.filter((a) => ['Approved', 'Closed'].includes(a.stage));
+    const rejectedApps  = allApps.filter((a) => a.stage === 'Rejected');
+    const closedApps    = allApps.filter((a) => a.stage === 'Withdrawn');
+    const pendingApps   = allApps.filter((a) => !['Approved', 'Closed', 'Rejected', 'Withdrawn', 'Draft'].includes(a.stage));
+
+    const REPORT_COLS = ['Sr. No.', 'Application No.', 'Name & Address of Applicant', 'Name of Product', 'Date of Receipt', 'Date of Receipt of Appeal', 'Date of Appellate Order', 'Date of Receipt of Review', 'Date of Review Order', 'EC Number', 'EC Status', 'Date of Issue of Form 2', 'Final Status'];
+
+    const YEAR_WISE_FILTERS: FilterField[] = [
+      { label: 'Category',            type: 'select', options: ['All', 'NSF', 'Claim Approval', 'Ayurveda Aahara', 'rPET', 'Any Other'] },
+      { label: 'Quarter / Month',     type: 'select', options: ['All', 'Q1', 'Q2', 'Q3', 'Q4', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] },
+      { label: 'Year',                type: 'select', options: ['All', '2025', '2024', '2023', '2022'] },
+      { label: 'Date From',           type: 'date' },
+      { label: 'Date To',             type: 'date' },
+      { label: 'Type of Application', type: 'select', options: ['All', 'New', 'Appeal', 'Review'] },
+    ];
+
+    const finalBadge = (stage: string) => {
+      const isApproved = ['Approved', 'Closed'].includes(stage);
+      const isRejected = stage === 'Rejected';
+      const bg = isApproved ? COLORS.successLight : isRejected ? COLORS.dangerLight : COLORS.warningLight;
+      const fg = isApproved ? COLORS.success      : isRejected ? COLORS.danger      : COLORS.warning;
+      return <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: bg, color: fg }}>{stage}</span>;
+    };
+
+    const reportTable = (rows: Application[]) => (
+      <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 8, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px', borderBottom: `1px solid ${COLORS.border}`, background: COLORS.bg }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: COLORS.primary, textTransform: 'uppercase', letterSpacing: 0.6 }}>{rows.length} Records</span>
+          <button style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '4px 12px', fontSize: 11, cursor: 'pointer' }}>⬇ Export CSV</button>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead><tr>{REPORT_COLS.map((h) => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
+            <tbody>
+              {rows.length === 0 && <tr><td colSpan={13} style={{ ...S.td, textAlign: 'center', padding: 32, color: COLORS.textMuted }}>No records found.</td></tr>}
+              {rows.map((a, i) => (
+                <tr key={a.id} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg }}>
+                  <td style={S.td}>{i + 1}</td>
+                  <td style={{ ...S.td, color: COLORS.primary, fontWeight: 600 }}>{a.referenceNumber}</td>
+                  <td style={S.td}>{a.companyName}{a.address ? `, ${a.address}` : ''}</td>
+                  <td style={S.td}>{a.productName ?? '—'}</td>
+                  <td style={S.td}>{fmtDate(a.submittedAt)}</td>
+                  <td style={S.td}>—</td>
+                  <td style={S.td}>—</td>
+                  <td style={S.td}>—</td>
+                  <td style={S.td}>—</td>
+                  <td style={S.td}>—</td>
+                  <td style={S.td}>—</td>
+                  <td style={S.td}>—</td>
+                  <td style={S.td}>{finalBadge(a.stage)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+
+    const subPageLayout = (title: string, rows: Application[], statCards: { label: string; value: number; color: string }[]) => (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+          <button onClick={() => setDashboardSection(null)} style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '5px 12px', fontSize: 11, cursor: 'pointer', color: COLORS.textMuted }}>← Back</button>
+          <span style={{ fontSize: 14, fontWeight: 700, color: COLORS.text }}>{title}</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${statCards.length},1fr)`, gap: 10 }}>
+          {statCards.map((sc) => (
+            <div key={sc.label} style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderTop: `3px solid ${sc.color}`, borderRadius: 8, padding: '14px 16px', textAlign: 'center' }}>
+              <div style={{ fontSize: 26, fontWeight: 700, color: sc.color, fontFamily: "'Libre Baskerville',Georgia,serif" }}>{sc.value}</div>
+              <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 4, lineHeight: 1.4 }}>{sc.label}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 2 }}>
+          {(['category', 'yearwise'] as const).map((t) => (
+            <button key={t} onClick={() => setDashSubTab(t)}
+              style={{ padding: '5px 16px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: `1px solid ${dashSubTab === t ? COLORS.primary : COLORS.border}`, background: dashSubTab === t ? COLORS.primary : 'transparent', color: dashSubTab === t ? '#fff' : COLORS.textMuted }}>
+              {t === 'category' ? 'Category-wise' : 'Year-wise'}
+            </button>
+          ))}
+        </div>
+        <OfficerFilterBar fields={YEAR_WISE_FILTERS} />
+        {reportTable(rows)}
+      </div>
+    );
+
+    // ── Sub-page routing ──────────────────────────────────────────────────────
+    if (dashboardSection === 'approved') {
+      return subPageLayout('Applications Approved', approvedApps, [
+        { label: 'Total Received',   value: allApps.length,      color: COLORS.primary },
+        { label: 'Approved',         value: approvedApps.length, color: COLORS.success },
+        { label: 'Rejected',         value: rejectedApps.length, color: COLORS.danger  },
+        { label: 'Withdrawn/Closed', value: closedApps.length,   color: COLORS.warning },
+      ]);
+    }
+    if (dashboardSection === 'rejected') {
+      return subPageLayout('Application Rejected', rejectedApps, [
+        { label: 'Total Received',   value: allApps.length,      color: COLORS.primary },
+        { label: 'Approved',         value: approvedApps.length, color: COLORS.success },
+        { label: 'Rejected',         value: rejectedApps.length, color: COLORS.danger  },
+        { label: 'Withdrawn/Closed', value: closedApps.length,   color: COLORS.warning },
+      ]);
+    }
+    if (dashboardSection === 'withdrawn') {
+      return subPageLayout('Application Withdrawn / Closed', closedApps, [
+        { label: 'Total Received',   value: allApps.length,      color: COLORS.primary },
+        { label: 'Approved',         value: approvedApps.length, color: COLORS.success },
+        { label: 'Rejected',         value: rejectedApps.length, color: COLORS.danger  },
+        { label: 'Withdrawn/Closed', value: closedApps.length,   color: COLORS.warning },
+      ]);
+    }
+    if (dashboardSection === 'pms') {
+      return subPageLayout('Application Approved with PMS', approvedApps, [
+        { label: 'Total Received',   value: allApps.length,      color: COLORS.primary },
+        { label: 'Approved',         value: approvedApps.length, color: COLORS.success },
+        { label: 'Rejected',         value: rejectedApps.length, color: COLORS.danger  },
+        { label: 'Withdrawn/Closed', value: closedApps.length,   color: COLORS.warning },
+      ]);
+    }
+    if (dashboardSection === 'status') {
+      const buckets = [
+        { label: 'Authority Pending ≤ 45 Days',   filter: (a: Application) => (daysSince(a.submittedAt) ?? 0) <= 45  },
+        { label: 'Authority Pending 46–75 Days',  filter: (a: Application) => { const d = daysSince(a.submittedAt) ?? 0; return d >= 46 && d <= 75; } },
+        { label: 'Authority Pending > 75 Days',   filter: (a: Application) => (daysSince(a.submittedAt) ?? 0) > 75   },
+      ];
+      const sheet2Cols = ['Total Pending', 'Pending with IO', 'Pending with Nodal', 'Pending with EC', 'Ready for EC', 'Applicant ≤ 30d', 'Applicant 31–45d', 'Applicant > 45d', 'Long Outstanding (>75d)'];
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+            <button onClick={() => setDashboardSection(null)} style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '5px 12px', fontSize: 11, cursor: 'pointer', color: COLORS.textMuted }}>← Back</button>
+            <span style={{ fontSize: 14, fontWeight: 700, color: COLORS.text }}>Application Status</span>
+          </div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <select style={{ border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '5px 10px', fontSize: 11 }}>
+              <option>Year-wise</option><option>Category-wise</option>
+            </select>
+            <select style={{ border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '5px 10px', fontSize: 11 }}>
+              <option>New</option><option>Appeal</option><option>Review</option>
+            </select>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {([1, 2] as const).map((n) => (
+              <button key={n} onClick={() => setStatusSheet(n)}
+                style={{ padding: '5px 16px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: `1px solid ${statusSheet === n ? COLORS.primary : COLORS.border}`, background: statusSheet === n ? COLORS.primary : 'transparent', color: statusSheet === n ? '#fff' : COLORS.textMuted }}>
+                Sheet {n}
+              </button>
+            ))}
+          </div>
+          {statusSheet === 1 && (
+            <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 8, overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead><tr>{['Summary', 'IO', 'Nodal', 'EC', 'Applicant Authority'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {buckets.map((b, i) => {
+                    const rows = pendingApps.filter(b.filter);
+                    return (
+                      <tr key={b.label} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg }}>
+                        <td style={{ ...S.td, fontWeight: 600 }}>{b.label}</td>
+                        <td style={S.td}>{rows.filter((a) => a.stage === 'WithTechnicalOfficer').length}</td>
+                        <td style={S.td}>{rows.filter((a) => a.stage === 'WithNodalOfficerA').length}</td>
+                        <td style={S.td}>{rows.filter((a) => a.stage === 'WithEC').length}</td>
+                        <td style={S.td}>{rows.filter((a) => a.stage === 'QuerySent').length}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {statusSheet === 2 && (
+            <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 8, overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead><tr>{sheet2Cols.map((h) => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                <tbody>
+                  <tr>
+                    <td style={S.td}>{pendingApps.length}</td>
+                    <td style={S.td}>{pendingApps.filter((a) => a.stage === 'WithTechnicalOfficer').length}</td>
+                    <td style={S.td}>{pendingApps.filter((a) => a.stage === 'WithNodalOfficerA').length}</td>
+                    <td style={S.td}>{pendingApps.filter((a) => a.stage === 'WithEC').length}</td>
+                    <td style={S.td}>{pendingApps.filter((a) => a.stage === 'WithNodalOfficerA').length}</td>
+                    <td style={S.td}>{pendingApps.filter((a) => a.stage === 'QuerySent' && (daysSince(a.submittedAt) ?? 0) <= 30).length}</td>
+                    <td style={S.td}>{pendingApps.filter((a) => { const d = daysSince(a.submittedAt) ?? 0; return a.stage === 'QuerySent' && d >= 31 && d <= 45; }).length}</td>
+                    <td style={S.td}>{pendingApps.filter((a) => a.stage === 'QuerySent' && (daysSince(a.submittedAt) ?? 0) > 45).length}</td>
+                    <td style={S.td}>{pendingApps.filter((a) => (daysSince(a.submittedAt) ?? 0) > 75).length}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      );
+    }
+    if (dashboardSection === 'appealreview') {
+      const filteredApps = allApps;
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+            <button onClick={() => setDashboardSection(null)} style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '5px 12px', fontSize: 11, cursor: 'pointer', color: COLORS.textMuted }}>← Back</button>
+            <span style={{ fontSize: 14, fontWeight: 700, color: COLORS.text }}>Application for Appeal / Review</span>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {['Appeal', 'Review'].map((t) => (
+              <button key={t} onClick={() => setAppealType(t)}
+                style={{ padding: '5px 16px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: `1px solid ${appealType === t ? COLORS.primary : COLORS.border}`, background: appealType === t ? COLORS.primary : 'transparent', color: appealType === t ? '#fff' : COLORS.textMuted }}>
+                {t}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 2 }}>
+            {(['category', 'yearwise'] as const).map((t) => (
+              <button key={t} onClick={() => setDashSubTab(t)}
+                style={{ padding: '5px 16px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: `1px solid ${dashSubTab === t ? COLORS.primary : COLORS.border}`, background: dashSubTab === t ? COLORS.primary : 'transparent', color: dashSubTab === t ? '#fff' : COLORS.textMuted }}>
+                {t === 'category' ? 'Category-wise' : 'Year-wise'}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
+            {[
+              { label: 'Total Received',   value: allApps.length,      color: COLORS.primary },
+              { label: 'Approved',         value: approvedApps.length, color: COLORS.success },
+              { label: 'Rejected',         value: rejectedApps.length, color: COLORS.danger  },
+              { label: 'Withdrawn/Closed', value: closedApps.length,   color: COLORS.warning },
+            ].map((sc) => (
+              <div key={sc.label} style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderTop: `3px solid ${sc.color}`, borderRadius: 8, padding: '14px 16px', textAlign: 'center' }}>
+                <div style={{ fontSize: 26, fontWeight: 700, color: sc.color, fontFamily: "'Libre Baskerville',Georgia,serif" }}>{sc.value}</div>
+                <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 4, lineHeight: 1.4 }}>{sc.label}</div>
+              </div>
+            ))}
+          </div>
+          {reportTable(filteredApps)}
+        </div>
+      );
+    }
+
+    return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* 2×3 stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
         {DASH_CARDS.map((c) => (
-          <div key={c.key} onClick={() => setActiveBin('pending')}
+          <div key={c.key} onClick={() => setDashboardSection(c.key)}
             style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderTop: `3px solid ${c.color}`, borderRadius: 8, padding: '12px 16px', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', transition: 'box-shadow 0.15s' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
               <span style={{ fontSize: 11, fontWeight: 500, color: COLORS.textMuted, lineHeight: 1.35, maxWidth: '75%' }}>{c.label}</span>
@@ -210,7 +452,7 @@ export default function TechDashboard() {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
-                <tr>{['App. No.', 'Company', 'Product', 'App. Type', 'Food Category', 'State', 'Pending With', 'Received', 'Days Left', 'Status', 'Action'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
+                <tr>{['App. No.', 'Company', 'Product', 'App. Type',  'State', 'Received', 'Days Left', 'Status', 'Action'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
               </thead>
               <tbody>
                 {apps.map((a, i) => {
@@ -221,9 +463,7 @@ export default function TechDashboard() {
                       <td style={S.td}>{a.companyName}</td>
                       <td style={{ ...S.td, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(a.formData as Record<string, unknown> | null) ? String((a.formData as Record<string, Record<string, unknown>> | null)?.step2?.productName ?? '—') : '—'}</td>
                       <td style={S.td}><span style={{ background: COLORS.primaryLight, color: COLORS.primary, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4 }}>New</span></td>
-                      <td style={{ ...S.td, fontSize: 11 }}>{resolveFoodCategory(a)}</td>
                       <td style={S.td}>—</td>
-                      <td style={{ ...S.td, fontSize: 11, color: COLORS.primary, fontWeight: 600 }}>Technical Officer</td>
                       <td style={S.td}>{fmtDate(a.submittedAt)}</td>
                       <td style={{ ...S.td, color: (days ?? 0) > 14 ? COLORS.danger : COLORS.text, fontWeight: (days ?? 0) > 14 ? 700 : 400 }}>{days !== null ? `${days}d` : '—'}</td>
                       <td style={S.td}><StatusBadge status={a.stage} /></td>
@@ -272,7 +512,8 @@ export default function TechDashboard() {
         </div>
       </div>
     </div>
-  );
+    );
+  };
 
   // ── Pending Actions ────────────────────────────────────────────────────────
   const renderPendingActions = () => (

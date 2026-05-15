@@ -140,12 +140,11 @@ export default function ApplicationScrutiny() {
   const fd      = app.formData as AppFormData | null;
   const display = getProfileDisplay(app);
   const docRows = getDocRows(app);
-  console.log('========== DOCROWS DEBUG ==========');
-console.log('Application:', app);
-console.log('Application Type:', app?.applicationType);
-console.log('FormData:', app?.formData);
-console.log('Resolved docRows:', docRows);
-console.log('===================================');
+  const toDecision = app.toDecision as Record<string, unknown> | null;
+  const fromEC     = !!toDecision?.fromEC;
+  const ecDecision = toDecision?.ecDecision as string | undefined;
+  const form2      = toDecision?.form2Data as Record<string, unknown> | undefined;
+  const f2Decision = toDecision?.decision as string | undefined;
 
   return (
     <div>
@@ -337,14 +336,6 @@ console.log('===================================');
                 <thead><tr>{['Document', 'Action'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
                 <tbody>
                   {docRows.map((d, i) => {
-  console.log('========== DOCUMENT DEBUG ==========');
-  console.log('Full row:', d);
-  console.log('Label:', d?.label);
-  console.log('Value:', d?.val);
-  console.log('Generated URL:', `${API_BASE}/uploads/${d?.val}`);
-  console.log('Application Type:', app?.applicationType);
-  console.log('====================================');
-
   return (
     <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg }}>
       <td style={S.td}>{d.label}</td>
@@ -376,117 +367,128 @@ console.log('===================================');
 
         {/* ── Right: Checklist + Decision ────────────────────────── */}
         <div>
-          {/* Scrutiny Checklist */}
-          <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 16, marginBottom: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.primary, borderBottom: `2px solid ${COLORS.primaryLight}`, paddingBottom: 6, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              Scrutiny Checklist
-            </div>
-            <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 10 }}>
-              {checkedCount}/{CHECKLIST.length} items verified
-            </div>
-            {/* Progress bar */}
-            <div style={{ height: 4, background: COLORS.border, borderRadius: 2, marginBottom: 14 }}>
-              <div style={{ height: '100%', borderRadius: 2, background: COLORS.primary, width: `${(checkedCount / CHECKLIST.length) * 100}%`, transition: 'width 0.3s' }} />
-            </div>
+          {fromEC ? (
+            /* ── Post-EC mode: show Form 2 summary + dispatch only ── */
+            <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.primary, borderBottom: `2px solid ${COLORS.primaryLight}`, paddingBottom: 6, marginBottom: 14, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                Form II — Decision Summary
+              </div>
 
-            {CHECKLIST.map((item, i) => (
-              <label key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 10, cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={checked[i]}
-                  onChange={(e) => setChecked((prev) => prev.map((v, j) => j === i ? e.target.checked : v))}
-                  style={{ marginTop: 2, accentColor: COLORS.primary, width: 14, height: 14, flexShrink: 0 }}
-                />
-                <span style={{ fontSize: 11, color: COLORS.text, lineHeight: 1.5 }}>{item}</span>
-              </label>
-            ))}
-          </div>
-
-          {/* Decision */}
-          <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.primary, borderBottom: `2px solid ${COLORS.primaryLight}`, paddingBottom: 6, marginBottom: 14, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              Scrutiny Decision
-            </div>
-
-            {/* Forward */}
-            <button
-              onClick={() => setDecision('forward')}
-              style={{
-                width: '100%', padding: '10px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', marginBottom: 8,
-                background: decision === 'forward' ? COLORS.primary : COLORS.primaryLight,
-                color:      decision === 'forward' ? '#fff' : COLORS.primary,
-                border:     `2px solid ${COLORS.primary}`,
-              }}
-            >
-              ✅ Forward to Technical Officer
-            </button>
-
-            {/* Return */}
-            <button
-              onClick={() => setDecision('return')}
-              style={{
-                width: '100%', padding: '10px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', marginBottom: 8,
-                background: decision === 'return' ? COLORS.accent : '#FFF7ED',
-                color:      decision === 'return' ? '#fff' : COLORS.accent,
-                border:     `2px solid ${COLORS.accent}`,
-              }}
-            >
-              ↩ Return with Deficiency Notice
-            </button>
-
-            {/* Post-EC: Send Decision */}
-            <button
-              onClick={() => setDecision('send-decision')}
-              style={{
-                width: '100%', padding: '10px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', marginBottom: 12,
-                background: decision === 'send-decision' ? COLORS.success : COLORS.successLight,
-                color:      decision === 'send-decision' ? '#fff' : COLORS.success,
-                border:     `2px solid ${COLORS.success}`,
-              }}
-            >
-              📨 Send Decision to Applicant (Post-EC)
-            </button>
-
-            {/* Query textarea (return mode) */}
-            {decision === 'return' && (
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: COLORS.text }}>Deficiency / Query Details *</div>
-                  <div style={{ fontSize: 10, color: queryText.trim().length < 10 ? COLORS.danger : COLORS.textMuted }}>
-                    {queryText.trim().length} / min 10 chars
-                  </div>
+              {/* EC Recommendation */}
+              <div style={{ background: ecDecision === 'RecommendRejection' ? '#FFF1F2' : '#F0FDF4', border: `1px solid ${ecDecision === 'RecommendRejection' ? '#FECDD3' : '#BBF7D0'}`, borderRadius: 8, padding: '10px 14px', marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: ecDecision === 'RecommendRejection' ? '#9F1239' : '#166534', marginBottom: 2 }}>
+                  EC Recommendation: {ecDecision === 'RecommendRejection' ? 'Recommend Rejection' : 'Recommend Approval'}
                 </div>
-                <textarea
-                  value={queryText}
-                  onChange={(e) => setQueryText(e.target.value)}
-                  placeholder="Describe the deficiency or information required from the applicant…"
-                  rows={5}
-                  style={{ width: '100%', border: `1.5px solid ${queryText.trim().length > 0 && queryText.trim().length < 10 ? COLORS.danger : COLORS.accent}`, borderRadius: 6, padding: '8px 10px', fontSize: 11, resize: 'vertical', outline: 'none', boxSizing: 'border-box', fontFamily: "'Noto Sans','Segoe UI',sans-serif" }}
-                />
               </div>
-            )}
 
-            {/* Submit button */}
-            {decision && (
+              {/* TO Final Decision */}
+              <div style={{ background: f2Decision === 'Rejected' ? '#FFF1F2' : '#F0FDF4', border: `1px solid ${f2Decision === 'Rejected' ? '#FECDD3' : '#BBF7D0'}`, borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
+                <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 2 }}>Technical Officer Final Decision</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: f2Decision === 'Rejected' ? '#9F1239' : '#166534' }}>
+                  {f2Decision === 'Rejected' ? '✗ Rejected' : '✓ Approved'}
+                </div>
+                {form2 && (
+                  <div style={{ marginTop: 8, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6 }}>
+                    {form2['productName'] && <div><strong>Product:</strong> {String(form2['productName'])}</div>}
+                    {form2['orgName']     && <div><strong>Organisation:</strong> {String(form2['orgName'])}</div>}
+                  </div>
+                )}
+              </div>
+
               <button
-                onClick={decision === 'forward' ? handleForward : decision === 'return' ? handleReturn : handleSendDecision}
+                onClick={handleSendDecision}
                 disabled={submitting}
-                style={{
-                  width: '100%', padding: '11px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', border: 'none',
-                  background: decision === 'forward' ? COLORS.primary : decision === 'send-decision' ? COLORS.success : COLORS.accent,
-                  color: '#fff', opacity: submitting ? 0.7 : 1,
-                }}
+                style={{ width: '100%', padding: '12px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', border: 'none', background: COLORS.success, color: '#fff', opacity: submitting ? 0.7 : 1 }}
               >
-                {submitting ? 'Processing…' : decision === 'forward' ? 'Confirm Forward →' : decision === 'send-decision' ? 'Confirm — Approve & Dispatch →' : 'Confirm Return →'}
+                {submitting ? 'Processing…' : '📨 Confirm — Dispatch Decision to Applicant →'}
               </button>
-            )}
-
-            {decision === 'forward' && !allChecked && (
-              <div style={{ marginTop: 8, fontSize: 10, color: '#DC2626', textAlign: 'center' }}>
-                ⚠ Complete all checklist items before forwarding
+            </div>
+          ) : (
+            /* ── Normal scrutiny mode ───────────────────────────────── */
+            <>
+              {/* Scrutiny Checklist */}
+              <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 16, marginBottom: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.primary, borderBottom: `2px solid ${COLORS.primaryLight}`, paddingBottom: 6, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Scrutiny Checklist
+                </div>
+                <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 10 }}>
+                  {checkedCount}/{CHECKLIST.length} items verified
+                </div>
+                <div style={{ height: 4, background: COLORS.border, borderRadius: 2, marginBottom: 14 }}>
+                  <div style={{ height: '100%', borderRadius: 2, background: COLORS.primary, width: `${(checkedCount / CHECKLIST.length) * 100}%`, transition: 'width 0.3s' }} />
+                </div>
+                {CHECKLIST.map((item, i) => (
+                  <label key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 10, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={checked[i]}
+                      onChange={(e) => setChecked((prev) => prev.map((v, j) => j === i ? e.target.checked : v))}
+                      style={{ marginTop: 2, accentColor: COLORS.primary, width: 14, height: 14, flexShrink: 0 }}
+                    />
+                    <span style={{ fontSize: 11, color: COLORS.text, lineHeight: 1.5 }}>{item}</span>
+                  </label>
+                ))}
               </div>
-            )}
-          </div>
+
+              {/* Decision — only actionable when stage is WithNodalOfficerA */}
+              {app.stage === 'WithNodalOfficerA' ? (
+                <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.primary, borderBottom: `2px solid ${COLORS.primaryLight}`, paddingBottom: 6, marginBottom: 14, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Scrutiny Decision
+                  </div>
+
+                  <button onClick={() => setDecision('forward')}
+                    style={{ width: '100%', padding: '10px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', marginBottom: 8, background: decision === 'forward' ? COLORS.primary : COLORS.primaryLight, color: decision === 'forward' ? '#fff' : COLORS.primary, border: `2px solid ${COLORS.primary}` }}>
+                    ✅ Forward to Technical Officer
+                  </button>
+
+                  <button onClick={() => setDecision('return')}
+                    style={{ width: '100%', padding: '10px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', marginBottom: 12, background: decision === 'return' ? COLORS.accent : '#FFF7ED', color: decision === 'return' ? '#fff' : COLORS.accent, border: `2px solid ${COLORS.accent}` }}>
+                    ↩ Return with Deficiency Notice
+                  </button>
+
+                  {decision === 'return' && (
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: COLORS.text }}>Deficiency / Query Details *</div>
+                        <div style={{ fontSize: 10, color: queryText.trim().length < 10 ? COLORS.danger : COLORS.textMuted }}>{queryText.trim().length} / min 10 chars</div>
+                      </div>
+                      <textarea value={queryText} onChange={(e) => setQueryText(e.target.value)}
+                        placeholder="Describe the deficiency or information required from the applicant…"
+                        rows={5}
+                        style={{ width: '100%', border: `1.5px solid ${queryText.trim().length > 0 && queryText.trim().length < 10 ? COLORS.danger : COLORS.accent}`, borderRadius: 6, padding: '8px 10px', fontSize: 11, resize: 'vertical', outline: 'none', boxSizing: 'border-box', fontFamily: "'Noto Sans','Segoe UI',sans-serif" }} />
+                    </div>
+                  )}
+
+                  {decision && (
+                    <button
+                      onClick={decision === 'forward' ? handleForward : handleReturn}
+                      disabled={submitting}
+                      style={{ width: '100%', padding: '11px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', border: 'none', background: decision === 'forward' ? COLORS.primary : COLORS.accent, color: '#fff', opacity: submitting ? 0.7 : 1 }}>
+                      {submitting ? 'Processing…' : decision === 'forward' ? 'Confirm Forward →' : 'Confirm Return →'}
+                    </button>
+                  )}
+
+                  {decision === 'forward' && !allChecked && (
+                    <div style={{ marginTop: 8, fontSize: 10, color: '#DC2626', textAlign: 'center' }}>
+                      ⚠ Complete all checklist items before forwarding
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ background: app.stage === 'Rejected' ? '#FEF2F2' : COLORS.bg, border: `1px solid ${app.stage === 'Rejected' ? '#FECACA' : COLORS.border}`, borderRadius: 10, padding: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: app.stage === 'Rejected' ? COLORS.danger : COLORS.textMuted, marginBottom: 6 }}>
+                    {app.stage === 'Rejected' ? '✕ Application Rejected' : `Status: ${app.stage}`}
+                  </div>
+                  {app.stage === 'Rejected' && (
+                    <div style={{ fontSize: 11, color: COLORS.text, lineHeight: 1.6 }}>
+                      This application has been rejected. No further Nodal Officer action is available until the CEO approves the applicant's appeal and routes it back to this queue.
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>

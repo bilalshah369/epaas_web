@@ -14,8 +14,10 @@ export default function BinCard({ icon, label, count, color, active, onClick }: 
       onClick={onClick}
       style={{
         background:    active ? color : '#fff',
-        border:        `1.5px solid ${active ? color : 'var(--color-border)'}`,
         borderTop:     `3px solid ${color}`,
+        borderRight:   `1.5px solid ${active ? color : 'var(--color-border)'}`,
+        borderBottom:  `1.5px solid ${active ? color : 'var(--color-border)'}`,
+        borderLeft:    `1.5px solid ${active ? color : 'var(--color-border)'}`,
         borderRadius:  12,
         padding:       '16px 10px 14px',
         cursor:        'pointer',

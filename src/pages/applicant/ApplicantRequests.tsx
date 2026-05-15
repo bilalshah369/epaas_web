@@ -1,14 +1,16 @@
 // Mirrors ApplicantAppealReview + ApplicantExtension from mock (App.jsx L9224, L10258).
 // Wired to real API: /api/appeals, /api/appeals/reviews, /api/extensions.
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type React from 'react';
+import toast from 'react-hot-toast';
 import { COLORS, S } from '@/utils/colors';
 import StatusBadge from '@/components/ui/StatusBadge';
 import {
   fetchAppeals, fileAppeal, fetchReviews, fileReview,
   type AppealItem, type ReviewItem,
 } from '@/services/appeal.service';
+import { uploadFile } from '@/services/application.service';
 import {
   fetchExtensions, createExtension, updateExtension,
   type ExtensionItem,
@@ -98,18 +100,26 @@ export default function ApplicantRequests() {
   const [activeTab, setActiveTab] = useState<Tab>(tabFromPath(location.pathname));
 
   // Appeal
-  const [appealItems,   setAppealItems]   = useState<AppealItem[]>([]);
-  const [appealLoading, setAppealLoading] = useState(false);
-  const [appealModal,   setAppealModal]   = useState<AppealItem | null>(null);
-  const [appealGrounds, setAppealGrounds] = useState('');
+  const [appealItems,      setAppealItems]      = useState<AppealItem[]>([]);
+  const [appealLoading,    setAppealLoading]    = useState(false);
+  const [appealModal,      setAppealModal]      = useState<AppealItem | null>(null);
+  const [appealGrounds,    setAppealGrounds]    = useState('');
   const [appealSubmitting, setAppealSubmitting] = useState(false);
+  const [appealFile,       setAppealFile]       = useState<string | null>(null);
+  const [appealFileName,   setAppealFileName]   = useState('');
+  const [appealUploading,  setAppealUploading]  = useState(false);
+  const appealFileRef = useRef<HTMLInputElement>(null);
 
   // Review
-  const [reviewItems,   setReviewItems]   = useState<ReviewItem[]>([]);
-  const [reviewLoading, setReviewLoading] = useState(false);
-  const [reviewModal,   setReviewModal]   = useState<ReviewItem | null>(null);
-  const [reviewGrounds, setReviewGrounds] = useState('');
+  const [reviewItems,      setReviewItems]      = useState<ReviewItem[]>([]);
+  const [reviewLoading,    setReviewLoading]    = useState(false);
+  const [reviewModal,      setReviewModal]      = useState<ReviewItem | null>(null);
+  const [reviewGrounds,    setReviewGrounds]    = useState('');
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewFile,       setReviewFile]       = useState<string | null>(null);
+  const [reviewFileName,   setReviewFileName]   = useState('');
+  const [reviewUploading,  setReviewUploading]  = useState(false);
+  const reviewFileRef = useRef<HTMLInputElement>(null);
 
   // Extension
   const [extItems,   setExtItems]   = useState<ExtensionItem[]>([]);
@@ -153,17 +163,51 @@ export default function ApplicantRequests() {
     navigate(`/app/requests/${t}`, { replace: true });
   }
 
+  // ── Appeal file upload ───────────────────────────────────────────────────────
+
+  async function handleAppealFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAppealUploading(true);
+    try {
+      const url = await uploadFile(file);
+      setAppealFile(url);
+      setAppealFileName(file.name);
+    } catch { toast.error('Upload failed'); }
+    finally { setAppealUploading(false); }
+  }
+
   // ── Appeal submit ────────────────────────────────────────────────────────────
 
   async function handleAppealSubmit() {
     if (!appealModal || !appealGrounds.trim()) return;
     setAppealSubmitting(true);
     try {
-      await fileAppeal(appealModal.applicationId, appealGrounds);
+      await fileAppeal(appealModal.applicationId, appealGrounds, appealFile);
       setAppealModal(null);
       setAppealGrounds('');
+      setAppealFile(null);
+      setAppealFileName('');
+      toast.success('Appeal submitted successfully');
       await loadAppeals();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'Failed to submit appeal');
     } finally { setAppealSubmitting(false); }
+  }
+
+  // ── Review file upload ───────────────────────────────────────────────────────
+
+  async function handleReviewFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setReviewUploading(true);
+    try {
+      const url = await uploadFile(file);
+      setReviewFile(url);
+      setReviewFileName(file.name);
+    } catch { toast.error('Upload failed'); }
+    finally { setReviewUploading(false); }
   }
 
   // ── Review submit ────────────────────────────────────────────────────────────
@@ -172,9 +216,11 @@ export default function ApplicantRequests() {
     if (!reviewModal || !reviewGrounds.trim()) return;
     setReviewSubmitting(true);
     try {
-      await fileReview(reviewModal.appealId, reviewGrounds);
+      await fileReview(reviewModal.appealId, reviewGrounds, reviewFile);
       setReviewModal(null);
       setReviewGrounds('');
+      setReviewFile(null);
+      setReviewFileName('');
       await loadReviews();
     } finally { setReviewSubmitting(false); }
   }
@@ -267,11 +313,21 @@ export default function ApplicantRequests() {
               <label style={S.label}>Grounds for Appeal <span style={{ color: COLORS.danger }}>*</span></label>
               <textarea value={appealGrounds} onChange={(e) => setAppealGrounds(e.target.value)} placeholder="State the grounds for your appeal clearly — include specific errors in the rejection decision..." style={{ ...textarea, minHeight: 100, marginBottom: 12 }} />
               <label style={S.label}>Supporting Documents <span style={{ fontWeight: 400, color: COLORS.textMuted }}>(Optional)</span></label>
-              <div style={{ border: `1.5px dashed ${COLORS.border}`, borderRadius: 8, padding: '14px 16px', textAlign: 'center', background: COLORS.bg, cursor: 'pointer', fontSize: 12, color: COLORS.textMuted, marginBottom: 16 }}>
-                📎 Click to attach files (PDF, DOCX — max 5 MB each)
-              </div>
+              <input ref={appealFileRef} type="file" accept=".pdf,.docx,.doc,.png,.jpg,.jpeg" style={{ display: 'none' }} onChange={handleAppealFileSelect} />
+              {appealFile ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '8px 12px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 6 }}>
+                  <span style={{ fontSize: 12, color: '#166534', fontWeight: 600 }}>✓ {appealFileName}</span>
+                  <button onClick={() => { setAppealFile(null); setAppealFileName(''); if (appealFileRef.current) appealFileRef.current.value = ''; }}
+                    style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: COLORS.danger, fontSize: 14 }}>✕</button>
+                </div>
+              ) : (
+                <div onClick={() => !appealUploading && appealFileRef.current?.click()}
+                  style={{ border: `1.5px dashed ${COLORS.border}`, borderRadius: 8, padding: '14px 16px', textAlign: 'center', background: COLORS.bg, cursor: appealUploading ? 'wait' : 'pointer', fontSize: 12, color: COLORS.textMuted, marginBottom: 16 }}>
+                  {appealUploading ? '⏳ Uploading…' : '📎 Click to attach file (PDF, DOCX, Image — max 5 MB)'}
+                </div>
+              )}
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <button onClick={() => { setAppealModal(null); setAppealGrounds(''); }} style={{ ...btn('outline'), padding: '8px 18px' }}>Cancel</button>
+                <button onClick={() => { setAppealModal(null); setAppealGrounds(''); setAppealFile(null); setAppealFileName(''); }} style={{ ...btn('outline'), padding: '8px 18px' }}>Cancel</button>
                 <button onClick={handleAppealSubmit} disabled={appealSubmitting || !appealGrounds.trim()}
                   style={{ ...btn(), padding: '8px 18px', opacity: appealGrounds.trim() ? 1 : 0.5 }}>
                   {appealSubmitting ? 'Submitting…' : 'Submit Appeal'}
@@ -312,11 +368,21 @@ export default function ApplicantRequests() {
               <label style={S.label}>Grounds for Review <span style={{ color: COLORS.danger }}>*</span></label>
               <textarea value={reviewGrounds} onChange={(e) => setReviewGrounds(e.target.value)} placeholder="State the grounds for your review petition — reference the appellate order date and specific grounds..." style={{ ...textarea, minHeight: 100, marginBottom: 12 }} />
               <label style={S.label}>Supporting Material <span style={{ fontWeight: 400, color: COLORS.textMuted }}>(Optional)</span></label>
-              <div style={{ border: `1.5px dashed ${COLORS.border}`, borderRadius: 8, padding: '14px 16px', textAlign: 'center', background: COLORS.bg, cursor: 'pointer', fontSize: 12, color: COLORS.textMuted, marginBottom: 16 }}>
-                📎 Click to attach files (PDF, DOCX — max 5 MB each)
-              </div>
+              <input ref={reviewFileRef} type="file" accept=".pdf,.docx,.doc,.png,.jpg,.jpeg" style={{ display: 'none' }} onChange={handleReviewFileSelect} />
+              {reviewFile ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '8px 12px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 6 }}>
+                  <span style={{ fontSize: 12, color: '#166534', fontWeight: 600 }}>✓ {reviewFileName}</span>
+                  <button onClick={() => { setReviewFile(null); setReviewFileName(''); if (reviewFileRef.current) reviewFileRef.current.value = ''; }}
+                    style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: COLORS.danger, fontSize: 14 }}>✕</button>
+                </div>
+              ) : (
+                <div onClick={() => !reviewUploading && reviewFileRef.current?.click()}
+                  style={{ border: `1.5px dashed ${COLORS.border}`, borderRadius: 8, padding: '14px 16px', textAlign: 'center', background: COLORS.bg, cursor: reviewUploading ? 'wait' : 'pointer', fontSize: 12, color: COLORS.textMuted, marginBottom: 16 }}>
+                  {reviewUploading ? '⏳ Uploading…' : '📎 Click to attach file (PDF, DOCX, Image — max 5 MB)'}
+                </div>
+              )}
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <button onClick={() => { setReviewModal(null); setReviewGrounds(''); }} style={{ ...btn('outline'), padding: '8px 18px' }}>Cancel</button>
+                <button onClick={() => { setReviewModal(null); setReviewGrounds(''); setReviewFile(null); setReviewFileName(''); }} style={{ ...btn('outline'), padding: '8px 18px' }}>Cancel</button>
                 <button onClick={handleReviewSubmit} disabled={reviewSubmitting || !reviewGrounds.trim()}
                   style={{ ...btn(), padding: '8px 18px', background: '#6A0572', opacity: reviewGrounds.trim() ? 1 : 0.5 }}>
                   {reviewSubmitting ? 'Submitting…' : 'Submit Review Petition'}

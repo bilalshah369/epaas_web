@@ -381,9 +381,12 @@ const DOC_SCRUTINY_FILTERS: FilterField[] = [
     options: [
       "All",
       "Edited by Applicant",
-      "Recommended by IO",
+      "Recommended by TO",
       "Recommended by EC",
       "Extension of Additional Time",
+      "Request for Appeal",
+      "Request for Review",
+      "Withdraw by Applicant",
     ],
   },
 ];
@@ -480,6 +483,10 @@ export default function NodalADashboard() {
   const [pendingSection, setPendingSection] = useState("docscrutiny");
   const [apps, setApps] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dashboardSection, setDashboardSection] = useState<string | null>(null);
+  const [dashSubTab, setDashSubTab] = useState<"category" | "yearwise">("category");
+  const [statusSheet, setStatusSheet] = useState<1 | 2>(1);
+  const [appealType, setAppealType] = useState("Appeal");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -572,7 +579,262 @@ export default function NodalADashboard() {
 
   // ── Dashboard ────────────────────────────────────────────────────────────────
 
-  const renderDashboard = () => (
+  const renderDashboard = () => {
+    // ── Shared report table columns ─────────────────────────────────────────
+    const REPORT_COLS = [
+      "Sr. No.", "Application No.", "Name & Address of Applicant", "Name of Product",
+      "Date of Receipt", "Date of Receipt of Appeal", "Date of Appellate Order",
+      "Date of Receipt of Review", "Date of Review Order", "EC Number", "EC Status",
+      "Date of Issue of Form 2", "Final Status",
+    ];
+
+    const YEAR_WISE_FILTERS: FilterField[] = [
+      { label: "Category", type: "select", options: ["All/Both", "NSF", "Claim Approval", "Ayurveda Aahara", "rPET", "Any Other"] },
+      { label: "Select Quarter/Month", type: "select", options: ["Select Quarter/Month", "Q1 (Apr–Jun)", "Q2 (Jul–Sep)", "Q3 (Oct–Dec)", "Q4 (Jan–Mar)", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"] },
+      { label: "Select Year", type: "select", options: ["2026", "2025", "2024", "2023", "2022"] },
+      { label: "Date (From)", type: "date" },
+      { label: "Date (To)", type: "date" },
+      { label: "Type of Application", type: "select", options: ["All", "New", "Appeal", "Review"] },
+    ];
+
+    // helpers — called as functions, not components, so hooks rules don't apply
+    const ecBadge = (stage: string) => {
+      const ok = ["Approved", "Closed"].includes(stage);
+      const no = stage === "Rejected";
+      const pend = ["WithExpertCommittee", "DecisionPending"].includes(stage);
+      const bg = ok ? COLORS.successLight : no ? COLORS.dangerLight : pend ? COLORS.infoLight : COLORS.bg;
+      const fg = ok ? COLORS.success : no ? COLORS.danger : pend ? COLORS.info : COLORS.textMuted;
+      return <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: bg, color: fg }}>{ok ? "Approved" : no ? "Rejected" : pend ? "Pending" : "—"}</span>;
+    };
+
+    const finalBadge = (stage: string) => {
+      const ok = ["Approved", "Closed"].includes(stage);
+      const no = stage === "Rejected";
+      const bg = ok ? COLORS.successLight : no ? COLORS.dangerLight : COLORS.warningLight;
+      const fg = ok ? COLORS.success : no ? COLORS.danger : COLORS.warning;
+      return <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: bg, color: fg }}>{ok ? "approved" : no ? "rejected" : stage.toLowerCase()}</span>;
+    };
+
+    const reportTable = (rows: Application[]) => (
+      <div style={{ background: "#fff", border: `1px solid ${COLORS.border}`, borderRadius: 8, overflow: "hidden" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 14px", background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}` }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>SEARCH RESULTS</span>
+          <input placeholder="Search..." style={{ border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "4px 10px", fontSize: 11, width: 200, outline: "none" }} />
+        </div>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead><tr>{REPORT_COLS.map((h) => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr><td colSpan={REPORT_COLS.length} style={{ ...S.td, textAlign: "center", color: COLORS.textMuted, padding: 24 }}>No records found.</td></tr>
+              ) : rows.map((a, i) => (
+                <tr key={a.id} style={{ background: i % 2 === 0 ? "#fff" : COLORS.bg }}>
+                  <td style={S.td}>{i + 1}</td>
+                  <td style={{ ...S.td, color: COLORS.primary, fontWeight: 600 }}>{a.referenceNumber}</td>
+                  <td style={S.td}><div style={{ fontWeight: 600 }}>{a.companyName}</div><div style={{ fontSize: 11, color: COLORS.textMuted }}>{a.address ?? "—"}</div></td>
+                  <td style={S.td}>{a.productName ?? "—"}</td>
+                  <td style={S.td}>{fmtDate(a.submittedAt)}</td>
+                  <td style={S.td}>—</td>
+                  <td style={S.td}>—</td>
+                  <td style={S.td}>—</td>
+                  <td style={S.td}>—</td>
+                  <td style={S.td}>—</td>
+                  <td style={S.td}>{ecBadge(a.stage)}</td>
+                  <td style={S.td}>—</td>
+                  <td style={S.td}>{finalBadge(a.stage)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+
+    const subPageLayout = (title: string, rows: Application[], statCards: Array<{ label: string; value: number }>) => (
+      <div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+          <button onClick={() => setDashboardSection(null)} style={{ background: "transparent", border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "4px 12px", fontSize: 11, cursor: "pointer", color: COLORS.text }}>← Back</button>
+          <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville',Georgia,serif" }}>{title}</div>
+        </div>
+        <div style={{ display: "flex", gap: 0, marginBottom: 14 }}>
+          {(["category", "yearwise"] as const).map((tab) => (
+            <button key={tab} onClick={() => setDashSubTab(tab)}
+              style={{ padding: "7px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer", border: `1px solid ${COLORS.border}`, background: dashSubTab === tab ? COLORS.primary : "#fff", color: dashSubTab === tab ? "#fff" : COLORS.text, borderRadius: tab === "category" ? "6px 0 0 6px" : "0 6px 6px 0", marginRight: tab === "category" ? -1 : 0 }}>
+              {tab === "category" ? "Category-wise Summary" : "Year-wise / Specific Period"}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+          {statCards.map((sc) => (
+            <div key={sc.label} style={{ flex: 1, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "12px 16px", background: "#fff" }}>
+              <div style={{ fontSize: 28, fontWeight: 700, color: COLORS.primary, fontFamily: "'Libre Baskerville',Georgia,serif" }}>{sc.value}</div>
+              <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>{sc.label}</div>
+            </div>
+          ))}
+        </div>
+        {dashSubTab === "yearwise" && (
+          <div style={{ background: "#fff", border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "14px 16px", marginBottom: 14 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>CLICK TO VIEW YEAR WISE WITH SPECIFIC PERIOD</div>
+            <OfficerFilterBar fields={YEAR_WISE_FILTERS} />
+          </div>
+        )}
+        {reportTable(rows)}
+      </div>
+    );
+
+    // ── Sub-page routing ────────────────────────────────────────────────────
+    if (dashboardSection === "approved")
+      return subPageLayout("Applications Approved", approvedApps, [
+        { label: "Total Applications Received", value: apps.length },
+        { label: "Total Approved", value: approvedApps.length },
+        { label: "Total Withdrawn/Closed", value: closedApps.length },
+      ]);
+
+    if (dashboardSection === "rejected")
+      return subPageLayout("Application Rejected", rejectedApps, [
+        { label: "Total Applications Received", value: apps.length },
+        { label: "Total Rejected", value: rejectedApps.length },
+      ]);
+
+    if (dashboardSection === "withdrawn")
+      return subPageLayout("Application Withdrawn / Closed", closedApps, [
+        { label: "Total Applications Received", value: apps.length },
+        { label: "Total Approved", value: approvedApps.length },
+        { label: "Total Withdrawn/Closed", value: closedApps.length },
+      ]);
+
+    if (dashboardSection === "pms")
+      return subPageLayout("Application Approved with PMS", approvedApps, [
+        { label: "Total Applications Received", value: apps.length },
+        { label: "Total Approved", value: approvedApps.length },
+        { label: "Total Withdrawn/Closed", value: closedApps.length },
+      ]);
+
+    if (dashboardSection === "status") return (
+      <div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+          <button onClick={() => setDashboardSection(null)} style={{ background: "transparent", border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "4px 12px", fontSize: 11, cursor: "pointer", color: COLORS.text }}>← Back</button>
+          <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville',Georgia,serif" }}>Application Status</div>
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-end", marginBottom: 14, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <label style={{ fontSize: 10, fontWeight: 600, color: COLORS.textMuted, textTransform: "uppercase" }}>View</label>
+            <select style={{ border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "5px 8px", fontSize: 11, background: "#fff" }}>
+              <option>Year-wise</option><option>Category-wise</option>
+            </select>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <label style={{ fontSize: 10, fontWeight: 600, color: COLORS.textMuted, textTransform: "uppercase" }}>Type</label>
+            <select style={{ border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "5px 8px", fontSize: 11, background: "#fff" }}>
+              <option>New</option><option>Appeal</option><option>Review</option>
+            </select>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 0, marginBottom: 14 }}>
+          {([1, 2] as const).map((s) => (
+            <button key={s} onClick={() => setStatusSheet(s)}
+              style={{ padding: "7px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer", border: `1px solid ${COLORS.border}`, background: statusSheet === s ? COLORS.primary : "#fff", color: statusSheet === s ? "#fff" : COLORS.text, borderRadius: s === 1 ? "6px 0 0 6px" : "0 6px 6px 0", marginRight: s === 1 ? -1 : 0 }}>
+              Sheet {s}
+            </button>
+          ))}
+        </div>
+        {statusSheet === 1 && (
+          <div style={{ background: "#fff", border: `1px solid ${COLORS.border}`, borderRadius: 8, overflow: "hidden" }}>
+            <div style={{ padding: "10px 14px", background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}`, fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>SHEET 1 — AUTHORITY PENDING STATUS</div>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead><tr>{["Summary", "IO", "Nodal", "EC", "Applicant Authority"].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
+              <tbody>
+                {[
+                  { label: "Authority Pending ≤ 45 Days",   min: 0,  max: 45       },
+                  { label: "Authority Pending 46–75 Days",  min: 46, max: 75       },
+                  { label: "Authority Pending > 75 Days",   min: 76, max: Infinity },
+                ].map((row, i) => {
+                  const f = pendingApps.filter((a) => { const d = (Date.now() - new Date(a.submittedAt ?? 0).getTime()) / 86400000; return d >= row.min && d <= row.max; });
+                  return (
+                    <tr key={row.label} style={{ background: i % 2 === 0 ? "#fff" : COLORS.bg }}>
+                      <td style={S.td}>{row.label}</td>
+                      <td style={{ ...S.td, textAlign: "center" }}>{f.filter((a) => a.stage === "WithTechnicalOfficer").length}</td>
+                      <td style={{ ...S.td, textAlign: "center" }}>{f.filter((a) => ["WithNodalOfficerA", "Submitted"].includes(a.stage)).length}</td>
+                      <td style={{ ...S.td, textAlign: "center" }}>{f.filter((a) => ["WithExpertCommittee", "DecisionPending"].includes(a.stage)).length}</td>
+                      <td style={{ ...S.td, textAlign: "center" }}>{f.filter((a) => a.stage === "QuerySent").length}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {statusSheet === 2 && (
+          <div style={{ background: "#fff", border: `1px solid ${COLORS.border}`, borderRadius: 8, overflow: "hidden" }}>
+            <div style={{ padding: "10px 14px", background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}`, fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>SHEET 2 — DETAILED APPLICATION STATUS</div>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr>{["Sr. No.", "Total Pending Applications", "Applications Pending with IO", "Applications Pending with Nodal Officer", "Applications Pending with EC", "Applications Ready to go to EC", "Applicant Pending ≤ 30 Days", "Applicant Pending 31–45 Days", "Applicant Pending > 45 Days", "Long Outstanding Cases (> 75 Days)"].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={S.td}>1</td>
+                    <td style={S.td}>{pendingApps.length}</td>
+                    <td style={S.td}>{pendingApps.filter((a) => a.stage === "WithTechnicalOfficer").length}</td>
+                    <td style={S.td}>{pendingApps.filter((a) => ["WithNodalOfficerA", "Submitted"].includes(a.stage)).length}</td>
+                    <td style={S.td}>{pendingApps.filter((a) => ["WithExpertCommittee", "DecisionPending"].includes(a.stage)).length}</td>
+                    <td style={S.td}>{pendingApps.filter((a) => a.stage === "WithNodalPointB").length}</td>
+                    <td style={S.td}>{pendingApps.filter((a) => { const d = (Date.now() - new Date(a.submittedAt ?? 0).getTime()) / 86400000; return d <= 30; }).length}</td>
+                    <td style={S.td}>{pendingApps.filter((a) => { const d = (Date.now() - new Date(a.submittedAt ?? 0).getTime()) / 86400000; return d > 30 && d <= 45; }).length}</td>
+                    <td style={S.td}>{pendingApps.filter((a) => { const d = (Date.now() - new Date(a.submittedAt ?? 0).getTime()) / 86400000; return d > 45; }).length}</td>
+                    <td style={S.td}>{pendingApps.filter((a) => { const d = (Date.now() - new Date(a.submittedAt ?? 0).getTime()) / 86400000; return d > 75; }).length}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+
+    if (dashboardSection === "appealreview") return (
+      <div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+          <button onClick={() => setDashboardSection(null)} style={{ background: "transparent", border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "4px 12px", fontSize: 11, cursor: "pointer", color: COLORS.text }}>← Back</button>
+          <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville',Georgia,serif" }}>Application for Appeal / Review</div>
+        </div>
+        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+          {["Appeal", "Review"].map((t) => (
+            <button key={t} onClick={() => setAppealType(t)}
+              style={{ padding: "7px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer", border: `1px solid ${COLORS.border}`, background: appealType === t ? COLORS.primary : "#fff", color: appealType === t ? "#fff" : COLORS.text, borderRadius: 6 }}>
+              {t}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 0, marginBottom: 14 }}>
+          {(["category", "yearwise"] as const).map((tab) => (
+            <button key={tab} onClick={() => setDashSubTab(tab)}
+              style={{ padding: "7px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer", border: `1px solid ${COLORS.border}`, background: dashSubTab === tab ? COLORS.primary : "#fff", color: dashSubTab === tab ? "#fff" : COLORS.text, borderRadius: tab === "category" ? "6px 0 0 6px" : "0 6px 6px 0", marginRight: tab === "category" ? -1 : 0 }}>
+              {tab === "category" ? "Category-wise Summary" : "Year-wise / Specific Period"}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+          {[{ label: "Total Applications Received", value: apps.length }, { label: "Total Approved", value: approvedApps.length }, { label: "Total Withdrawn/Closed", value: closedApps.length }].map((sc) => (
+            <div key={sc.label} style={{ flex: 1, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "12px 16px", background: "#fff" }}>
+              <div style={{ fontSize: 28, fontWeight: 700, color: COLORS.primary, fontFamily: "'Libre Baskerville',Georgia,serif" }}>{sc.value}</div>
+              <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>{sc.label}</div>
+            </div>
+          ))}
+        </div>
+        {dashSubTab === "yearwise" && (
+          <div style={{ background: "#fff", border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "14px 16px", marginBottom: 14 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>CLICK TO VIEW YEAR WISE WITH SPECIFIC PERIOD</div>
+            <OfficerFilterBar fields={YEAR_WISE_FILTERS} />
+          </div>
+        )}
+        {reportTable(apps)}
+      </div>
+    );
+
+    // ── Main dashboard ──────────────────────────────────────────────────────
+    return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {/* 2×3 stat cards */}
       <div
@@ -585,7 +847,7 @@ export default function NodalADashboard() {
         {dashCards.map((c) => (
           <div
             key={c.key}
-            onClick={() => setActiveBin("pending")}
+            onClick={() => setDashboardSection(c.key)}
             style={{
               background: COLORS.white,
               border: `1px solid ${COLORS.border}`,
@@ -947,7 +1209,8 @@ export default function NodalADashboard() {
         </div>
       </div>
     </div>
-  );
+    );
+  };
 
   // ── Pending Actions ──────────────────────────────────────────────────────────
 

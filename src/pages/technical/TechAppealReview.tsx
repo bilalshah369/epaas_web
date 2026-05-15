@@ -80,11 +80,11 @@ export default function TechAppealReview() {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
-              <tr>{['Sr. No.', 'Application No.', 'Company / Org.', 'Food Category', 'Product Name', 'Request Date', 'Days Remaining', 'Type', 'Action'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
+              <tr>{['Sr. No.', 'Application No.', 'Company / Org.', 'Food Category', 'Product Name', 'Request Date', 'Days Remaining', 'Action'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
             </thead>
             <tbody>
-              {loading && <tr><td colSpan={9} style={{ ...S.td, textAlign: 'center', color: COLORS.textMuted, padding: 32 }}>Loading…</td></tr>}
-              {!loading && visible.length === 0 && <tr><td colSpan={9} style={{ ...S.td, textAlign: 'center', color: COLORS.textMuted, padding: 32 }}>No appeal or review requests found.</td></tr>}
+              {loading && <tr><td colSpan={8} style={{ ...S.td, textAlign: 'center', color: COLORS.textMuted, padding: 32 }}>Loading…</td></tr>}
+              {!loading && visible.length === 0 && <tr><td colSpan={8} style={{ ...S.td, textAlign: 'center', color: COLORS.textMuted, padding: 32 }}>No appeal or review requests found.</td></tr>}
               {visible.map((r, i) => {
                 const left = daysLeft(r.filedAt);
                 return (
@@ -96,7 +96,7 @@ export default function TechAppealReview() {
                     <td style={S.td}>{r.application.productName ?? '—'}</td>
                     <td style={S.td}>{fmtDate(r.filedAt)}</td>
                     <td style={{ ...S.td, color: left <= 5 ? COLORS.danger : COLORS.text, fontWeight: left <= 5 ? 700 : 400 }}>{left} days</td>
-                    <td style={S.td}><span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: r.type === 'Appeal' ? COLORS.warningLight : COLORS.infoLight, color: r.type === 'Appeal' ? COLORS.warning : COLORS.info }}>{r.type}</span></td>
+                   
                     <td style={S.td}><button onClick={() => navigate(`/technical/assessment/${r.application.id}`)} style={{ padding: '4px 12px', background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Proceed</button></td>
                   </tr>
                 );

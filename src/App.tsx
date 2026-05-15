@@ -38,6 +38,7 @@ import TechReports                from '@/pages/technical/TechReports';
 import TechAppealReview           from '@/pages/technical/TechAppealReview';
 import TechExtensionOfTime        from '@/pages/technical/TechExtensionOfTime';
 import TechSearchConsole          from '@/pages/technical/TechSearchConsole';
+import TechForwardedToEC          from '@/pages/technical/TechForwardedToEC';
 
 import ApplicantRequests           from '@/pages/applicant/ApplicantRequests';
 
@@ -190,6 +191,7 @@ export default function App() {
             <Route path="/technical/appeal-review"          element={<TechAppealReview />}       />
             <Route path="/technical/extension"              element={<TechExtensionOfTime />}    />
             <Route path="/technical/search"                 element={<TechSearchConsole />}      />
+            <Route path="/technical/forwarded-ec"           element={<TechForwardedToEC />}      />
             <Route path="/technical/*"                      element={<DashboardPlaceholder />}   />
           </Route>
         </Route>

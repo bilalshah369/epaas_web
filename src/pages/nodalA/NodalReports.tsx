@@ -40,15 +40,59 @@ export default function NodalReports() {
   const [apps,    setApps]    = useState<Application[]>([]);
   const [loading, setLoading] = useState(false);
   const [track,   setTrack]   = useState('');
+  const [trackedApp, setTrackedApp] = useState<Application | null>(null);
+const [trackError, setTrackError] = useState('');
+  
 
-  const load = useCallback(async () => {
-    if (active === 'approved' || active === 'status') {
-      setLoading(true);
-      try { setApps(await fetchNodalAAll()); } finally { setLoading(false); }
+ const load = useCallback(async () => {
+  if (
+    active === 'approved' ||
+    active === 'status' ||
+    active === 'track'
+  ) {
+    setLoading(true);
+
+    try {
+      setApps(await fetchNodalAAll());
+    } finally {
+      setLoading(false);
     }
-  }, [active]);
+  }
+}, [active]);
 
   useEffect(() => { load(); }, [load]);
+  const handleTrackSearch = () => {
+  if (!track.trim()) {
+    setTrackError('Please enter application reference number.');
+    setTrackedApp(null);
+    return;
+  }
+
+  const normalized = track.trim().toLowerCase();
+
+  const found = apps.find((a) => {
+    const ref = a.referenceNumber?.toLowerCase() || '';
+
+    const approvalNo =
+      `appr-${new Date(a.updatedAt).getFullYear()}-${String(
+        apps.indexOf(a) + 100
+      ).padStart(4, '0')}`.toLowerCase();
+
+    return (
+      ref.includes(normalized) ||
+      approvalNo.includes(normalized)
+    );
+  });
+
+  if (!found) {
+    setTrackError('No application found.');
+    setTrackedApp(null);
+    return;
+  }
+
+  setTrackError('');
+  setTrackedApp(found);
+};
 
   // ── Approved Applications sub-report ─────────────────────────────────────────
   if (active === 'approved') {
@@ -193,11 +237,123 @@ export default function NodalReports() {
               <input value={track} onChange={(e) => setTrack(e.target.value)} placeholder="EPAAS-… or APPR-…" style={{ ...iStyle, fontSize: 13, padding: '8px 12px' }} />
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button style={{ padding: '8px 22px', background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Submit</button>
-              <button onClick={() => setActive(null)} style={{ padding: '8px 16px', background: 'transparent', color: COLORS.textMuted, border: `1px solid ${COLORS.border}`, borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>Back</button>
+              <button
+  onClick={handleTrackSearch}
+  style={{
+    padding: '8px 22px',
+    background: COLORS.primary,
+    color: '#fff',
+    border: 'none',
+    borderRadius: 6,
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: 'pointer'
+  }}
+>
+  Submit
+</button>
+              <button onClick={() => setActive(null)} style={{ padding: '8px 16px', background: 'transparent', color: COLORS.textMuted, border: `1px solid ${COLORS.border}`, borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>
+                Back
+              </button>
             </div>
           </div>
-        </div>
+                </div>
+
+        {trackError && (
+          <div
+            style={{
+              marginTop: 12,
+              color: COLORS.danger,
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            {trackError}
+          </div>
+        )}
+
+        {trackedApp && (
+          <div
+            style={{
+              background: COLORS.white,
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: 8,
+              padding: 16,
+              maxWidth: 700,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                marginBottom: 14,
+                color: COLORS.text,
+              }}
+            >
+              Application Tracking Details
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 12,
+                fontSize: 12,
+              }}
+            >
+              <div>
+                <strong>Reference No:</strong><br />
+                {trackedApp.referenceNumber}
+              </div>
+
+              <div>
+                <strong>Company:</strong><br />
+                {trackedApp.companyName}
+              </div>
+
+              <div>
+                <strong>Product:</strong><br />
+                {trackedApp.productName || '—'}
+              </div>
+
+              <div>
+                <strong>Application Type:</strong><br />
+                {TYPE_LABELS[trackedApp.applicationType] ??
+                  trackedApp.applicationType}
+              </div>
+
+              <div>
+                <strong>Status:</strong><br />
+                {trackedApp.stage}
+              </div>
+
+              <div>
+                <strong>Submitted On:</strong><br />
+                {fmtDate(trackedApp.submittedAt)}
+              </div>
+            </div>
+
+            <button
+              onClick={() =>
+                navigate(`/nodal/scrutiny/${trackedApp.id}`)
+              }
+              style={{
+                marginTop: 18,
+                padding: '8px 16px',
+                background: COLORS.primary,
+                color: '#fff',
+                border: 'none',
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Open Application
+            </button>
+          </div>
+        )}
+
       </div>
     );
   }

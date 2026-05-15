@@ -32,8 +32,8 @@ export async function fetchAppeals(): Promise<AppealItem[]> {
   return data.items;
 }
 
-export async function fileAppeal(applicationId: string, grounds: string): Promise<void> {
-  await api.post('/appeals', { applicationId, grounds });
+export async function fileAppeal(applicationId: string, grounds: string, attachmentUrl?: string | null): Promise<void> {
+  await api.post('/appeals', { applicationId, grounds, attachmentUrl: attachmentUrl ?? undefined });
 }
 
 export async function fetchReviews(): Promise<ReviewItem[]> {
@@ -41,6 +41,6 @@ export async function fetchReviews(): Promise<ReviewItem[]> {
   return data.items;
 }
 
-export async function fileReview(appealId: string, grounds: string): Promise<void> {
-  await api.post('/appeals/reviews', { appealId, grounds });
+export async function fileReview(appealId: string, grounds: string, attachmentUrl?: string | null): Promise<void> {
+  await api.post('/appeals/reviews', { appealId, grounds, attachmentUrl: attachmentUrl ?? undefined });
 }

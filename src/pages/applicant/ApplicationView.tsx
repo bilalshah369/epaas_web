@@ -1,12 +1,12 @@
 // Mirrors ApplicantApplicationView from mock (App.jsx). Single application read-only view with tabs.
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { COLORS, S } from '@/utils/colors';
 import StatusBadge from '@/components/ui/StatusBadge';
 import TabBar from '@/components/ui/TabBar';
 import {
-  fetchApplication, fetchQueries, respondToQuery,
+  fetchApplication, fetchQueries, respondToQuery, uploadFile,
   type Application, type AppFormData, type Query,
 } from '@/services/application.service';
 import { API_BASE } from '@/services/api';
@@ -714,7 +714,10 @@ function TabQueries({ app, onResponded }: { app: Application; onResponded: () =>
   const [loading, setLoading]     = useState(true);
   const [responding, setResponding] = useState<string | null>(null); // queryId being responded to
   const [responseText, setResponseText] = useState('');
-  const [submitting, setSubmitting]     = useState(false);
+  const [responseFile, setResponseFile] = useState<string | null>(null); // storedName after upload
+  const [responseFileName, setResponseFileName] = useState<string>('');
+  const [uploading, setUploading]   = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchQueries(app.id)
@@ -723,14 +726,37 @@ function TabQueries({ app, onResponded }: { app: Application; onResponded: () =>
       .finally(() => setLoading(false));
   }, [app.id]);
 
+  async function handleFileUpload(file: File) {
+    setUploading(true);
+    try {
+      const storedName = await uploadFile(file, app.id, 'queryResponse');
+      setResponseFile(storedName);
+      setResponseFileName(file.name);
+      toast.success('File uploaded');
+    } catch {
+      toast.error('File upload failed');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function clearResponding() {
+    setResponding(null);
+    setResponseText('');
+    setResponseFile(null);
+    setResponseFileName('');
+  }
+
   async function handleRespond(queryId: string) {
     if (!responseText.trim()) { toast.error('Please enter a response'); return; }
     setSubmitting(true);
     try {
-      const updated = await respondToQuery(app.id, queryId, responseText);
+      const fullText = responseFile
+        ? `${responseText.trim()}\n\n📎 Attachment: ${responseFileName} [${responseFile}]`
+        : responseText.trim();
+      const updated = await respondToQuery(app.id, queryId, fullText);
       setQueries((prev) => prev.map((q) => (q.id === queryId ? updated : q)));
-      setResponding(null);
-      setResponseText('');
+      clearResponding();
       toast.success('Response submitted — application returned to review.');
       onResponded();
     } catch {
@@ -808,16 +834,34 @@ function TabQueries({ app, onResponded }: { app: Application; onResponded: () =>
                     placeholder="Enter your response to this query…"
                     style={{ width: '100%', border: `1.5px solid ${COLORS.primary}`, borderRadius: 6, padding: '10px 12px', fontSize: 12, resize: 'vertical', minHeight: 100, outline: 'none', boxSizing: 'border-box', fontFamily: "'Noto Sans','Segoe UI',sans-serif" }}
                   />
-                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  {/* File attachment */}
+                  <div style={{ marginTop: 10 }}>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, display: 'block', marginBottom: 6 }}>Attach Supporting Document (optional)</label>
+                    {responseFile ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 6, padding: '7px 12px' }}>
+                        <span style={{ fontSize: 13 }}>📎</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: '#065F46', flex: 1 }}>{responseFileName}</span>
+                        <button onClick={() => { setResponseFile(null); setResponseFileName(''); }}
+                          style={{ background: 'none', border: 'none', color: COLORS.danger, fontSize: 14, cursor: 'pointer', fontWeight: 700, padding: '0 4px' }}>✕</button>
+                      </div>
+                    ) : (
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: COLORS.bg, border: `1px dashed ${COLORS.border}`, borderRadius: 6, padding: '7px 14px', fontSize: 12, cursor: uploading ? 'not-allowed' : 'pointer', color: COLORS.primary, fontWeight: 600 }}>
+                        {uploading ? '⏳ Uploading…' : '📎 Attach File'}
+                        <input type="file" style={{ display: 'none' }} disabled={uploading}
+                          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); e.target.value = ''; }} />
+                      </label>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                     <button
                       onClick={() => handleRespond(q.id)}
-                      disabled={submitting}
-                      style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 6, padding: '8px 18px', fontSize: 12, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1 }}
+                      disabled={submitting || uploading}
+                      style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 6, padding: '8px 18px', fontSize: 12, fontWeight: 700, cursor: (submitting || uploading) ? 'not-allowed' : 'pointer', opacity: (submitting || uploading) ? 0.7 : 1 }}
                     >
                       {submitting ? 'Submitting…' : 'Submit Response'}
                     </button>
                     <button
-                      onClick={() => { setResponding(null); setResponseText(''); }}
+                      onClick={clearResponding}
                       style={{ background: 'transparent', color: COLORS.textMuted, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '8px 14px', fontSize: 12, cursor: 'pointer' }}
                     >
                       Cancel
@@ -918,6 +962,27 @@ export default function ApplicationView() {
   const [params]      = useSearchParams();
   const [app, setApp]         = useState<Application | null>(null);
   const [loading, setLoading] = useState(true);
+  const printRef = useRef<HTMLDivElement>(null);
+
+  function printDetails() {
+    const el = printRef.current;
+    if (!el) return;
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html><head><title>Application Details — ${app?.referenceNumber ?? ''}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #111; background: #fff; padding: 24px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+  th { background: #f0f0f0; font-weight: 700; }
+  @media print { body { padding: 0; } }
+</style></head><body>${el.innerHTML}</body></html>`);
+    win.document.close();
+    win.focus();
+    win.print();
+    win.close();
+  }
   const [activeTab, setActiveTab] = useState(() => {
     const t = parseInt(params.get('tab') ?? '0', 10);
     return isNaN(t) ? 0 : t;
@@ -950,7 +1015,7 @@ export default function ApplicationView() {
   const fd = app.formData as AppFormData | null;
 
   return (
-    <div>
+    <div ref={printRef}>
       {/* ── Page header ───────────────────────────────────────────── */}
       <div style={{ marginBottom: 16 }}>
         <button
@@ -995,7 +1060,7 @@ export default function ApplicationView() {
               </button>
             )}
             <button
-              onClick={() => window.print()}
+              onClick={printDetails}
               style={{ background: 'transparent', color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 8, padding: '9px 18px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
             >
               🖨 Print
@@ -1027,12 +1092,125 @@ export default function ApplicationView() {
         {activeTab === 2 && <TabQueries app={app} onResponded={() => fetchApplication(app.id).then(setApp)} />}
         {activeTab === 3 && (
           <div style={{ padding: '16px 0' }}>
-            {app.stage === 'Approved' ? (
-              <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 8, padding: '16px 20px' }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.success, marginBottom: 6 }}>✅ Application Approved</div>
-                <div style={{ fontSize: 12, color: COLORS.text }}>This application has been approved by FSSAI. The formal approval letter has been dispatched.</div>
-              </div>
-            ) : app.stage === 'Rejected' ? (
+            {(app.stage === 'Approved' || app.stage === 'Rejected') ? (() => {
+              const td      = app.toDecision as Record<string, unknown> | null;
+              const f2      = td?.form2Data as Record<string, unknown> | undefined;
+              const decision = td?.decision as string | undefined;
+              const isApproved = decision === 'Approved' || app.stage === 'Approved';
+
+              function printForm2() {
+                const win = window.open('', '_blank', 'width=900,height=700');
+                if (!win) return;
+                win.document.write(`<!DOCTYPE html><html><head><title>Form II — ${app.referenceNumber}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #111; background: #fff; padding: 32px; }
+  .header { background: #1A3C34; color: #fff; padding: 20px 24px; text-align: center; border-radius: 8px 8px 0 0; margin-bottom: 0; }
+  .header h1 { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.75; margin-bottom: 4px; }
+  .header h2 { font-size: 22px; font-weight: 800; font-family: Georgia, serif; margin-bottom: 4px; }
+  .header h3 { font-size: 13px; opacity: 0.85; }
+  .body { border: 1px solid #ccc; border-top: none; border-radius: 0 0 8px 8px; padding: 24px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; margin-bottom: 20px; }
+  .field label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #666; display: block; margin-bottom: 2px; }
+  .field span { font-size: 12px; font-weight: 600; color: #111; }
+  .decision { padding: 12px 16px; border-radius: 6px; font-size: 14px; font-weight: 800; margin-bottom: 16px; }
+  .approved { background: #F0FDF4; color: #166534; border: 1px solid #BBF7D0; }
+  .rejected { background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA; }
+  .section label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #555; display: block; margin-bottom: 4px; }
+  .section p { font-size: 12px; color: #111; line-height: 1.6; white-space: pre-wrap; background: #f9f9f9; padding: 8px 10px; border-radius: 4px; }
+  @media print { body { padding: 0; } }
+</style></head><body>
+<div class="header">
+  <h1>Food Safety and Standards Authority of India</h1>
+  <h2>FORM - II</h2>
+  <h3>${app.applicationType === 'RPET' ? 'Authorization/Rejection of FCM-rPET' : '(Approval/Rejection)'}</h3>
+</div>
+<div class="body">
+  <div class="grid">
+    <div class="field"><label>Application No.</label><span>${f2?.applicationNo ?? app.referenceNumber}</span></div>
+    <div class="field"><label>Date of Application</label><span>${f2?.dateOfApplication ?? '—'}</span></div>
+    <div class="field"><label>Name of Organisation</label><span>${f2?.orgName ?? app.companyName}</span></div>
+    <div class="field"><label>Name of Applicant</label><span>${f2?.applicantName ?? '—'}</span></div>
+    <div class="field"><label>Registered Address</label><span>${f2?.address ?? '—'}</span></div>
+    <div class="field"><label>Authorised Person</label><span>${f2?.authorizedPerson ?? '—'}</span></div>
+    ${f2?.productName ? `<div class="field"><label>Name of Food Product</label><span>${f2.productName}</span></div>` : ''}
+    ${f2?.productCategory ? `<div class="field"><label>Product Category</label><span>${f2.productCategory}</span></div>` : ''}
+  </div>
+  <div class="decision ${isApproved ? 'approved' : 'rejected'}">${isApproved ? '✓ APPROVED' : '✗ REJECTED'}</div>
+  ${td?.conditions ? `<div class="section" style="margin-bottom:14px"><label>Conditions for Approval</label><p>${td.conditions}</p></div>` : ''}
+  ${td?.reasons    ? `<div class="section" style="margin-bottom:14px"><label>Reasons for Rejection</label><p>${td.reasons}</p></div>` : ''}
+  <div style="margin-top:32px;font-size:10px;color:#888;text-align:right">Issued on: ${td?.recordedAt ? new Date(td.recordedAt as string).toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'}) : '—'}</div>
+</div>
+</body></html>`);
+                win.document.close();
+                win.focus();
+                win.print();
+                win.close();
+              }
+
+              return (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: isApproved ? COLORS.success : COLORS.danger }}>
+                      {isApproved ? '✅ Application Approved' : '✕ Application Rejected'}
+                    </div>
+                    <button onClick={printForm2}
+                      style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 6, padding: '8px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                      🖨 Download / Print Form II
+                    </button>
+                  </div>
+
+                  {/* Form II preview */}
+                  <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden' }}>
+                    {/* Header */}
+                    <div style={{ background: '#1A3C34', padding: '16px 24px', textAlign: 'center' }}>
+                      <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>Food Safety and Standards Authority of India</div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: '#fff', fontFamily: "'Libre Baskerville',Georgia,serif", marginBottom: 2 }}>FORM - II</div>
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)' }}>{app.applicationType === 'RPET' ? 'Authorization/Rejection of FCM-rPET' : '(Approval/Rejection)'}</div>
+                    </div>
+                    <div style={{ padding: '20px 24px' }}>
+                      {/* Pre-filled fields */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '12px 20px', marginBottom: 20 }}>
+                        {[
+                          ['Application No.',      f2?.applicationNo ?? app.referenceNumber],
+                          ['Date of Application',  f2?.dateOfApplication ?? '—'],
+                          ['Organisation',         f2?.orgName ?? app.companyName],
+                          ['Applicant Name',       f2?.applicantName ?? '—'],
+                          ['Address',              f2?.address ?? '—'],
+                          ['Authorised Person',    f2?.authorizedPerson ?? '—'],
+                          ...(f2?.productName     ? [['Product Name',    f2.productName]]     : []),
+                          ...(f2?.productCategory ? [['Product Category', f2.productCategory]] : []),
+                        ].map(([label, val]) => (
+                          <div key={label as string} style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '8px 12px' }}>
+                            <div style={{ fontSize: 9, color: COLORS.primary, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 2 }}>{label as string}</div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.text }}>{val as string || '—'}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Decision badge */}
+                      <div style={{ background: isApproved ? '#F0FDF4' : '#FEF2F2', border: `1px solid ${isApproved ? '#BBF7D0' : '#FECACA'}`, borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: 14, fontWeight: 800, color: isApproved ? '#166534' : '#991B1B' }}>
+                        {isApproved ? '✓ APPROVED' : '✗ REJECTED'}
+                      </div>
+                      {td?.conditions && (
+                        <div style={{ marginBottom: 14 }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', marginBottom: 4 }}>Conditions for Approval</div>
+                          <div style={{ fontSize: 12, color: COLORS.text, lineHeight: 1.6, background: COLORS.bg, padding: '10px 12px', borderRadius: 6 }}>{td.conditions as string}</div>
+                        </div>
+                      )}
+                      {td?.reasons && (
+                        <div style={{ marginBottom: 14 }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', marginBottom: 4 }}>Reasons for Rejection</div>
+                          <div style={{ fontSize: 12, color: COLORS.text, lineHeight: 1.6, background: COLORS.bg, padding: '10px 12px', borderRadius: 6 }}>{td.reasons as string}</div>
+                        </div>
+                      )}
+                      <div style={{ fontSize: 10, color: COLORS.textMuted, textAlign: 'right', marginTop: 16 }}>
+                        Issued on: {td?.recordedAt ? new Date(td.recordedAt as string).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })() : app.stage === 'Rejected' ? (
               <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '16px 20px' }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.danger, marginBottom: 6 }}>✕ Application Rejected</div>
                 <div style={{ fontSize: 12, color: COLORS.text }}>This application was rejected. Please refer to the queries section for details and use the Appeal option if applicable.</div>
