@@ -389,8 +389,8 @@ export default function ApplicationScrutiny() {
                 </div>
                 {form2 && (
                   <div style={{ marginTop: 8, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6 }}>
-                    {form2['productName'] && <div><strong>Product:</strong> {String(form2['productName'])}</div>}
-                    {form2['orgName']     && <div><strong>Organisation:</strong> {String(form2['orgName'])}</div>}
+                    {!!form2['productName'] && <div><strong>Product:</strong> {String(form2['productName'])}</div>}
+                    {!!form2['orgName']     && <div><strong>Organisation:</strong> {String(form2['orgName'])}</div>}
                   </div>
                 )}
               </div>

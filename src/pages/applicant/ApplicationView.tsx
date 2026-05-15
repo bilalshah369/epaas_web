@@ -1101,7 +1101,7 @@ export default function ApplicationView() {
               function printForm2() {
                 const win = window.open('', '_blank', 'width=900,height=700');
                 if (!win) return;
-                win.document.write(`<!DOCTYPE html><html><head><title>Form II — ${app.referenceNumber}</title>
+                win.document.write(`<!DOCTYPE html><html><head><title>Form II — ${app!.referenceNumber}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #111; background: #fff; padding: 32px; }
@@ -1123,13 +1123,13 @@ export default function ApplicationView() {
 <div class="header">
   <h1>Food Safety and Standards Authority of India</h1>
   <h2>FORM - II</h2>
-  <h3>${app.applicationType === 'RPET' ? 'Authorization/Rejection of FCM-rPET' : '(Approval/Rejection)'}</h3>
+  <h3>${app!.applicationType === 'RPET' ? 'Authorization/Rejection of FCM-rPET' : '(Approval/Rejection)'}</h3>
 </div>
 <div class="body">
   <div class="grid">
-    <div class="field"><label>Application No.</label><span>${f2?.applicationNo ?? app.referenceNumber}</span></div>
+    <div class="field"><label>Application No.</label><span>${f2?.applicationNo ?? app!.referenceNumber}</span></div>
     <div class="field"><label>Date of Application</label><span>${f2?.dateOfApplication ?? '—'}</span></div>
-    <div class="field"><label>Name of Organisation</label><span>${f2?.orgName ?? app.companyName}</span></div>
+    <div class="field"><label>Name of Organisation</label><span>${f2?.orgName ?? app!.companyName}</span></div>
     <div class="field"><label>Name of Applicant</label><span>${f2?.applicantName ?? '—'}</span></div>
     <div class="field"><label>Registered Address</label><span>${f2?.address ?? '—'}</span></div>
     <div class="field"><label>Authorised Person</label><span>${f2?.authorizedPerson ?? '—'}</span></div>
@@ -1181,9 +1181,9 @@ export default function ApplicationView() {
                           ...(f2?.productName     ? [['Product Name',    f2.productName]]     : []),
                           ...(f2?.productCategory ? [['Product Category', f2.productCategory]] : []),
                         ].map(([label, val]) => (
-                          <div key={label as string} style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '8px 12px' }}>
-                            <div style={{ fontSize: 9, color: COLORS.primary, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 2 }}>{label as string}</div>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.text }}>{val as string || '—'}</div>
+                          <div key={String(label)} style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '8px 12px' }}>
+                            <div style={{ fontSize: 9, color: COLORS.primary, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 2 }}>{String(label)}</div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.text }}>{String(val) || '—'}</div>
                           </div>
                         ))}
                       </div>

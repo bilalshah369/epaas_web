@@ -262,6 +262,7 @@ export interface ProfileDisplay {
   natureOfBusiness: string;
   productName:      string;
   productCategory:  string;
+  subCategory?:     string;
   source:           string;
   gstNo:            string;
   paymentReference: string;

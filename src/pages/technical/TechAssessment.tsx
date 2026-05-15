@@ -123,7 +123,7 @@ export default function TechAssessment() {
         // Pre-fill rPET fields from formData if available
         const fd = a?.formData as AppFormData | null | undefined;
         if (a.applicationType === 'RPET') {
-          setF2Material((fd as Record<string, unknown>)?.recyclingTechnologyType as string ?? '');
+          setF2Material((fd as unknown as Record<string, unknown>)?.recyclingTechnologyType as string ?? '');
         }
       })
       .catch(() => toast.error('Could not load application'))
