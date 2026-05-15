@@ -1171,19 +1171,19 @@ export default function ApplicationView() {
                     <div style={{ padding: '20px 24px' }}>
                       {/* Pre-filled fields */}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '12px 20px', marginBottom: 20 }}>
-                        {[
-                          ['Application No.',      f2?.applicationNo ?? app.referenceNumber],
-                          ['Date of Application',  f2?.dateOfApplication ?? '—'],
-                          ['Organisation',         f2?.orgName ?? app.companyName],
-                          ['Applicant Name',       f2?.applicantName ?? '—'],
-                          ['Address',              f2?.address ?? '—'],
-                          ['Authorised Person',    f2?.authorizedPerson ?? '—'],
-                          ...(f2?.productName     ? [['Product Name',    f2.productName]]     : []),
-                          ...(f2?.productCategory ? [['Product Category', f2.productCategory]] : []),
-                        ].map(([label, val]) => (
-                          <div key={String(label)} style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '8px 12px' }}>
-                            <div style={{ fontSize: 9, color: COLORS.primary, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 2 }}>{String(label)}</div>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.text }}>{String(val) || '—'}</div>
+                        {([
+                          ['Application No.',      String(f2?.applicationNo ?? app!.referenceNumber)],
+                          ['Date of Application',  String(f2?.dateOfApplication ?? '—')],
+                          ['Organisation',         String(f2?.orgName ?? app!.companyName)],
+                          ['Applicant Name',       String(f2?.applicantName ?? '—')],
+                          ['Address',              String(f2?.address ?? '—')],
+                          ['Authorised Person',    String(f2?.authorizedPerson ?? '—')],
+                          ...(f2?.productName     ? [['Product Name',    String(f2.productName)]]     : []),
+                          ...(f2?.productCategory ? [['Product Category', String(f2.productCategory)]] : []),
+                        ] as [string, string][]).map(([label, val]) => (
+                          <div key={label} style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '8px 12px' }}>
+                            <div style={{ fontSize: 9, color: COLORS.primary, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 2 }}>{label}</div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.text }}>{val || '—'}</div>
                           </div>
                         ))}
                       </div>
@@ -1191,13 +1191,13 @@ export default function ApplicationView() {
                       <div style={{ background: isApproved ? '#F0FDF4' : '#FEF2F2', border: `1px solid ${isApproved ? '#BBF7D0' : '#FECACA'}`, borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: 14, fontWeight: 800, color: isApproved ? '#166534' : '#991B1B' }}>
                         {isApproved ? '✓ APPROVED' : '✗ REJECTED'}
                       </div>
-                      {td?.conditions && (
+                      {!!td?.conditions && (
                         <div style={{ marginBottom: 14 }}>
                           <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', marginBottom: 4 }}>Conditions for Approval</div>
                           <div style={{ fontSize: 12, color: COLORS.text, lineHeight: 1.6, background: COLORS.bg, padding: '10px 12px', borderRadius: 6 }}>{td.conditions as string}</div>
                         </div>
                       )}
-                      {td?.reasons && (
+                      {!!td?.reasons && (
                         <div style={{ marginBottom: 14 }}>
                           <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', marginBottom: 4 }}>Reasons for Rejection</div>
                           <div style={{ fontSize: 12, color: COLORS.text, lineHeight: 1.6, background: COLORS.bg, padding: '10px 12px', borderRadius: 6 }}>{td.reasons as string}</div>
