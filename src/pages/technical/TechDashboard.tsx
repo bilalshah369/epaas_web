@@ -106,7 +106,7 @@ const DOC_SCRUTINY_FILTERS: FilterField[] = [
   { label: 'From Date',            type: 'date' },
   { label: 'To Date',              type: 'date' },
   { label: 'Application Type',     type: 'select', options: ['All', 'New', 'Appeal', 'Review'] },
-  { label: 'Application Filter',   type: 'select', options: ['All', 'Edited by Applicant', 'Recommended by IO', 'Recommended by EC', 'Extension of Additional Time'] },
+  { label: 'Application Filter',   type: 'select', options: ['All', 'Edited by Applicant', 'Recommended by TO', 'Recommended by EC', 'Extension of Additional Time'] },
 ];
 const FBO_EDIT_FILTERS: FilterField[] = [
   { label: 'Application Ref. No.', placeholder: 'EPAAS-…' },
@@ -301,7 +301,7 @@ const [appealType, setAppealType] = useState('Appeal');
         { label: 'Authority Pending 46–75 Days',  filter: (a: Application) => { const d = daysSince(a.submittedAt) ?? 0; return d >= 46 && d <= 75; } },
         { label: 'Authority Pending > 75 Days',   filter: (a: Application) => (daysSince(a.submittedAt) ?? 0) > 75   },
       ];
-      const sheet2Cols = ['Total Pending', 'Pending with IO', 'Pending with Nodal', 'Pending with EC', 'Ready for EC', 'Applicant ≤ 30d', 'Applicant 31–45d', 'Applicant > 45d', 'Long Outstanding (>75d)'];
+      const sheet2Cols = ['Total Pending', 'Pending with TO', 'Pending with Nodal', 'Pending with EC', 'Ready for EC', 'Applicant ≤ 30d', 'Applicant 31–45d', 'Applicant > 45d', 'Long Outstanding (>75d)'];
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
@@ -327,7 +327,7 @@ const [appealType, setAppealType] = useState('Appeal');
           {statusSheet === 1 && (
             <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 8, overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                <thead><tr>{['Summary', 'IO', 'Nodal', 'EC', 'Applicant Authority'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                <thead><tr>{['Summary', 'TO', 'Nodal', 'EC', 'Applicant Authority'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
                 <tbody>
                   {buckets.map((b, i) => {
                     const rows = pendingApps.filter(b.filter);

@@ -79,18 +79,25 @@ const TYPE_LABELS: Record<string, string> = {
   AnyOther:       'Any Other',
 };
 
-const FILTER_FIELDS = [
-  { label: 'Application Ref. No.', placeholder: 'EPAAS-…', type: 'text' },
-  { label: 'Company / Org Name',   placeholder: 'Search…', type: 'text' },
-  { label: 'Application Type',     type: 'select', options: ['All', 'NSF', 'Claim Approval', 'Ayurveda Aahara', 'rPET', 'Any Other'] },
-  { label: 'From Date',            type: 'date' },
-  { label: 'To Date',              type: 'date' },
-];
+// Map display label → applicationType value
+const TYPE_VALUE_MAP: Record<string, string> = {
+  'NSF':             'NSF',
+  'Claim Approval':  'ClaimApproval',
+  'Ayurveda Aahara': 'AyurvedaAahara',
+  'rPET':            'RPET',
+  'Any Other':       'AnyOther',
+};
 
 function fmtDate(iso: string | null | undefined) {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
+
+function genApprNum(a: Application, idx: number, prefix: string) {
+  return `${prefix}-${new Date(a.updatedAt).getFullYear()}-${String(idx + 100).padStart(4, '0')}`;
+}
+
+const BLANK = { refNo: '', approvalNo: '', company: '', appType: 'All', fromDate: '', toDate: '' };
 
 export default function ApplicationReports() {
   const location = useLocation();
@@ -99,8 +106,15 @@ export default function ApplicationReports() {
   const segment = location.pathname.split('/').pop() as ReportKey;
   const cfg = CONFIGS[segment] ?? CONFIGS.approved;
 
+  const numPrefix = segment === 'approved' ? 'APPR' : segment === 'rejected' ? 'RJCT' : '';
+
   const [apps,    setApps]    = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Filter input state (draft — not yet applied)
+  const [draft,   setDraft]   = useState(BLANK);
+  // Active filter state (applied on Search click)
+  const [active,  setActive]  = useState(BLANK);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -112,15 +126,38 @@ export default function ApplicationReports() {
         data = await fetchNodalAReviewsReport();
       } else {
         const all = await fetchNodalAAll();
-        if (segment === 'approved')  data = all.filter((a) => ['Approved', 'Closed'].includes(a.stage));
+        if (segment === 'approved')       data = all.filter((a) => ['Approved', 'Closed'].includes(a.stage));
         else if (segment === 'rejected')  data = all.filter((a) => a.stage === 'Rejected');
-        else data = all.filter((a) => a.stage === 'Withdrawn');
+        else                              data = all.filter((a) => a.stage === 'Withdrawn');
       }
       setApps(data);
     } finally { setLoading(false); }
   }, [segment]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); setDraft(BLANK); setActive(BLANK); }, [load]);
+
+  // Apply filters
+  const displayed = apps.filter((a, idx) => {
+    const num = numPrefix ? genApprNum(a, idx, numPrefix).toLowerCase() : '';
+    if (active.refNo     && !a.referenceNumber.toLowerCase().includes(active.refNo.toLowerCase()))     return false;
+    if (active.approvalNo && !num.includes(active.approvalNo.toLowerCase()))                           return false;
+    if (active.company   && !a.companyName.toLowerCase().includes(active.company.toLowerCase()))        return false;
+    if (active.appType !== 'All' && a.applicationType !== TYPE_VALUE_MAP[active.appType])               return false;
+    if (active.fromDate) {
+      const from = new Date(active.fromDate); from.setHours(0, 0, 0, 0);
+      if (!a.submittedAt || new Date(a.submittedAt) < from) return false;
+    }
+    if (active.toDate) {
+      const to = new Date(active.toDate); to.setHours(23, 59, 59, 999);
+      if (!a.submittedAt || new Date(a.submittedAt) > to) return false;
+    }
+    return true;
+  });
+
+  function handleSearch() { setActive({ ...draft }); }
+  function handleReset()  { setDraft(BLANK); setActive(BLANK); }
+
+  const iStyle = { border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '5px 8px', fontSize: 11 } as const;
 
   return (
     <div>
@@ -133,22 +170,56 @@ export default function ApplicationReports() {
 
       {/* Filter bar */}
       <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '12px 16px', marginBottom: 14, display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>
-        {FILTER_FIELDS.map((f) => (
-          <div key={f.label} style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 140, flex: '1 1 140px' }}>
-            <label style={{ fontSize: 10, fontWeight: 600, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 }}>{f.label}</label>
-            {f.type === 'select' ? (
-              <select style={{ border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '5px 8px', fontSize: 11, background: '#fff', cursor: 'pointer' }}>
-                {(f.options ?? []).map((o) => <option key={o}>{o}</option>)}
-              </select>
-            ) : f.type === 'date' ? (
-              <input type="date" style={{ border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '5px 8px', fontSize: 11 }} />
-            ) : (
-              <input placeholder={f.placeholder ?? ''} style={{ border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '5px 8px', fontSize: 11 }} />
-            )}
+
+        {/* Application Ref. No. */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 140, flex: '1 1 140px' }}>
+          <label style={{ fontSize: 10, fontWeight: 600, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 }}>Application Ref. No.</label>
+          <input value={draft.refNo} onChange={(e) => setDraft((d) => ({ ...d, refNo: e.target.value }))} placeholder="EPAAS-…" style={iStyle} />
+        </div>
+
+        {/* Approval / Rejection No. — only for approved & rejected pages */}
+        {numPrefix && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 140, flex: '1 1 140px' }}>
+            <label style={{ fontSize: 10, fontWeight: 600, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+              {segment === 'approved' ? 'Approval No.' : 'Rejection No.'}
+            </label>
+            <input
+              value={draft.approvalNo}
+              onChange={(e) => setDraft((d) => ({ ...d, approvalNo: e.target.value }))}
+              placeholder={segment === 'approved' ? 'APPR-…' : 'RJCT-…'}
+              style={iStyle}
+            />
           </div>
-        ))}
-        <button style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 6, padding: '7px 18px', fontSize: 11, fontWeight: 700, cursor: 'pointer', alignSelf: 'flex-end' }}>Search</button>
-        <button style={{ background: 'none', color: COLORS.primary, border: `1px solid ${COLORS.primary}`, borderRadius: 6, padding: '6px 14px', fontSize: 11, cursor: 'pointer', alignSelf: 'flex-end' }}>Reset</button>
+        )}
+
+        {/* Company / Org Name */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 140, flex: '1 1 140px' }}>
+          <label style={{ fontSize: 10, fontWeight: 600, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 }}>Company / Org Name</label>
+          <input value={draft.company} onChange={(e) => setDraft((d) => ({ ...d, company: e.target.value }))} placeholder="Search…" style={iStyle} />
+        </div>
+
+        {/* Application Type */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 140, flex: '1 1 140px' }}>
+          <label style={{ fontSize: 10, fontWeight: 600, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 }}>Application Type</label>
+          <select value={draft.appType} onChange={(e) => setDraft((d) => ({ ...d, appType: e.target.value }))} style={{ ...iStyle, background: '#fff', cursor: 'pointer' }}>
+            {['All', 'NSF', 'Claim Approval', 'Ayurveda Aahara', 'rPET', 'Any Other'].map((o) => <option key={o}>{o}</option>)}
+          </select>
+        </div>
+
+        {/* From Date */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 130, flex: '1 1 130px' }}>
+          <label style={{ fontSize: 10, fontWeight: 600, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 }}>From Date</label>
+          <input type="date" value={draft.fromDate} onChange={(e) => setDraft((d) => ({ ...d, fromDate: e.target.value }))} style={iStyle} />
+        </div>
+
+        {/* To Date */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 130, flex: '1 1 130px' }}>
+          <label style={{ fontSize: 10, fontWeight: 600, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 }}>To Date</label>
+          <input type="date" value={draft.toDate} onChange={(e) => setDraft((d) => ({ ...d, toDate: e.target.value }))} style={iStyle} />
+        </div>
+
+        <button onClick={handleSearch} style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 6, padding: '7px 18px', fontSize: 11, fontWeight: 700, cursor: 'pointer', alignSelf: 'flex-end' }}>Search</button>
+        <button onClick={handleReset}  style={{ background: 'none', color: COLORS.primary, border: `1px solid ${COLORS.primary}`, borderRadius: 6, padding: '6px 14px', fontSize: 11, cursor: 'pointer', alignSelf: 'flex-end' }}>Reset</button>
       </div>
 
       {/* Table card */}
@@ -157,7 +228,7 @@ export default function ApplicationReports() {
           <span style={{ fontSize: 10, fontWeight: 700, color: COLORS.primary, textTransform: 'uppercase', letterSpacing: 0.6 }}>
             {cfg.tableTitle}
             {!loading && (
-              <span style={{ marginLeft: 8, background: cfg.badgeBg, color: cfg.badgeColor, borderRadius: 10, fontSize: 10, padding: '1px 7px', fontWeight: 700 }}>{apps.length}</span>
+              <span style={{ marginLeft: 8, background: cfg.badgeBg, color: cfg.badgeColor, borderRadius: 10, fontSize: 10, padding: '1px 7px', fontWeight: 700 }}>{displayed.length}</span>
             )}
           </span>
           <button style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '4px 12px', fontSize: 11, cursor: 'pointer' }}>⬇ Export CSV</button>
@@ -167,47 +238,55 @@ export default function ApplicationReports() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr>
-                {['Sr. No.', 'App. No.', 'Company / Org.', 'Product', 'App. Type', 'Received', 'EC Number', 'EC Status', 'Date of Issue of Form 2', 'Final Status', 'Action'].map((h) => (
-                  <th key={h} style={S.th}>{h}</th>
-                ))}
+                {[
+                  'Sr. No.', 'App. No.',
+                  ...(numPrefix ? [segment === 'approved' ? 'Approval No.' : 'Rejection No.'] : []),
+                  'Company / Org.', 'Product', 'App. Type', 'Received',
+                  'EC Number', 'EC Status', 'Date of Issue of Form 2', 'Final Status', 'Action',
+                ].map((h) => <th key={h} style={S.th}>{h}</th>)}
               </tr>
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={10} style={{ ...S.td, textAlign: 'center', color: COLORS.textMuted, padding: 32 }}>Loading…</td></tr>
+                <tr><td colSpan={12} style={{ ...S.td, textAlign: 'center', color: COLORS.textMuted, padding: 32 }}>Loading…</td></tr>
               )}
-              {!loading && apps.length === 0 && (
-                <tr><td colSpan={11} style={{ ...S.td, textAlign: 'center', color: COLORS.textMuted, padding: 32 }}>{cfg.emptyMsg}</td></tr>
+              {!loading && displayed.length === 0 && (
+                <tr><td colSpan={12} style={{ ...S.td, textAlign: 'center', color: COLORS.textMuted, padding: 32 }}>{cfg.emptyMsg}</td></tr>
               )}
-              {apps.map((a, i) => (
-                <tr key={a.id} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg }}>
-                  <td style={S.td}>{i + 1}</td>
-                  <td style={{ ...S.td, color: COLORS.primary, fontWeight: 600 }}>{a.referenceNumber}</td>
-                  <td style={S.td}>{a.companyName}</td>
-                  <td style={S.td}>{a.productName ?? '—'}</td>
-                  <td style={S.td}>
-                    <span style={{ background: COLORS.infoLight, color: COLORS.info, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4 }}>
-                      {TYPE_LABELS[a.applicationType] ?? a.applicationType}
-                    </span>
-                  </td>
-                  <td style={S.td}>{fmtDate(a.submittedAt)}</td>
-                  <td style={S.td}>—</td>
-                  <td style={S.td}>
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: cfg.badgeBg, color: cfg.badgeColor }}>
-                      {segment === 'approved' ? 'EC Approved' : segment === 'rejected' ? 'EC Rejected' : '—'}
-                    </span>
-                  </td>
-                  <td style={S.td}>{['approved'].includes(segment) ? fmtDate(a.updatedAt) : '—'}</td>
-                  <td style={S.td}>
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: cfg.badgeBg, color: cfg.badgeColor }}>
-                      {cfg.statusLabel}
-                    </span>
-                  </td>
-                  <td style={S.td}>
-                    <button onClick={() => navigate(`/nodal/scrutiny/${a.id}`)} style={{ padding: '4px 12px', background: 'transparent', color: COLORS.primary, border: `1px solid ${COLORS.primary}`, borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>View</button>
-                  </td>
-                </tr>
-              ))}
+              {displayed.map((a, i) => {
+                const origIdx = apps.indexOf(a);
+                const num = numPrefix ? genApprNum(a, origIdx, numPrefix) : null;
+                return (
+                  <tr key={a.id} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg }}>
+                    <td style={S.td}>{i + 1}</td>
+                    <td style={{ ...S.td, color: COLORS.primary, fontWeight: 600 }}>{a.referenceNumber}</td>
+                    {num && <td style={{ ...S.td, color: COLORS.primary, fontWeight: 600 }}>{num}</td>}
+                    <td style={S.td}>{a.companyName}</td>
+                    <td style={S.td}>{a.productName ?? '—'}</td>
+                    <td style={S.td}>
+                      <span style={{ background: COLORS.infoLight, color: COLORS.info, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4 }}>
+                        {TYPE_LABELS[a.applicationType] ?? a.applicationType}
+                      </span>
+                    </td>
+                    <td style={S.td}>{fmtDate(a.submittedAt)}</td>
+                    <td style={S.td}>—</td>
+                    <td style={S.td}>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: cfg.badgeBg, color: cfg.badgeColor }}>
+                        {segment === 'approved' ? 'EC Approved' : segment === 'rejected' ? 'EC Rejected' : '—'}
+                      </span>
+                    </td>
+                    <td style={S.td}>{segment === 'approved' ? fmtDate(a.updatedAt) : '—'}</td>
+                    <td style={S.td}>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: cfg.badgeBg, color: cfg.badgeColor }}>
+                        {cfg.statusLabel}
+                      </span>
+                    </td>
+                    <td style={S.td}>
+                      <button onClick={() => navigate(`/nodal/scrutiny/${a.id}`)} style={{ padding: '4px 12px', background: 'transparent', color: COLORS.primary, border: `1px solid ${COLORS.primary}`, borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>View</button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

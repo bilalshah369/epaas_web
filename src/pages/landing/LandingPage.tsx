@@ -249,7 +249,7 @@ export default function LandingPage() {
       {/* ── Sticky header wrapper ───────────────────────────────────────── */}
       <div style={{ display: 'flex', flexDirection: 'column', background: '#fff', position: 'sticky', top: 0, zIndex: 100 }}>
 
-        {/* Utility bar */}
+        {/* Utility bar — hidden, uncomment to restore
         <div style={{ background: '#fff', borderBottom: '1px solid #e0e0e0', padding: '4px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <img src="https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg" alt="India Flag" style={{ height: 20, width: 30, objectFit: 'cover', borderRadius: 1 }} />
@@ -275,11 +275,12 @@ export default function LandingPage() {
             </button>
           </div>
         </div>
+        */}
 
         {/* Logo + nav bar */}
         <div style={{ display: 'flex', alignItems: 'stretch', background: '#fff' }}>
           <div onClick={() => scrollTo('lp-top')} style={{ background: '#fff', width: 260, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 10px', cursor: 'pointer' }}>
-            <img src={fssaiLogo} alt="FSSAI" style={{ height: 80, width: 'auto', objectFit: 'contain' }} />
+            <img src={fssaiLogo} alt="FSSAI" style={{ height: 92, width: 'auto', objectFit: 'contain' }} />
           </div>
           <div style={{ background: '#fff', padding: '0 16px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
             {NAV_LINKS.map(({ label, id }) => (
@@ -324,7 +325,7 @@ export default function LandingPage() {
             </h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 32 }}>
               <div style={{ width: 3, height: 18, background: COLORS.accent, borderRadius: 2, flexShrink: 0 }} />
-              <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.70)', margin: 0, fontWeight: 500, letterSpacing: 0.2 }}>
+              <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.70)', margin: 0, fontWeight: 500, letterSpacing: 0.2 }}>
                 Submit. Track. Comply—All in One Place.
               </p>
             </div>
@@ -472,10 +473,10 @@ export default function LandingPage() {
       <div id="lp-application-types" style={{ background: COLORS.bg, padding: '72px 0', borderTop: `1px solid ${COLORS.border}` }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 48px' }}>
           <div style={{ textAlign: 'center', marginBottom: 48 }}>
-            <div style={{ display: 'inline-block', background: COLORS.primaryLight, color: COLORS.primary, fontSize: 15, fontWeight: 700, padding: '4px 12px', borderRadius: 4, marginBottom: 10, letterSpacing: 0.5 }}>
+            <div style={{ display: 'inline-block', background: COLORS.primaryLight, color: COLORS.primary, fontSize: 16, fontWeight: 700, padding: '4px 12px', borderRadius: 4, marginBottom: 10, letterSpacing: 0.5 }}>
               AVAILABLE CATEGORIES
             </div>
-            <p style={{ fontSize: 13, color: COLORS.textMuted, maxWidth: 520, margin: '0 auto', lineHeight: 1.7 }}>
+            <p style={{ fontSize: 14, color: COLORS.textMuted, maxWidth: 520, margin: '0 auto', lineHeight: 1.7 }}>
               Select one of the available categories below to proceed with the relevant approval workflow.
             </p>
           </div>
@@ -504,15 +505,15 @@ export default function LandingPage() {
 
                 {/* Body */}
                 <div style={{ padding: '18px 16px 18px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville',Georgia,serif", lineHeight: 1.4, marginBottom: 10 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville',Georgia,serif", lineHeight: 1.4, marginBottom: 10 }}>
                     {t.label}
                   </div>
-                  <p style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 1.75, flex: 1, margin: 0 }}>
+                  <p style={{ fontSize: 12, color: COLORS.textMuted, lineHeight: 1.75, flex: 1, margin: 0 }}>
                     {t.desc}
                   </p>
                   {/* CTA */}
                   <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: t.lightColor, borderRadius: 8, border: `1px solid ${t.color}25` }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: t.color }}>Start Application</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: t.color }}>Start Application</span>
                     <span style={{ fontSize: 14, color: t.color, fontWeight: 700 }}>→</span>
                   </div>
                 </div>
@@ -526,13 +527,13 @@ export default function LandingPage() {
       <div id="lp-for-applicants" style={{ background: COLORS.bg, padding: '56px 0', borderTop: `1px solid ${COLORS.border}`, borderBottom: `1px solid ${COLORS.border}` }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 32px' }}>
           <div style={{ textAlign: 'center', marginBottom: 40 }}>
-            <div style={{ display: 'inline-block', background: COLORS.primaryLight, color: COLORS.primary, fontSize: 15, fontWeight: 700, padding: '4px 12px', borderRadius: 4, marginBottom: 10, letterSpacing: 0.5 }}>
+            <div style={{ display: 'inline-block', background: COLORS.primaryLight, color: COLORS.primary, fontSize: 16, fontWeight: 700, padding: '4px 12px', borderRadius: 4, marginBottom: 10, letterSpacing: 0.5 }}>
               PROCESS FLOW
             </div>
-            <h2 style={{ fontSize: 24, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville',Georgia,serif", marginBottom: 8 }}>
+            <h2 style={{ fontSize: 26, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville',Georgia,serif", marginBottom: 8 }}>
               How E-PAAS Works
             </h2>
-            <p style={{ fontSize: 13, color: COLORS.textMuted, maxWidth: 540, margin: '0 auto' }}>
+            <p style={{ fontSize: 14, color: COLORS.textMuted, maxWidth: 540, margin: '0 auto' }}>
               A fully digital end-to-end approval workflow
             </p>
           </div>
@@ -557,8 +558,8 @@ export default function LandingPage() {
                   {s.icon}
                 </div>
                 <div style={{ fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.8, marginBottom: 5, textTransform: 'uppercase' }}>Step {s.n}</div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.text, marginBottom: 8, lineHeight: 1.35 }}>{s.title}</div>
-                <p style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 1.65, margin: 0 }}>{s.desc}</p>
+                <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.text, marginBottom: 8, lineHeight: 1.35 }}>{s.title}</div>
+                <p style={{ fontSize: 12, color: COLORS.textMuted, lineHeight: 1.65, margin: 0 }}>{s.desc}</p>
               </div>
             ))}
           </div>
@@ -575,7 +576,7 @@ export default function LandingPage() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.primary, letterSpacing: 0.7, textTransform: 'uppercase', marginBottom: 4 }}>OFFICIAL ORDERS</div>
-                  <h3 style={{ fontSize: 18, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville',Georgia,serif", margin: 0 }}>Latest Circulars</h3>
+                  <h3 style={{ fontSize: 19, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville',Georgia,serif", margin: 0 }}>Latest Circulars</h3>
                 </div>
                 <span style={{ fontSize: 11, color: COLORS.primary, cursor: 'pointer', fontWeight: 600 }}>View All →</span>
               </div>
@@ -596,7 +597,7 @@ export default function LandingPage() {
                       <span style={{ fontSize: 9, color: COLORS.textMuted, letterSpacing: 0.3 }}>{c.ref}</span>
                       <span style={{ fontSize: 9, background: COLORS.primaryLight, color: COLORS.primary, padding: '1px 6px', borderRadius: 3, fontWeight: 700 }}>{c.tag}</span>
                     </div>
-                    <div style={{ fontSize: 12, color: COLORS.text, lineHeight: 1.45, fontWeight: 500 }}>{c.title}</div>
+                    <div style={{ fontSize: 13, color: COLORS.text, lineHeight: 1.45, fontWeight: 500 }}>{c.title}</div>
                   </div>
                 </div>
               ))}
@@ -607,7 +608,7 @@ export default function LandingPage() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 700, color: '#B45309', letterSpacing: 0.7, textTransform: 'uppercase', marginBottom: 4 }}>PORTAL UPDATES</div>
-                  <h3 style={{ fontSize: 18, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville',Georgia,serif", margin: 0 }}>Public Notifications</h3>
+                  <h3 style={{ fontSize: 19, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville',Georgia,serif", margin: 0 }}>Public Notifications</h3>
                 </div>
                 <span style={{ fontSize: 11, color: COLORS.primary, cursor: 'pointer', fontWeight: 600 }}>View All →</span>
               </div>
@@ -627,7 +628,7 @@ export default function LandingPage() {
                 <div key={i} style={{ padding: '12px 0', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer' }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS.accent, marginTop: 5, flexShrink: 0 }} />
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.text, lineHeight: 1.45, marginBottom: 3 }}>{n.title}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.text, lineHeight: 1.45, marginBottom: 3 }}>{n.title}</div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                       <span style={{ fontSize: 10, color: COLORS.textMuted }}>{n.date}</span>
                       <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 3, fontWeight: 600, border: `1px solid ${COLORS.border}`, color: n.type === 'Approval' ? COLORS.success : COLORS.textMuted, background: n.type === 'Approval' ? COLORS.successLight : COLORS.bg }}>
@@ -646,10 +647,10 @@ export default function LandingPage() {
       <div id="lp-why-epaas" style={{ background: COLORS.primary, padding: '56px 0' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 32px' }}>
           <div style={{ textAlign: 'center', marginBottom: 36 }}>
-            <div style={{ display: 'inline-block', background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.85)', fontSize: 15, fontWeight: 700, padding: '4px 12px', borderRadius: 4, marginBottom: 10, letterSpacing: 0.5 }}>
+            <div style={{ display: 'inline-block', background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.85)', fontSize: 16, fontWeight: 700, padding: '4px 12px', borderRadius: 4, marginBottom: 10, letterSpacing: 0.5 }}>
               WHY E-PAAS
             </div>
-            <h2 style={{ fontSize: 24, fontWeight: 700, color: '#fff', fontFamily: "'Libre Baskerville',Georgia,serif", marginBottom: 8, margin: 0 }}>
+            <h2 style={{ fontSize: 26, fontWeight: 700, color: '#fff', fontFamily: "'Libre Baskerville',Georgia,serif", marginBottom: 8, margin: 0 }}>
               A Modern, Transparent Approval System
             </h2>
           </div>
@@ -665,8 +666,8 @@ export default function LandingPage() {
                 <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, marginBottom: 12 }}>
                   {f.icon}
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 6 }}>{f.title}</div>
-                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.58)', lineHeight: 1.7, margin: 0 }}>{f.desc}</p>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 6 }}>{f.title}</div>
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.58)', lineHeight: 1.7, margin: 0 }}>{f.desc}</p>
               </div>
             ))}
           </div>
@@ -677,10 +678,10 @@ export default function LandingPage() {
       <div id="lp-resources" style={{ background: COLORS.bg, padding: '48px 0', borderTop: `1px solid ${COLORS.border}`, borderBottom: `1px solid ${COLORS.border}` }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 32px' }}>
           <div style={{ textAlign: 'center', marginBottom: 28 }}>
-            <h2 style={{ fontSize: 20, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville',Georgia,serif", margin: 0 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville',Georgia,serif", margin: 0 }}>
               Quick Links &amp; Resources
             </h2>
-            <p style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 6 }}>
+            <p style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 6 }}>
               All the documents and guides you need to prepare and submit a successful application.
             </p>
           </div>
@@ -693,8 +694,8 @@ export default function LandingPage() {
             ].map((q) => (
               <div key={q.title} style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '18px 14px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                 <div style={{ fontSize: 26, marginBottom: 8 }}>{q.icon}</div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.text, lineHeight: 1.4, marginBottom: 4 }}>{q.title}</div>
-                <div style={{ fontSize: 10, color: COLORS.textMuted }}>{q.sub}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.text, lineHeight: 1.4, marginBottom: 4 }}>{q.title}</div>
+                <div style={{ fontSize: 11, color: COLORS.textMuted }}>{q.sub}</div>
               </div>
             ))}
           </div>
@@ -713,7 +714,7 @@ export default function LandingPage() {
   src={fssaiLogo}
   alt="FSSAI"
   style={{
-    height: 52,
+    height: 64,
     width: 'auto',
     objectFit: 'contain',
     filter: 'brightness(0) invert(1)'

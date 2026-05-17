@@ -131,6 +131,7 @@ export function getBin(stage: string): Bin {
   if (stage === 'QuerySent') return 'reverted';
   if (stage === 'Rejected') return 'rejected';
   if (['Approved', 'Closed'].includes(stage)) return 'approved';
+  if (['Withdrawn', 'WithdrawnByAuthority'].includes(stage)) return 'submitted';
   if (SUBMITTED_STAGES.includes(stage)) return 'submitted';
   return 'submitted';
 }
@@ -197,6 +198,19 @@ export async function submitDraftApplication(id: string): Promise<Application> {
 
 export async function deleteDraftApplication(id: string): Promise<void> {
   await api.delete(`/applications/${id}`);
+}
+
+export async function requestWithdrawal(id: string, justification: string): Promise<void> {
+  await api.post(`/applications/${id}/request-withdrawal`, { justification });
+}
+
+export async function sendCertificateEmail(id: string): Promise<{ sentTo: string }> {
+  const { data } = await api.post<{ success: boolean; sentTo: string }>(`/applications/${id}/send-certificate`);
+  return data;
+}
+
+export async function submitPmsReport(id: string, storedName: string, originalName: string): Promise<void> {
+  await api.post(`/applications/${id}/submit-pms-report`, { storedName, originalName });
 }
 
 export async function fetchQueries(applicationId: string): Promise<Query[]> {

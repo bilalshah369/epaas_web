@@ -1,16 +1,17 @@
 import { api } from './api';
 
 export interface AppealItem {
-  id:            string | null;
-  applicationId: string;
-  ref:           string;
-  company:       string;
-  product:       string;
-  appType:       string;
-  foodCategory:  string;
-  rejDate:       string;
-  daysLeft:      number;
-  appealStatus:  'PendingFiling' | 'AppealPending' | 'AppealApproved' | 'AppealRejected';
+  id:              string | null;
+  applicationId:   string;
+  ref:             string;
+  company:         string;
+  product:         string;
+  appType:         string;
+  foodCategory:    string;
+  rejDate:         string;
+  daysLeft:        number;
+  appealStatus:    'PendingFiling' | 'AppealPending' | 'AppealApproved' | 'AppealRejected';
+  decisionRemarks: string | null;
 }
 
 export interface ReviewItem {

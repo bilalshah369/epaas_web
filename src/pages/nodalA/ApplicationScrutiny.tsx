@@ -5,7 +5,7 @@ import { COLORS, S } from '@/utils/colors';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { fetchApplication, fetchQueries, nodalForwardQueryToApplicant, nodalForwardResponseToTech, type Application, type AppFormData, type Query } from '@/services/application.service';
 import { getDocRows, getProfileDisplay } from '@/utils/docResolver';
-import { nodalAForward, nodalAReturnWithQuery, nodalASendDecision } from '@/services/officer.service';
+import { nodalAForward, nodalAReturnWithQuery, nodalASendDecision, nodalADispatchReviewDecision, nodalAForwardReviewToChairperson } from '@/services/officer.service';
 
 const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_URL ?? 'http://localhost:3000/api';
 
@@ -111,11 +111,35 @@ export default function ApplicationScrutiny() {
     setSubmitting(true);
     try {
       await nodalASendDecision(app.id);
-      toast.success('Decision communicated to applicant — application approved');
+      toast.success('Decision dispatched to applicant');
       navigate('/nodal/dashboard');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast.error(msg ?? 'Could not send decision');
+    } finally { setSubmitting(false); }
+  }
+
+  async function handleForwardReviewToChairperson(reviewId: string) {
+    setSubmitting(true);
+    try {
+      await nodalAForwardReviewToChairperson(reviewId);
+      toast.success('Review petition forwarded to Chairperson');
+      navigate('/nodal/dashboard');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'Could not forward review petition');
+    } finally { setSubmitting(false); }
+  }
+
+  async function handleDispatchReviewOrder(reviewId: string) {
+    setSubmitting(true);
+    try {
+      await nodalADispatchReviewDecision(reviewId);
+      toast.success('Chairman\'s review order dispatched to applicant');
+      navigate('/nodal/dashboard');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'Could not dispatch review order');
     } finally { setSubmitting(false); }
   }
 
@@ -140,11 +164,14 @@ export default function ApplicationScrutiny() {
   const fd      = app.formData as AppFormData | null;
   const display = getProfileDisplay(app);
   const docRows = getDocRows(app);
-  const toDecision = app.toDecision as Record<string, unknown> | null;
-  const fromEC     = !!toDecision?.fromEC;
-  const ecDecision = toDecision?.ecDecision as string | undefined;
-  const form2      = toDecision?.form2Data as Record<string, unknown> | undefined;
-  const f2Decision = toDecision?.decision as string | undefined;
+  const toDecision    = app.toDecision as Record<string, unknown> | null;
+  const fromEC        = !!toDecision?.fromEC;
+  const ecDecision    = toDecision?.ecDecision as string | undefined;
+  const form2         = toDecision?.form2Data as Record<string, unknown> | undefined;
+  const f2Decision    = toDecision?.decision as string | undefined;
+  const pendingReviewId       = toDecision?.pendingReviewId as string | undefined;
+  const reviewPendingForward  = toDecision?.reviewPendingForward as string | undefined;
+  const alreadyDispatched     = fromEC && (app.stage === 'Rejected' || app.stage === 'Approved');
 
   return (
     <div>
@@ -368,40 +395,96 @@ export default function ApplicationScrutiny() {
         {/* ── Right: Checklist + Decision ────────────────────────── */}
         <div>
           {fromEC ? (
-            /* ── Post-EC mode: show Form 2 summary + dispatch only ── */
+            /* ── Post-EC mode: show Form 2 summary + appropriate action ── */
             <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.primary, borderBottom: `2px solid ${COLORS.primaryLight}`, paddingBottom: 6, marginBottom: 14, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                 Form II — Decision Summary
               </div>
 
               {/* EC Recommendation */}
-              <div style={{ background: ecDecision === 'RecommendRejection' ? '#FFF1F2' : '#F0FDF4', border: `1px solid ${ecDecision === 'RecommendRejection' ? '#FECDD3' : '#BBF7D0'}`, borderRadius: 8, padding: '10px 14px', marginBottom: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: ecDecision === 'RecommendRejection' ? '#9F1239' : '#166534', marginBottom: 2 }}>
-                  EC Recommendation: {ecDecision === 'RecommendRejection' ? 'Recommend Rejection' : 'Recommend Approval'}
+              {ecDecision && (
+                <div style={{ background: ecDecision === 'RecommendRejection' ? '#FFF1F2' : '#F0FDF4', border: `1px solid ${ecDecision === 'RecommendRejection' ? '#FECDD3' : '#BBF7D0'}`, borderRadius: 8, padding: '10px 14px', marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: ecDecision === 'RecommendRejection' ? '#9F1239' : '#166534', marginBottom: 2 }}>
+                    EC Recommendation: {ecDecision === 'RecommendRejection' ? 'Recommend Rejection' : 'Recommend Approval'}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* TO Final Decision */}
-              <div style={{ background: f2Decision === 'Rejected' ? '#FFF1F2' : '#F0FDF4', border: `1px solid ${f2Decision === 'Rejected' ? '#FECDD3' : '#BBF7D0'}`, borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
-                <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 2 }}>Technical Officer Final Decision</div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: f2Decision === 'Rejected' ? '#9F1239' : '#166534' }}>
-                  {f2Decision === 'Rejected' ? '✗ Rejected' : '✓ Approved'}
-                </div>
-                {form2 && (
-                  <div style={{ marginTop: 8, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6 }}>
-                    {!!form2['productName'] && <div><strong>Product:</strong> {String(form2['productName'])}</div>}
-                    {!!form2['orgName']     && <div><strong>Organisation:</strong> {String(form2['orgName'])}</div>}
+              {f2Decision && (
+                <div style={{ background: f2Decision === 'Rejected' ? '#FFF1F2' : '#F0FDF4', border: `1px solid ${f2Decision === 'Rejected' ? '#FECDD3' : '#BBF7D0'}`, borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
+                  <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 2 }}>Technical Officer Final Decision</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: f2Decision === 'Rejected' ? '#9F1239' : '#166534' }}>
+                    {f2Decision === 'Rejected' ? '✗ Rejected' : '✓ Approved'}
                   </div>
-                )}
-              </div>
+                  {form2 && (
+                    <div style={{ marginTop: 8, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6 }}>
+                      {!!form2['productName'] && <div><strong>Product:</strong> {String(form2['productName'])}</div>}
+                      {!!form2['orgName']     && <div><strong>Organisation:</strong> {String(form2['orgName'])}</div>}
+                    </div>
+                  )}
+                </div>
+              )}
 
-              <button
-                onClick={handleSendDecision}
-                disabled={submitting}
-                style={{ width: '100%', padding: '12px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', border: 'none', background: COLORS.success, color: '#fff', opacity: submitting ? 0.7 : 1 }}
-              >
-                {submitting ? 'Processing…' : '📨 Confirm — Dispatch Decision to Applicant →'}
-              </button>
+              {/* Case 0a: App already forwarded to Chairperson — locked, waiting */}
+              {app.stage === 'WithChairperson' ? (
+                <div style={{ background: '#F3E8FF', border: '1px solid #C084FC', borderRadius: 8, padding: '12px 14px' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#4A148C', marginBottom: 4 }}>⚖️ Review Petition with Chairperson</div>
+                  <div style={{ fontSize: 11, color: '#4A148C', lineHeight: 1.6 }}>
+                    The review petition has been forwarded to the Chairperson for a final decision. This panel will be actionable once the Chairperson decides.
+                  </div>
+                </div>
+              ) : /* Case 0b: Applicant filed review — Nodal must forward to Chairperson */
+              reviewPendingForward ? (
+                <div>
+                  <div style={{ background: '#EEF2FF', border: '1px solid #C7D2FE', borderRadius: 8, padding: '10px 14px', marginBottom: 12 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#3730A3', marginBottom: 2 }}>⚖️ Review Petition Filed — Action Required</div>
+                    <div style={{ fontSize: 11, color: '#3730A3', lineHeight: 1.5 }}>The applicant has filed a review petition against the appellate order. Review the petition and forward it to the Chairperson for a final decision.</div>
+                  </div>
+                  <button
+                    onClick={() => handleForwardReviewToChairperson(reviewPendingForward)}
+                    disabled={submitting}
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', border: 'none', background: '#3730A3', color: '#fff', opacity: submitting ? 0.7 : 1 }}
+                  >
+                    {submitting ? 'Processing…' : '⚖️ Forward Review Petition to Chairperson →'}
+                  </button>
+                </div>
+              ) : /* Case 1: Already dispatched — locked */
+              alreadyDispatched ? (
+                <div style={{ background: app.stage === 'Rejected' ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${app.stage === 'Rejected' ? '#FECACA' : '#BBF7D0'}`, borderRadius: 8, padding: '12px 14px' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: app.stage === 'Rejected' ? '#9F1239' : '#166534', marginBottom: 4 }}>
+                    {app.stage === 'Rejected' ? '✕ Decision Dispatched — Rejected' : '✓ Decision Dispatched — Approved'}
+                  </div>
+                  <div style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6 }}>
+                    Decision has already been communicated to the applicant. No further action available.
+                    {app.stage === 'Rejected' && ' The applicant may file an appeal against this rejection.'}
+                  </div>
+                </div>
+              ) : pendingReviewId ? (
+                /* Case 2: Chairperson disposed review — dispatch Chairman's order */
+                <div>
+                  <div style={{ background: '#F3F4F6', border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '10px 14px', marginBottom: 12 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.text, marginBottom: 2 }}>⚖️ Chairman's Review Order — Pending Dispatch</div>
+                    <div style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 1.5 }}>The Chairperson has disposed the review petition (upheld CEO's rejection). Dispatch the final order to the applicant.</div>
+                  </div>
+                  <button
+                    onClick={() => handleDispatchReviewOrder(pendingReviewId)}
+                    disabled={submitting}
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', border: 'none', background: '#1E3A5F', color: '#fff', opacity: submitting ? 0.7 : 1 }}
+                  >
+                    {submitting ? 'Processing…' : '📨 Dispatch Chairman\'s Review Order →'}
+                  </button>
+                </div>
+              ) : (
+                /* Case 3: Normal dispatch after EC/TO decision */
+                <button
+                  onClick={handleSendDecision}
+                  disabled={submitting}
+                  style={{ width: '100%', padding: '12px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', border: 'none', background: COLORS.success, color: '#fff', opacity: submitting ? 0.7 : 1 }}
+                >
+                  {submitting ? 'Processing…' : '📨 Confirm — Dispatch Decision to Applicant →'}
+                </button>
+              )}
             </div>
           ) : (
             /* ── Normal scrutiny mode ───────────────────────────────── */
@@ -476,13 +559,25 @@ export default function ApplicationScrutiny() {
                   )}
                 </div>
               ) : (
-                <div style={{ background: app.stage === 'Rejected' ? '#FEF2F2' : COLORS.bg, border: `1px solid ${app.stage === 'Rejected' ? '#FECACA' : COLORS.border}`, borderRadius: 10, padding: 16 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: app.stage === 'Rejected' ? COLORS.danger : COLORS.textMuted, marginBottom: 6 }}>
-                    {app.stage === 'Rejected' ? '✕ Application Rejected' : `Status: ${app.stage}`}
+                <div style={{
+                  background: app.stage === 'Rejected' ? '#FEF2F2' : app.stage === 'WithChairperson' ? '#EEF2FF' : COLORS.bg,
+                  border: `1px solid ${app.stage === 'Rejected' ? '#FECACA' : app.stage === 'WithChairperson' ? '#C7D2FE' : COLORS.border}`,
+                  borderRadius: 10, padding: 16,
+                }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6,
+                    color: app.stage === 'Rejected' ? COLORS.danger : app.stage === 'WithChairperson' ? '#3730A3' : COLORS.textMuted }}>
+                    {app.stage === 'Rejected'         ? '✕ Application Rejected'
+                      : app.stage === 'WithChairperson' ? '⚖️ Review Pending with Chairperson'
+                      : `Status: ${app.stage}`}
                   </div>
                   {app.stage === 'Rejected' && (
                     <div style={{ fontSize: 11, color: COLORS.text, lineHeight: 1.6 }}>
-                      This application has been rejected. No further Nodal Officer action is available until the CEO approves the applicant's appeal and routes it back to this queue.
+                      This application has been rejected. The applicant may file an appeal (goes to CEO) or a review petition (goes to Chairperson). This view will be unlocked when a decision is routed back here.
+                    </div>
+                  )}
+                  {app.stage === 'WithChairperson' && (
+                    <div style={{ fontSize: 11, color: '#3730A3', lineHeight: 1.6 }}>
+                      The applicant has filed a review petition against the appellate order. The petition is currently with the Chairperson for a final decision. This application will return here once the Chairperson decides.
                     </div>
                   )}
                 </div>

@@ -29,7 +29,7 @@ export default function PublicNavbar({ rightLabel, onRightClick }: Props) {
             cursor: 'pointer',
           }}
         >
-          <img src={fssaiLogo} alt="FSSAI" style={{ height: 90, width: 'auto', objectFit: 'contain', display: 'block' }} />
+          <img src={fssaiLogo} alt="FSSAI" style={{ height: 104, width: 'auto', objectFit: 'contain', display: 'block' }} />
         </div>
 
         <div

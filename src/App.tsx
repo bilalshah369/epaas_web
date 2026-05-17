@@ -41,6 +41,7 @@ import TechSearchConsole          from '@/pages/technical/TechSearchConsole';
 import TechForwardedToEC          from '@/pages/technical/TechForwardedToEC';
 
 import ApplicantRequests           from '@/pages/applicant/ApplicantRequests';
+import ApplicantExtensionRequest   from '@/pages/applicant/ApplicantExtensionRequest';
 
 // ── Nodal Point B module ──────────────────────────────────────────────────────
 import NodalBLayout              from '@/layouts/NodalBLayout';
@@ -146,6 +147,7 @@ export default function App() {
             <Route path="/app/requests/appeal"    element={<ApplicantRequests />}   />
             <Route path="/app/requests/review"    element={<ApplicantRequests />}   />
             <Route path="/app/requests/extension" element={<ApplicantRequests />}   />
+            <Route path="/app/extension-request/:appId" element={<ApplicantExtensionRequest />} />
             {/* Remaining applicant screens added in later steps */}
             <Route path="/app/*"            element={<DashboardPlaceholder />}    />
           </Route>

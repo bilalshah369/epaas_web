@@ -3,6 +3,7 @@ import { api } from './api';
 export interface ExtensionItem {
   id:              string;
   applicationId:   string;
+  queryId:         string | null;
   reason:          string;
   extensionDays:   number;
   contactEmail:    string;
@@ -29,6 +30,7 @@ export async function createExtension(payload: {
   extensionDays: number;
   contactEmail:  string;
   justification: string;
+  queryId?:      string;
 }): Promise<ExtensionItem> {
   const { data } = await api.post<{ extension: ExtensionItem }>('/extensions', payload);
   return data.extension;

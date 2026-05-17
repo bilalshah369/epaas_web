@@ -5,8 +5,13 @@ import { useNavigate } from "react-router-dom";
 import { COLORS, S } from "@/utils/colors";
 import { resolveFoodCategory } from "@/utils/docResolver";
 import StatusBadge from "@/components/ui/StatusBadge";
-import { fetchNodalAAll } from "@/services/officer.service";
+import {
+  fetchNodalAAll, fetchWithdrawalRequests, approveWithdrawalRequest,
+  rejectWithdrawalRequest, withdrawByAuthority,
+  type WithdrawalRequestRecord,
+} from "@/services/officer.service";
 import type { Application } from "@/services/application.service";
+import toast from "react-hot-toast";
 
 // ── Stage helpers ──────────────────────────────────────────────────────────────
 
@@ -23,6 +28,8 @@ const STAGE_PENDING_WITH: Record<string, string> = {
   Approved: "—",
   Closed: "—",
   Rejected: "—",
+  Withdrawn: "—",
+  WithdrawnByAuthority: "—",
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -38,6 +45,7 @@ function stageToStatus(stage: string): string {
   if (stage === "Rejected") return "rejected";
   if (stage === "QuerySent") return "query";
   if (["WithNodalOfficerA", "Submitted"].includes(stage)) return "scrutiny";
+  if (["Withdrawn", "WithdrawnByAuthority"].includes(stage)) return "withdrawn";
   return "pending";
 }
 
@@ -366,6 +374,23 @@ const DOC_SCRUTINY_FILTERS: FilterField[] = [
   { label: "From Date", type: "date" },
   { label: "To Date", type: "date" },
   {
+    label: "Food Category",
+    type: "select",
+    options: [
+      "All",
+      "Bakery & Confectionery",
+      "Beverages",
+      "Cereal & Cereal Products",
+      "Dairy Products",
+      "Fats & Oils",
+      "Fruits & Vegetables",
+      "Meat & Poultry",
+      "Nutritional Supplements",
+      "Spices & Condiments",
+      "Any Other",
+    ],
+  },
+  {
     label: "Kind of Business",
     type: "select",
     options: ["All", "Manufacturer", "Relabeller", "Importer"],
@@ -475,6 +500,27 @@ function TypeBadge({ type }: { type: string }) {
   );
 }
 
+// ── PDF print helper ───────────────────────────────────────────────────────────
+
+function printTablePDF(title: string, headers: string[], rows: string[][]) {
+  const win = window.open('', '_blank', 'width=900,height=650');
+  if (!win) return;
+  const thStyle = 'background:#1B4332;color:#fff;padding:8px 10px;font-size:11px;font-weight:700;text-align:left;white-space:nowrap;border:1px solid #ddd;';
+  const tdStyle = 'padding:7px 10px;font-size:11px;border:1px solid #ddd;';
+  win.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
+    <style>body{font-family:"Segoe UI",sans-serif;margin:24px;}h2{font-size:16px;margin-bottom:4px;color:#1B4332;}
+    p{font-size:11px;color:#666;margin-bottom:16px;}table{border-collapse:collapse;width:100%;}
+    tr:nth-child(even){background:#f6faf8;}@media print{@page{size:landscape;}}</style></head>
+    <body><h2>FSSAI E-PAAS — ${title}</h2>
+    <p>Generated on ${new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'})}</p>
+    <table><thead><tr>${headers.map((h) => `<th style="${thStyle}">${h}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map((r) => `<tr>${r.map((c) => `<td style="${tdStyle}">${c}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table></body></html>`);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); win.close(); }, 400);
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function NodalADashboard() {
@@ -488,6 +534,16 @@ export default function NodalADashboard() {
   const [statusSheet, setStatusSheet] = useState<1 | 2>(1);
   const [appealType, setAppealType] = useState("Appeal");
 
+  // Report search
+  const [reportSearch, setReportSearch] = useState('');
+
+  // Withdrawal state
+  const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequestRecord[]>([]);
+  const [withdrawalLoading,  setWithdrawalLoading]  = useState(false);
+  const [withdrawByAuthApp,  setWithdrawByAuthApp]  = useState<Application | null>(null);
+  const [withdrawByAuthJust, setWithdrawByAuthJust] = useState('');
+  const [withdrawByAuthSub,  setWithdrawByAuthSub]  = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -497,9 +553,14 @@ export default function NodalADashboard() {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const loadWithdrawals = useCallback(async () => {
+    setWithdrawalLoading(true);
+    try { setWithdrawalRequests(await fetchWithdrawalRequests()); }
+    finally { setWithdrawalLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); loadWithdrawals(); }, [load, loadWithdrawals]);
+  useEffect(() => { setReportSearch(''); }, [dashboardSection]);
 
   // ── Derived stats ────────────────────────────────────────────────────────────
 
@@ -517,6 +578,8 @@ export default function NodalADashboard() {
   const editQueue = apps.filter((a) => a.stage === "QuerySent");
   const unread = NOTIFICATIONS.filter((n) => !n.read).length;
 
+  const pendingWithdrawals = withdrawalRequests.filter((w) => w.status === 'Pending');
+
   const pendingSections = [
     {
       key: "docscrutiny",
@@ -528,7 +591,7 @@ export default function NodalADashboard() {
       label: "Application with Editing",
       count: editQueue.length,
     },
-    { key: "withdrawal", label: "Withdrawal of Approval", count: 0 },
+    { key: "withdrawal", label: "Withdrawal of Approval", count: pendingWithdrawals.length },
     { key: "appeal", label: "Application for Appeal/Review", count: 0 },
   ];
 
@@ -615,19 +678,28 @@ export default function NodalADashboard() {
       return <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: bg, color: fg }}>{ok ? "approved" : no ? "rejected" : stage.toLowerCase()}</span>;
     };
 
-    const reportTable = (rows: Application[]) => (
+    const reportTable = (rows: Application[], searchLabel = 'Search…') => {
+      const filtered = reportSearch.trim()
+        ? rows.filter((a) => a.referenceNumber.toLowerCase().includes(reportSearch.trim().toLowerCase()))
+        : rows;
+      return (
       <div style={{ background: "#fff", border: `1px solid ${COLORS.border}`, borderRadius: 8, overflow: "hidden" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 14px", background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}` }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>SEARCH RESULTS</span>
-          <input placeholder="Search..." style={{ border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "4px 10px", fontSize: 11, width: 200, outline: "none" }} />
+          <input
+            placeholder={searchLabel}
+            value={reportSearch}
+            onChange={(e) => setReportSearch(e.target.value)}
+            style={{ border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "4px 10px", fontSize: 11, width: 240, outline: "none" }}
+          />
         </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead><tr>{REPORT_COLS.map((h) => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
             <tbody>
-              {rows.length === 0 ? (
+              {filtered.length === 0 ? (
                 <tr><td colSpan={REPORT_COLS.length} style={{ ...S.td, textAlign: "center", color: COLORS.textMuted, padding: 24 }}>No records found.</td></tr>
-              ) : rows.map((a, i) => (
+              ) : filtered.map((a, i) => (
                 <tr key={a.id} style={{ background: i % 2 === 0 ? "#fff" : COLORS.bg }}>
                   <td style={S.td}>{i + 1}</td>
                   <td style={{ ...S.td, color: COLORS.primary, fontWeight: 600 }}>{a.referenceNumber}</td>
@@ -648,9 +720,10 @@ export default function NodalADashboard() {
           </table>
         </div>
       </div>
-    );
+      );
+    };
 
-    const subPageLayout = (title: string, rows: Application[], statCards: Array<{ label: string; value: number }>) => (
+    const subPageLayout = (title: string, rows: Application[], statCards: Array<{ label: string; value: number }>, searchLabel?: string) => (
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
           <button onClick={() => setDashboardSection(null)} style={{ background: "transparent", border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "4px 12px", fontSize: 11, cursor: "pointer", color: COLORS.text }}>← Back</button>
@@ -678,7 +751,7 @@ export default function NodalADashboard() {
             <OfficerFilterBar fields={YEAR_WISE_FILTERS} />
           </div>
         )}
-        {reportTable(rows)}
+        {reportTable(rows, searchLabel)}
       </div>
     );
 
@@ -740,14 +813,14 @@ export default function NodalADashboard() {
         </div>
         {statusSheet === 1 && (
           <div style={{ background: "#fff", border: `1px solid ${COLORS.border}`, borderRadius: 8, overflow: "hidden" }}>
-            <div style={{ padding: "10px 14px", background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}`, fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>SHEET 1 — AUTHORITY PENDING STATUS</div>
+            <div style={{ padding: "10px 14px", background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}`, fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>SHEET 1 — APPLICANT PENDING STATUS</div>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-              <thead><tr>{["Summary", "IO", "Nodal", "EC", "Applicant Authority"].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
+              <thead><tr>{["Summary", "TO", "Nodal", "EC", "Applicant"].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
               <tbody>
                 {[
-                  { label: "Authority Pending ≤ 45 Days",   min: 0,  max: 45       },
-                  { label: "Authority Pending 46–75 Days",  min: 46, max: 75       },
-                  { label: "Authority Pending > 75 Days",   min: 76, max: Infinity },
+                  { label: "Applicant Pending ≤ 45 Days",   min: 0,  max: 45       },
+                  { label: "Applicant Pending 46–75 Days",  min: 46, max: 75       },
+                  { label: "Applicant Pending > 75 Days",   min: 76, max: Infinity },
                 ].map((row, i) => {
                   const f = pendingApps.filter((a) => { const d = (Date.now() - new Date(a.submittedAt ?? 0).getTime()) / 86400000; return d >= row.min && d <= row.max; });
                   return (
@@ -770,7 +843,7 @@ export default function NodalADashboard() {
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
-                  <tr>{["Sr. No.", "Total Pending Applications", "Applications Pending with IO", "Applications Pending with Nodal Officer", "Applications Pending with EC", "Applications Ready to go to EC", "Applicant Pending ≤ 30 Days", "Applicant Pending 31–45 Days", "Applicant Pending > 45 Days", "Long Outstanding Cases (> 75 Days)"].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
+                  <tr>{["Sr. No.", "Total Pending Applications", "Applications Pending with TO", "Applications Pending with Nodal Officer", "Applications Pending with EC", "Applications Ready to go to EC", "Applicant Pending ≤ 30 Days", "Applicant Pending 31–45 Days", "Applicant Pending > 45 Days", "Long Outstanding Cases (> 75 Days)"].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
                 </thead>
                 <tbody>
                   <tr>
@@ -946,16 +1019,14 @@ export default function NodalADashboard() {
           </span>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <button
-              style={{
-                background: "none",
-                border: `1px solid ${COLORS.border}`,
-                borderRadius: 6,
-                padding: "4px 12px",
-                fontSize: 11,
-                cursor: "pointer",
-              }}
+              onClick={() => printTablePDF(
+                "Recent Applications",
+                ["Ref. No.", "Company", "Product", "Type", "Food Category", "Received", "Pending With", "Status"],
+                apps.map((a) => [a.referenceNumber, a.companyName, a.productName ?? "—", a.applicationType, resolveFoodCategory(a), a.submittedAt ? new Date(a.submittedAt).toLocaleDateString("en-IN") : "—", STAGE_PENDING_WITH[a.stage] ?? a.stage, a.stage])
+              )}
+              style={{ background: "#DC2626", color: "#fff", border: "none", borderRadius: 6, padding: "4px 12px", fontSize: 11, cursor: "pointer", fontWeight: 600 }}
             >
-              ⬇ Export CSV
+              ⬇ Download PDF
             </button>
             <button
               onClick={() => setActiveBin("pending")}
@@ -1288,16 +1359,14 @@ export default function NodalADashboard() {
               }}
             >
               <button
-                style={{
-                  background: "none",
-                  border: `1px solid ${COLORS.border}`,
-                  borderRadius: 6,
-                  padding: "4px 12px",
-                  fontSize: 11,
-                  cursor: "pointer",
-                }}
+                onClick={() => printTablePDF(
+                  "Document Scrutinization Queue",
+                  ["Ref. No.", "Type", "Food Category", "Company", "Product", "Pending With", "Received On", "Days Remaining"],
+                  scrutinyQueue.map((a) => [a.referenceNumber, a.applicationType, resolveFoodCategory(a), a.companyName, a.productName ?? "—", STAGE_PENDING_WITH[a.stage] ?? a.stage, a.submittedAt ? new Date(a.submittedAt).toLocaleDateString("en-IN") : "—", String(Math.max(0, 30 - Math.floor((Date.now() - new Date(a.submittedAt ?? 0).getTime()) / 86400000)))])
+                )}
+                style={{ background: "#DC2626", color: "#fff", border: "none", borderRadius: 6, padding: "4px 12px", fontSize: 11, cursor: "pointer", fontWeight: 600 }}
               >
-                ⬇ Export CSV
+                ⬇ Download PDF
               </button>
             </div>
             <div style={{ overflowX: "auto" }}>
@@ -1549,53 +1618,101 @@ export default function NodalADashboard() {
       {/* Withdrawal of Approval */}
       {pendingSection === "withdrawal" && (
         <>
+          {/* Authority-initiated withdrawal: approved + already-withdrawn apps */}
+          {(() => {
+            const withdrawalApps = apps.filter((a) => ["Approved", "Closed", "Withdrawn", "WithdrawnByAuthority"].includes(a.stage));
+            const statusLabel = (stage: string) => {
+              if (stage === "Withdrawn") return { bg: "#E0E7FF", color: "#3730A3", text: "Withdrawn" };
+              if (stage === "WithdrawnByAuthority") return { bg: "#F3F4F6", color: "#374151", text: "Withdrawn by Authority" };
+              return { bg: COLORS.successLight, color: COLORS.success, text: "Approved" };
+            };
+            return (
+              <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "14px 16px", marginBottom: 14 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.text, marginBottom: 8 }}>Withdrawal of Approval (Authority Action)</div>
+                <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 12 }}>Nodal Officer A can directly withdraw an approved application. Already-withdrawn applications are view-only.</div>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr>{["Sr. No.", "Ref. No.", "Company", "Product", "Status", "Action"].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
+                    </thead>
+                    <tbody>
+                      {withdrawalApps.length === 0 ? (
+                        <tr><td colSpan={6} style={{ ...S.td, textAlign: "center", color: COLORS.textMuted, padding: 20 }}>No approved or withdrawn applications.</td></tr>
+                      ) : withdrawalApps.map((a, i) => {
+                        const sl = statusLabel(a.stage);
+                        const isWithdrawn = ["Withdrawn", "WithdrawnByAuthority"].includes(a.stage);
+                        return (
+                          <tr key={a.id} style={{ background: i % 2 === 0 ? "#fff" : COLORS.bg }}>
+                            <td style={S.td}>{i + 1}</td>
+                            <td style={{ ...S.td, color: COLORS.primary, fontWeight: 600 }}>{a.referenceNumber}</td>
+                            <td style={S.td}>{a.companyName}</td>
+                            <td style={S.td}>{a.productName ?? "—"}</td>
+                            <td style={S.td}><span style={{ fontSize: 10, fontWeight: 700, background: sl.bg, color: sl.color, padding: "2px 8px", borderRadius: 4 }}>{sl.text}</span></td>
+                            <td style={S.td}>
+                              {isWithdrawn ? (
+                                <Btn label="View" variant="outline" onClick={() => navigate(`/nodal/scrutiny/${a.id}`)} />
+                              ) : (
+                                <button onClick={() => { setWithdrawByAuthApp(a); setWithdrawByAuthJust(''); }}
+                                  style={{ background: COLORS.danger, color: "#fff", border: "none", borderRadius: 5, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                                  Withdraw
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Applicant-requested withdrawals */}
           <OfficerFilterBar fields={WITHDRAWAL_FILTERS} />
-          <div
-            style={{
-              background: COLORS.white,
-              border: `1px solid ${COLORS.border}`,
-              borderRadius: 8,
-              overflow: "hidden",
-            }}
-          >
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: 12,
-              }}
-            >
+          <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 8, overflow: "hidden" }}>
+            <div style={{ padding: "9px 14px", background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}`, fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>
+              APPLICANT WITHDRAWAL REQUESTS
+            </div>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead>
-                <tr>
-                  {[
-                    "Sr. No.",
-                    "Approval No.",
-                    "Company / Org.",
-                    "Issue Date",
-                    "Request Date",
-                    "Status",
-                    "Action",
-                  ].map((h) => (
-                    <th key={h} style={S.th}>
-                      {h}
-                    </th>
-                  ))}
-                </tr>
+                <tr>{["Sr. No.", "Ref. No.", "Company", "Product", "Justification", "Request Date", "Status", "Action"].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
               </thead>
               <tbody>
-                <tr>
-                  <td
-                    colSpan={7}
-                    style={{
-                      ...S.td,
-                      textAlign: "center",
-                      color: COLORS.textMuted,
-                      padding: 24,
-                    }}
-                  >
-                    No withdrawal requests pending.
-                  </td>
-                </tr>
+                {withdrawalLoading ? (
+                  <tr><td colSpan={8} style={{ ...S.td, textAlign: "center", color: COLORS.textMuted, padding: 24 }}>Loading…</td></tr>
+                ) : withdrawalRequests.length === 0 ? (
+                  <tr><td colSpan={8} style={{ ...S.td, textAlign: "center", color: COLORS.textMuted, padding: 24 }}>No withdrawal requests.</td></tr>
+                ) : withdrawalRequests.map((w, i) => (
+                  <tr key={w.id} style={{ background: i % 2 === 0 ? "#fff" : COLORS.bg }}>
+                    <td style={S.td}>{i + 1}</td>
+                    <td style={{ ...S.td, color: COLORS.primary, fontWeight: 600 }}>{w.application.referenceNumber}</td>
+                    <td style={S.td}>{w.application.companyName}</td>
+                    <td style={S.td}>{w.application.productName ?? "—"}</td>
+                    <td style={{ ...S.td, maxWidth: 200 }}><span style={{ fontSize: 11, color: COLORS.text }}>{w.justification}</span></td>
+                    <td style={S.td}>{new Date(w.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                    <td style={S.td}>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 4, background: w.status === "Pending" ? COLORS.warningLight : w.status === "Approved" ? COLORS.successLight : COLORS.dangerLight, color: w.status === "Pending" ? COLORS.warning : w.status === "Approved" ? COLORS.success : COLORS.danger }}>
+                        {w.status}
+                      </span>
+                    </td>
+                    <td style={S.td}>
+                      {w.status === "Pending" && (
+                        <div style={{ display: "flex", gap: 4 }}>
+                          <button onClick={async () => { try { await approveWithdrawalRequest(w.id); toast.success("Withdrawal approved"); loadWithdrawals(); load(); } catch { toast.error("Failed"); } }}
+                            style={{ background: COLORS.success, color: "#fff", border: "none", borderRadius: 5, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                            Approve
+                          </button>
+                          <button onClick={async () => { try { await rejectWithdrawalRequest(w.id); toast.success("Withdrawal rejected"); loadWithdrawals(); } catch { toast.error("Failed"); } }}
+                            style={{ background: COLORS.danger, color: "#fff", border: "none", borderRadius: 5, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                      {w.status !== "Pending" && <span style={{ fontSize: 11, color: COLORS.textMuted }}>—</span>}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -1749,6 +1866,54 @@ export default function NodalADashboard() {
 
   return (
     <div>
+      {/* ── Withdraw by Authority Modal ─────────────────────────────────── */}
+      {withdrawByAuthApp && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "#fff", borderRadius: 12, width: 500, boxShadow: "0 24px 64px rgba(0,0,0,0.22)" }}>
+            <div style={{ background: COLORS.danger, borderRadius: "12px 12px 0 0", padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#fff" }}>Withdraw Application (Authority)</div>
+              <div onClick={() => setWithdrawByAuthApp(null)} style={{ cursor: "pointer", color: "rgba(255,255,255,0.7)", fontSize: 20 }}>✕</div>
+            </div>
+            <div style={{ padding: 20 }}>
+              <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "10px 14px", marginBottom: 14 }}>
+                <div style={{ fontSize: 11, color: COLORS.textMuted }}>Application</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.primary }}>{withdrawByAuthApp.referenceNumber}</div>
+                <div style={{ fontSize: 11, color: COLORS.text, marginTop: 2 }}>{withdrawByAuthApp.companyName}</div>
+              </div>
+              <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 6, padding: "10px 14px", fontSize: 11, color: "#991B1B", marginBottom: 14, lineHeight: 1.6 }}>
+                This action will immediately withdraw the approved application and notify the applicant. This cannot be undone.
+              </div>
+              <label style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>
+                Justification <span style={{ color: COLORS.danger }}>*</span>
+              </label>
+              <textarea
+                value={withdrawByAuthJust}
+                onChange={(e) => setWithdrawByAuthJust(e.target.value)}
+                placeholder="Provide official reason for withdrawal..."
+                style={{ width: "100%", resize: "vertical", fontFamily: "'Noto Sans','Segoe UI',sans-serif", fontSize: 12, padding: "8px 10px", border: `1px solid ${COLORS.border}`, borderRadius: 6, outline: "none", minHeight: 80, marginBottom: 16 }}
+              />
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <button onClick={() => setWithdrawByAuthApp(null)} style={{ background: "transparent", color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 5, padding: "8px 18px", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+                <button disabled={withdrawByAuthSub || !withdrawByAuthJust.trim()} onClick={async () => {
+                  if (!withdrawByAuthJust.trim()) return;
+                  setWithdrawByAuthSub(true);
+                  try {
+                    await withdrawByAuthority(withdrawByAuthApp.id, withdrawByAuthJust);
+                    toast.success("Application withdrawn by authority");
+                    setWithdrawByAuthApp(null);
+                    setWithdrawByAuthJust('');
+                    load();
+                  } catch { toast.error("Failed to withdraw application"); }
+                  finally { setWithdrawByAuthSub(false); }
+                }} style={{ background: COLORS.danger, color: "#fff", border: "none", borderRadius: 5, padding: "8px 18px", fontSize: 11, fontWeight: 600, cursor: "pointer", opacity: withdrawByAuthJust.trim() ? 1 : 0.5 }}>
+                  {withdrawByAuthSub ? "Processing…" : "Confirm Withdrawal"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ScreenHeading role="Nodal Officer (A)" title="Dashboard" />
       <OfficerBins
         activeBin={activeBin}

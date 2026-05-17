@@ -17,7 +17,7 @@ const FILTER_FIELDS = [
   { label: 'From Date',            type: 'date' },
   { label: 'To Date',              type: 'date' },
   { label: 'Application Type',     type: 'select', options: ['All', 'New', 'Appeal', 'Review'] },
-  { label: 'Application Filter',   type: 'select', options: ['All', 'Edited by Applicant', 'Recommended by IO', 'Recommended by EC', 'Extension of Additional Time'] },
+  { label: 'Application Filter',   type: 'select', options: ['All', 'Edited by Applicant', 'Recommended by TO', 'Recommended by EC', 'Extension of Additional Time'] },
 ];
 
 function fmtDate(iso: string | null | undefined) {

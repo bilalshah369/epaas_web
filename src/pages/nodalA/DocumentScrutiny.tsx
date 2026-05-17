@@ -24,7 +24,7 @@ const FILTER_FIELDS = [
   { label: 'To Date',    type: 'date' },
   { label: 'Kind of Business',   type: 'select', options: ['All', 'Manufacturer', 'Relabeller', 'Importer'] },
   { label: 'Application Type',   type: 'select', options: ['All', 'New', 'Appeal', 'Review'] },
-  { label: 'Application Filter', type: 'select', options: ['All', 'Edited by Applicant', 'Recommended by IO', 'Recommended by EC', 'Extension of Additional Time'] },
+  { label: 'Application Filter', type: 'select', options: ['All', 'Edited by Applicant', 'Recommended by TO', 'Recommended by EC', 'Extension of Additional Time'] },
 ];
 
 const ASSIGN_TARGETS  = ['Nodal Officer A', 'Nodal Officer B', 'Technical Officer'];

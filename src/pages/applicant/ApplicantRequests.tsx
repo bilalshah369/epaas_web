@@ -1,7 +1,7 @@
 // Mirrors ApplicantAppealReview + ApplicantExtension from mock (App.jsx L9224, L10258).
 // Wired to real API: /api/appeals, /api/appeals/reviews, /api/extensions.
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import type React from 'react';
 import toast from 'react-hot-toast';
 import { COLORS, S } from '@/utils/colors';
@@ -12,10 +12,9 @@ import {
 } from '@/services/appeal.service';
 import { uploadFile } from '@/services/application.service';
 import {
-  fetchExtensions, createExtension, updateExtension,
+  fetchExtensions,
   type ExtensionItem,
 } from '@/services/extension.service';
-import { fetchMyApplications, type Application } from '@/services/application.service';
 
 // ── Local style helpers ────────────────────────────────────────────────────────
 
@@ -35,15 +34,6 @@ const textarea: React.CSSProperties = {
   padding: '8px 10px', border: `1px solid ${COLORS.border}`, borderRadius: 6, outline: 'none',
 };
 
-const selectStyle: React.CSSProperties = {
-  ...S.select, width: '100%', padding: '7px 10px',
-  border: `1px solid ${COLORS.border}`, borderRadius: 6, fontSize: 12,
-};
-
-const inputStyle: React.CSSProperties = {
-  ...S.input, padding: '7px 10px',
-  border: `1px solid ${COLORS.border}`, borderRadius: 6, fontSize: 12,
-};
 
 function btn(variant: 'solid' | 'outline' | 'warning' | 'info' | 'danger' | 'success' = 'solid', small = false): React.CSSProperties {
   const BG: Record<string, string> = { solid: COLORS.primary, outline: 'transparent', warning: '#C67C12', info: COLORS.info, danger: COLORS.danger, success: COLORS.success };
@@ -82,27 +72,20 @@ function tabFromPath(p: string): Tab {
 
 // ── Extension form state ───────────────────────────────────────────────────────
 
-interface ExtForm {
-  applicationId: string;
-  reason:        string;
-  extensionDays: number;
-  contactEmail:  string;
-  justification: string;
-}
-
-const BLANK_EXT: ExtForm = { applicationId: '', reason: 'Technical / Lab Delay', extensionDays: 7, contactEmail: '', justification: '' };
 
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export default function ApplicantRequests() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<Tab>(tabFromPath(location.pathname));
 
   // Appeal
   const [appealItems,      setAppealItems]      = useState<AppealItem[]>([]);
   const [appealLoading,    setAppealLoading]    = useState(false);
   const [appealModal,      setAppealModal]      = useState<AppealItem | null>(null);
+  const [decisionModal,    setDecisionModal]    = useState<AppealItem | null>(null);
   const [appealGrounds,    setAppealGrounds]    = useState('');
   const [appealSubmitting, setAppealSubmitting] = useState(false);
   const [appealFile,       setAppealFile]       = useState<string | null>(null);
@@ -124,11 +107,6 @@ export default function ApplicantRequests() {
   // Extension
   const [extItems,   setExtItems]   = useState<ExtensionItem[]>([]);
   const [extLoading, setExtLoading] = useState(false);
-  const [showForm,   setShowForm]   = useState(false);
-  const [editId,     setEditId]     = useState<string | null>(null);
-  const [extForm,    setExtForm]    = useState<ExtForm>(BLANK_EXT);
-  const [extSubmitting, setExtSubmitting] = useState(false);
-  const [myApps,     setMyApps]     = useState<Application[]>([]);
 
   // ── Loaders ─────────────────────────────────────────────────────────────────
 
@@ -150,11 +128,18 @@ export default function ApplicantRequests() {
   useEffect(() => { loadAppeals();    }, [loadAppeals]);
   useEffect(() => { loadReviews();    }, [loadReviews]);
   useEffect(() => { loadExtensions(); }, [loadExtensions]);
-  useEffect(() => { fetchMyApplications().then(setMyApps).catch(() => {}); }, []);
 
   useEffect(() => {
     setActiveTab(tabFromPath(location.pathname));
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      setActiveTab('extension');
+      navigate('/app/requests/extension', { replace: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Tab switch ───────────────────────────────────────────────────────────────
 
@@ -225,30 +210,6 @@ export default function ApplicantRequests() {
     } finally { setReviewSubmitting(false); }
   }
 
-  // ── Extension submit ─────────────────────────────────────────────────────────
-
-  async function handleExtSubmit() {
-    if (!extForm.applicationId || !extForm.contactEmail || !extForm.justification.trim()) return;
-    setExtSubmitting(true);
-    try {
-      if (editId) {
-        await updateExtension(editId, { reason: extForm.reason, extensionDays: extForm.extensionDays, contactEmail: extForm.contactEmail, justification: extForm.justification });
-      } else {
-        await createExtension(extForm);
-      }
-      setShowForm(false);
-      setEditId(null);
-      setExtForm(BLANK_EXT);
-      await loadExtensions();
-    } finally { setExtSubmitting(false); }
-  }
-
-  function startEdit(item: ExtensionItem) {
-    setEditId(item.id);
-    setExtForm({ applicationId: item.applicationId, reason: item.reason, extensionDays: item.extensionDays, contactEmail: item.contactEmail, justification: item.justification });
-    setShowForm(true);
-  }
-
   // ── Stats ────────────────────────────────────────────────────────────────────
 
   const pendingFiling  = appealItems.filter((a) => a.appealStatus === 'PendingFiling').length;
@@ -283,6 +244,56 @@ export default function ApplicantRequests() {
 
   return (
     <div>
+      {/* ── Decision Modal (AppealRejected / AppealApproved) ────────────────── */}
+      {decisionModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#fff', borderRadius: 12, width: 520, maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.22)' }}>
+            <div style={{ background: decisionModal.appealStatus === 'AppealApproved' ? COLORS.success : COLORS.danger, borderRadius: '12px 12px 0 0', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>{decisionModal.appealStatus === 'AppealApproved' ? 'Appeal Approved' : 'Appeal Rejected'} — CEO Decision</div>
+              <div onClick={() => setDecisionModal(null)} style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.7)', fontSize: 20 }}>✕</div>
+            </div>
+            <div style={{ padding: 20 }}>
+              <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '10px 14px', marginBottom: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
+                {([
+                  ['Application Ref.', decisionModal.ref],
+                  ['Company',          decisionModal.company],
+                  ['Product',          decisionModal.product],
+                  ['Application Type', decisionModal.appType],
+                ] as [string, string][]).map(([k, v]) => (
+                  <div key={k}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>{k}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.text, marginTop: 1 }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+              <label style={S.label}>Decision Remarks from CEO</label>
+              <div style={{ background: decisionModal.appealStatus === 'AppealApproved' ? '#F0FDF4' : '#FEF2F2', border: `1px solid ${decisionModal.appealStatus === 'AppealApproved' ? '#BBF7D0' : '#FECACA'}`, borderRadius: 8, padding: '12px 14px', fontSize: 12, color: COLORS.text, lineHeight: 1.6, marginBottom: 16 }}>
+                {decisionModal.decisionRemarks ?? 'No remarks provided.'}
+              </div>
+              {decisionModal.appealStatus === 'AppealApproved' && (
+                <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 8, padding: '12px 14px', fontSize: 12, color: '#166534', marginBottom: 16, lineHeight: 1.6 }}>
+                  Your appeal has been approved by the CEO. The application will be re-processed by the Nodal Officer.
+                </div>
+              )}
+              {decisionModal.appealStatus === 'AppealRejected' && (
+                <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '12px 14px', fontSize: 12, color: '#991B1B', marginBottom: 16, lineHeight: 1.6 }}>
+                  Your appeal has been rejected by the CEO. You may file a <strong>Review Petition</strong> to the Chairperson within the stipulated period.
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button onClick={() => setDecisionModal(null)} style={{ ...btn('outline'), padding: '8px 18px' }}>Close</button>
+                {decisionModal.appealStatus === 'AppealRejected' && (
+                  <button onClick={() => { setDecisionModal(null); switchTab('review'); }}
+                    style={{ ...btn(), padding: '8px 18px', background: '#6A0572' }}>
+                    File Review Petition →
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Appeal Modal ────────────────────────────────────────────────────── */}
       {appealModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -408,11 +419,7 @@ export default function ApplicantRequests() {
               : 'Request extra time to respond to queries or submit supporting documents.'}
           </div>
         </div>
-        {activeTab === 'extension' && (
-          <button style={{ ...btn(), fontSize: 12 }} onClick={() => { setShowForm((f) => !f); if (showForm) { setEditId(null); setExtForm(BLANK_EXT); } }}>
-            {showForm ? '← Back to List' : '+ Create New Request'}
-          </button>
-        )}
+        {/* Create Extension Request button removed — extension requests are created by Nodal Officer A */}
       </div>
 
       {/* ── Tab switcher ────────────────────────────────────────────────────── */}
@@ -497,12 +504,12 @@ export default function ApplicantRequests() {
                         </td>
                         <td style={S.td}><StatusBadge status={badgeType} label={label} /></td>
                         <td style={{ ...S.td, whiteSpace: 'nowrap' }}>
-                          <button style={btn('outline', true)}>View</button>
+                          <button style={btn('outline', true)} onClick={() => navigate('/app/applications/' + r.applicationId)}>View</button>
                           {canFile && <button style={btn('warning', true)} onClick={() => setAppealModal(r)}>File Appeal</button>}
                           {r.appealStatus === 'AppealPending'  && <button style={btn('info',    true)}>Track</button>}
-                          {r.appealStatus === 'AppealRejected' && <button style={btn('danger',  true)}>View Decision</button>}
-                          {r.appealStatus === 'AppealApproved' && <button style={btn('success', true)}>View Decision</button>}
-                          <button style={btn('outline', true)}>History</button>
+                          {r.appealStatus === 'AppealRejected' && <button style={btn('danger',  true)} onClick={() => setDecisionModal(r)}>View Decision</button>}
+                          {r.appealStatus === 'AppealApproved' && <button style={btn('success', true)} onClick={() => setDecisionModal(r)}>View Decision</button>}
+                          <button style={btn('outline', true)} onClick={() => navigate('/app/applications/' + r.applicationId)}>History</button>
                         </td>
                       </tr>
                     );
@@ -532,7 +539,7 @@ export default function ApplicantRequests() {
                   )}
                   {reviewItems.map((r, i) => {
                     const canReview = r.reviewStatus === 'PendingReview' && r.daysLeft > 0;
-                    const badgeType = r.reviewStatus === 'PendingReview' ? 'pending' : r.reviewStatus === 'ReviewPending' ? 'ec' : r.reviewStatus === 'DeadlinePassed' ? 'rejected' : 'approved';
+                    const badgeType = r.reviewStatus === 'PendingReview' ? 'pending' : r.reviewStatus === 'ReviewPending' ? 'ec' : r.reviewStatus === 'DeadlinePassed' ? 'rejected' : r.reviewStatus === 'ReviewDisposed' ? 'rejected' : 'approved';
                     const label     = r.reviewStatus === 'PendingReview' ? 'Pending Review' : r.reviewStatus === 'ReviewPending' ? 'Review Pending' : r.reviewStatus === 'DeadlinePassed' ? 'Deadline Passed' : 'Review Disposed';
                     return (
                       <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg }}>
@@ -554,11 +561,11 @@ export default function ApplicantRequests() {
                           <span style={{ ...badge(badgeType), ...(badgeType === 'pending' ? { background: '#6A0572' } : {}) }}>{label}</span>
                         </td>
                         <td style={{ ...S.td, whiteSpace: 'nowrap' }}>
-                          <button style={btn('outline', true)}>View</button>
+                          <button style={btn('outline', true)} onClick={() => navigate('/app/applications/' + r.applicationId)}>View</button>
                           {canReview && <button style={btn('info', true)} onClick={() => setReviewModal(r)}>File Review</button>}
                           {r.reviewStatus === 'ReviewPending'  && <button style={btn('info',    true)}>Track</button>}
                           {r.reviewStatus === 'DeadlinePassed' && <button style={btn('outline', true)}>Expired</button>}
-                          <button style={btn('outline', true)}>History</button>
+                          <button style={btn('outline', true)} onClick={() => navigate('/app/applications/' + r.applicationId)}>History</button>
                         </td>
                       </tr>
                     );
@@ -571,61 +578,7 @@ export default function ApplicantRequests() {
 
         {/* EXTENSION */}
         {activeTab === 'extension' && (
-          extLoading ? <div style={{ padding: 24, textAlign: 'center', color: COLORS.textMuted }}>Loading…</div> :
-          showForm ? (
-            <>
-              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 16, color: COLORS.text }}>{editId ? 'Edit Extension Request' : 'New Extension Request'}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-                <div>
-                  <label style={S.label}>APPLICATION REFERENCE NO.</label>
-                  <select style={selectStyle} value={extForm.applicationId} onChange={(e) => setExtForm((f) => ({ ...f, applicationId: e.target.value }))} disabled={!!editId}>
-                    <option value="">— Select application —</option>
-                    {myApps.filter((a) => a.stage !== 'Draft' && a.stage !== 'Approved' && a.stage !== 'Rejected').map((a) => (
-                      <option key={a.id} value={a.id}>{a.referenceNumber} — {a.productName ?? a.foodCategory}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label style={S.label}>REASON FOR EXTENSION</label>
-                  <select style={selectStyle} value={extForm.reason} onChange={(e) => setExtForm((f) => ({ ...f, reason: e.target.value }))}>
-                    <option>Technical / Lab Delay</option>
-                    <option>Document Collection</option>
-                    <option>Other</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={S.label}>REQUESTED EXTENSION PERIOD</label>
-                  <select style={selectStyle} value={extForm.extensionDays} onChange={(e) => setExtForm((f) => ({ ...f, extensionDays: Number(e.target.value) }))}>
-                    <option value={7}>7 Days</option>
-                    <option value={14}>14 Days</option>
-                    <option value={30}>30 Days</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={S.label}>CONTACT EMAIL FOR CORRESPONDENCE</label>
-                  <input placeholder="email@company.com" style={inputStyle} value={extForm.contactEmail} onChange={(e) => setExtForm((f) => ({ ...f, contactEmail: e.target.value }))} />
-                </div>
-              </div>
-              <div style={{ marginBottom: 14 }}>
-                <label style={S.label}>DETAILED JUSTIFICATION</label>
-                <textarea placeholder="Provide a clear explanation for the requested extension..." style={{ ...textarea, minHeight: 80 }} value={extForm.justification} onChange={(e) => setExtForm((f) => ({ ...f, justification: e.target.value }))} />
-              </div>
-              <div style={{ marginBottom: 20 }}>
-                <label style={S.label}>SUPPORTING DOCUMENTS</label>
-                <div style={{ border: `2px dashed ${COLORS.border}`, borderRadius: 8, padding: 18, textAlign: 'center', background: COLORS.bg, cursor: 'pointer' }}>
-                  <div style={{ fontSize: 20, marginBottom: 4 }}>⬆️</div>
-                  <div style={{ fontSize: 12, color: COLORS.primary, fontWeight: 600 }}>Upload Documents</div>
-                  <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 2 }}>PDF, DOCX, JPG — Max 5MB each</div>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button style={{ ...btn(), padding: '9px 20px' }} disabled={extSubmitting} onClick={handleExtSubmit}>
-                  {extSubmitting ? 'Submitting…' : 'Submit Request'}
-                </button>
-                <button style={{ ...btn('outline'), padding: '9px 20px' }} onClick={() => { setShowForm(false); setEditId(null); setExtForm(BLANK_EXT); }}>Cancel</button>
-              </div>
-            </>
-          ) : (
+          extLoading ? <div style={{ padding: 24, textAlign: 'center', color: COLORS.textMuted }}>Loading…</div> : (
             <>
               <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12 }}>My Extension Requests</div>
               <table style={tableStyle}>
@@ -634,7 +587,7 @@ export default function ApplicantRequests() {
                 </thead>
                 <tbody>
                   {extItems.length === 0 && (
-                    <tr><td colSpan={9} style={{ ...S.td, textAlign: 'center', color: COLORS.textMuted, padding: 24 }}>No extension requests yet. Click "+ Create New Request" to start one.</td></tr>
+                    <tr><td colSpan={9} style={{ ...S.td, textAlign: 'center', color: COLORS.textMuted, padding: 24 }}>No extension requests yet.</td></tr>
                   )}
                   {extItems.map((r, i) => (
                     <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg }}>
@@ -645,10 +598,9 @@ export default function ApplicantRequests() {
                       <td style={S.td}>{fmtDate(r.createdAt)}</td>
                       <td style={S.td}><StatusBadge status={r.status === 'Pending' ? 'pending' : r.status === 'Approved' ? 'approved' : 'rejected'} label={r.status} /></td>
                       <td style={S.td}><span style={{ fontSize: 11, color: COLORS.textMuted }}>{r.authorityRemarks ?? '—'}</span></td>
-                      <td style={S.td}><button style={btn('outline', true)}>View Docs</button></td>
+                      <td style={S.td}><span style={{ fontSize: 11, color: COLORS.textMuted }}>—</span></td>
                       <td style={S.td}>
                         <button style={btn('outline', true)}>View History</button>
-                        {r.status === 'Pending' && <button style={btn('solid', true)} onClick={() => startEdit(r)}>Edit</button>}
                       </td>
                     </tr>
                   ))}

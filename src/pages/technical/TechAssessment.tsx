@@ -55,13 +55,14 @@ function daysSince(iso: string | null | undefined) {
 
 type Tab = 'profile' | 'documents' | 'compliance' | 'query' | 'clarification' | 'recommendation' | 'decision';
 
-const BASE_TABS: Tab[] = ['profile', 'documents', 'compliance', 'query', 'clarification', 'recommendation'];
+// 'query' tab removed — functionality merged into 'clarification' tab
+const BASE_TABS: Tab[] = ['profile', 'documents', 'compliance', /* 'query', */ 'clarification', 'recommendation'];
 const TAB_LABELS: Record<Tab, string> = {
   profile:        'Applicant Profile',
   documents:      'Uploaded Documents',
   compliance:     'Compliance Checklist',
   query:          'Draft Query',
-  clarification:  'Request Clarification',
+  clarification:  'Query / Clarification',
   recommendation: 'Recommendation',
   decision:       'Prepare Decision',
 };
@@ -82,8 +83,9 @@ export default function TechAssessment() {
   const [querySubject,  setQuerySubject]  = useState('');
   const [queryBody,     setQueryBody]     = useState('');
 
-  // Form 2 state
+  // Form 2 state — locked to EC recommendation once loaded
   const [f2Decision,    setF2Decision]    = useState<'Approved' | 'Rejected'>('Approved');
+  const [f2WithPms,     setF2WithPms]     = useState(false);
   const [f2Conditions,  setF2Conditions]  = useState('');
   const [f2Reasons,     setF2Reasons]     = useState('');
   const [f2Composition, setF2Composition] = useState('');      // NSF/AA/Other
@@ -120,6 +122,11 @@ export default function TechAssessment() {
     fetchApplication(id)
       .then((a) => {
         setApp(a);
+        // Lock f2Decision to EC recommendation
+        const td = a?.toDecision as Record<string, unknown> | null;
+        if (td?.fromEC) {
+          setF2Decision(td.ecDecision === 'RecommendRejection' ? 'Rejected' : 'Approved');
+        }
         // Pre-fill rPET fields from formData if available
         const fd = a?.formData as AppFormData | null | undefined;
         if (a.applicationType === 'RPET') {
@@ -158,9 +165,10 @@ export default function TechAssessment() {
   async function handleRequestClarification() {
     if (clarText.trim().length < 10) { toast.error('Clarification text must be at least 10 characters'); return; }
     setSaving(true);
+    const fullText = `${querySubject.trim() ? querySubject.trim() + '\n\n' : ''}${clarText.trim()}`;
     try {
-      await technicalRequestClarification(appId, clarText);
-      toast.success('Clarification requested — application sent to Nodal Officer A');
+      await technicalRequestClarification(appId, fullText);
+      toast.success('Clarification requested — application routed to Nodal Officer A for forwarding');
       navigate('/technical/dashboard');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -169,6 +177,7 @@ export default function TechAssessment() {
     }
   }
 
+  /* handleSendQuery — merged into clarification tab; kept for reference
   async function handleSendQuery() {
     const text = `${querySubject ? querySubject + '\n\n' : ''}${queryBody}`.trim();
     if (text.length < 10) { toast.error('Query must be at least 10 characters'); return; }
@@ -187,6 +196,7 @@ export default function TechAssessment() {
       toast.error('Could not send query');
     } finally { setSaving(false); }
   }
+  */
 
   async function handleRecordDecision() {
     if (!f2Decision) { toast.error('Please select Approved or Rejected'); return; }
@@ -218,7 +228,7 @@ export default function TechAssessment() {
 
     setSaving(true);
     try {
-      await technicalRecordDecision(appId, f2Decision, f2Conditions, f2Reasons, form2Data);
+      await technicalRecordDecision(appId, f2Decision, f2Conditions, f2Reasons, form2Data, f2Decision === 'Approved' ? f2WithPms : false);
       toast.success('Form 2 decision recorded — application forwarded to Nodal Officer A');
       navigate('/technical/dashboard');
     } catch (err: unknown) {
@@ -263,7 +273,8 @@ export default function TechAssessment() {
               background: t === 'decision' ? (activeTab === t ? '#E8F5E9' : '#F1F8E9') : 'transparent',
             }}>
             {TAB_LABELS[t]}
-            {t === 'query' && queries.length > 0 && (
+            {/* query badge — query tab removed, badge moved to clarification tab */}
+            {t === 'clarification' && queries.length > 0 && (
               <span style={{ marginLeft: 5, background: COLORS.primary, color: '#fff', borderRadius: 8, fontSize: 9, padding: '1px 5px', fontWeight: 700 }}>{queries.length}</span>
             )}
             {t === 'decision' && (
@@ -372,9 +383,28 @@ export default function TechAssessment() {
         </div>
       )}
 
-      {/* ── Query tab ────────────────────────────────────────────── */}
-      {activeTab === 'query' && (
+      {/* ── Query tab (REMOVED — merged into clarification tab below) ── */}
+      {/* {activeTab === 'query' && (
         <div>
+          {queries.length > 0 && (
+            <div style={card}>
+              <div style={cardTitle}>QUERY &amp; RESPONSE HISTORY ({queries.length})</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                ... (history content)
+              </div>
+            </div>
+          )}
+          <div style={card}>
+            <div style={cardTitle}>DRAFT NEW QUERY TO APPLICANT</div>
+            ... (subject + body + send query button)
+          </div>
+        </div>
+      )} */}
+
+      {/* ── Query / Clarification tab (merged) ──────────────────── */}
+      {activeTab === 'clarification' && (
+        <div>
+          {/* Query & response history */}
           {queries.length > 0 && (
             <div style={card}>
               <div style={cardTitle}>QUERY &amp; RESPONSE HISTORY ({queries.length})</div>
@@ -421,52 +451,34 @@ export default function TechAssessment() {
               </div>
             </div>
           )}
+
+          {/* Request Clarification form */}
           <div style={card}>
-            <div style={cardTitle}>DRAFT NEW QUERY TO APPLICANT</div>
-            <div style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>Query Subject</label>
+            <div style={cardTitle}>REQUEST CLARIFICATION FROM APPLICANT</div>
+            <div style={{ marginBottom: 6, fontSize: 12, color: COLORS.textMuted, lineHeight: 1.6 }}>
+              Use this to formally request clarification or additional documents from the applicant. The application will be routed to Nodal Officer A, who will forward it to the applicant.
+            </div>
+            <div style={{ marginBottom: 14, marginTop: 14 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>Query Subject (optional)</label>
               <input value={querySubject} onChange={(e) => setQuerySubject(e.target.value)}
                 placeholder="e.g. Request for stability data and formulation certificate"
                 style={fieldInput} />
             </div>
             <div style={{ marginBottom: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <label style={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Query Body *</label>
-                <span style={{ fontSize: 10, color: queryBody.trim().length < 10 ? COLORS.danger : COLORS.textMuted }}>{queryBody.trim().length} / min 10 chars</span>
+                <label style={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Clarification / Query Details *</label>
+                <span style={{ fontSize: 10, color: clarText.trim().length < 10 ? COLORS.danger : COLORS.textMuted }}>{clarText.trim().length} / min 10 chars</span>
               </div>
-              <textarea rows={5} value={queryBody} onChange={(e) => setQueryBody(e.target.value)}
-                placeholder="Describe the information required from the applicant…"
-                style={{ ...textarea, minHeight: 120 }} />
+              <textarea rows={6} value={clarText} onChange={(e) => setClarText(e.target.value)}
+                placeholder="Specify exactly what additional information or documents are needed from the applicant…"
+                style={{ ...textarea, minHeight: 130, borderColor: clarText.length > 0 && clarText.trim().length < 10 ? COLORS.danger : COLORS.border }} />
             </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button style={btn()} disabled={saving} onClick={handleSendQuery}>{saving ? 'Sending…' : 'Send Query to Nodal Officer'}</button>
-              <button style={btn('outline')} onClick={() => { setQuerySubject(''); setQueryBody(''); }}>Clear</button>
+            <button style={btn()} disabled={saving} onClick={handleRequestClarification}>
+              {saving ? 'Processing…' : '↩ Request Clarification — Forward to Nodal A'}
+            </button>
+            <div style={{ marginTop: 14, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '10px 14px', fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6 }}>
+              <strong style={{ color: COLORS.text }}>Stage transition:</strong> Application moves to <strong>QuerySent</strong> → Nodal Officer A forwards to applicant for response.
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Request Clarification tab ────────────────────────────── */}
-      {activeTab === 'clarification' && (
-        <div style={card}>
-          <div style={cardTitle}>REQUEST CLARIFICATION FROM APPLICANT</div>
-          <div style={{ marginBottom: 6, fontSize: 12, color: COLORS.textMuted, lineHeight: 1.6 }}>
-            Use this to formally request clarification or additional documents from the applicant. The application will be routed to Nodal Officer A, who will forward it to the applicant.
-          </div>
-          <div style={{ marginBottom: 14, marginTop: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-              <label style={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Clarification Required *</label>
-              <span style={{ fontSize: 10, color: clarText.trim().length < 10 ? COLORS.danger : COLORS.textMuted }}>{clarText.trim().length} / min 10 chars</span>
-            </div>
-            <textarea rows={6} value={clarText} onChange={(e) => setClarText(e.target.value)}
-              placeholder="Specify exactly what additional information or documents are needed from the applicant…"
-              style={{ ...textarea, minHeight: 130, borderColor: clarText.length > 0 && clarText.trim().length < 10 ? COLORS.danger : COLORS.border }} />
-          </div>
-          <button style={btn()} disabled={saving} onClick={handleRequestClarification}>
-            {saving ? 'Processing…' : '↩ Request Clarification — Forward to Nodal A'}
-          </button>
-          <div style={{ marginTop: 14, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '10px 14px', fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6 }}>
-            <strong style={{ color: COLORS.text }}>Stage transition:</strong> Application moves to <strong>QuerySent</strong> → Nodal Officer A forwards to applicant for response.
           </div>
         </div>
       )}
@@ -606,20 +618,27 @@ export default function TechAssessment() {
                 {/* Decision toggle */}
                 <div style={{ marginBottom: 24 }}>
                   {sectionLabel('Application Status / Decision', true)}
-                  <div style={{ display: 'flex', gap: 12 }}>
-                    {(['Approved', 'Rejected'] as const).map((opt) => (
-                      <button key={opt} onClick={() => setF2Decision(opt)}
-                        style={{
-                          padding: '10px 28px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                          border: `2px solid ${f2Decision === opt ? (opt === 'Approved' ? COLORS.success : COLORS.danger) : COLORS.border}`,
-                          background: f2Decision === opt ? (opt === 'Approved' ? '#F0FDF4' : '#FFF1F2') : '#fff',
-                          color: f2Decision === opt ? (opt === 'Approved' ? '#166534' : '#9F1239') : COLORS.textMuted,
-                          transition: 'all 0.15s',
-                        }}>
-                        {opt === 'Approved' ? '✓ Approved' : '✗ Rejected'}
-                      </button>
-                    ))}
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{
+                      padding: '10px 28px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+                      border: `2px solid ${f2Decision === 'Approved' ? COLORS.success : COLORS.danger}`,
+                      background: f2Decision === 'Approved' ? '#F0FDF4' : '#FFF1F2',
+                      color: f2Decision === 'Approved' ? '#166534' : '#9F1239',
+                    }}>
+                      {f2Decision === 'Approved' ? '✓ Approved' : '✗ Rejected'}
+                    </div>
+                    {f2Decision === 'Approved' && (
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '8px 16px', borderRadius: 8, border: `2px solid ${f2WithPms ? COLORS.warning : COLORS.border}`, background: f2WithPms ? '#FEF3DC' : '#fff', fontSize: 12, fontWeight: 600, color: f2WithPms ? COLORS.warning : COLORS.textMuted, transition: 'all 0.15s' }}>
+                        <input type="checkbox" checked={f2WithPms} onChange={(e) => setF2WithPms(e.target.checked)} style={{ width: 15, height: 15, cursor: 'pointer', accentColor: COLORS.warning }} />
+                        Approval with PMS
+                      </label>
+                    )}
                   </div>
+                  {f2WithPms && f2Decision === 'Approved' && (
+                    <div style={{ marginTop: 10, background: '#FEF3DC', border: '1px solid #FCD34D', borderRadius: 6, padding: '8px 12px', fontSize: 11, color: '#92400E' }}>
+                      Post Market Surveillance (PMS) condition will be attached. The applicant will be required to submit periodic monitoring reports after approval.
+                    </div>
+                  )}
                 </div>
 
                 {/* Conditions & Reasons */}

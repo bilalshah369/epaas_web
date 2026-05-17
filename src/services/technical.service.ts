@@ -47,8 +47,9 @@ export async function technicalRecordDecision(
   conditions: string,
   reasons: string,
   form2Data: Record<string, unknown>,
+  withPms?: boolean,
 ): Promise<Application> {
-  const { data } = await api.post<{ application: Application }>(`/technical/applications/${appId}/record-decision`, { decision, conditions, reasons, form2Data });
+  const { data } = await api.post<{ application: Application }>(`/technical/applications/${appId}/record-decision`, { decision, conditions, reasons, form2Data, withPms: withPms ?? false });
   return data.application;
 }
 

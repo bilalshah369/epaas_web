@@ -39,3 +39,8 @@ export async function chairpersonDisposeReview(id: string, decisionRemarks: stri
   const { data } = await api.post(`/chairperson/reviews/${id}/dispose`, { decisionRemarks });
   return data;
 }
+
+export async function chairpersonApproveReview(id: string, decisionRemarks: string): Promise<any> {
+  const { data } = await api.post(`/chairperson/reviews/${id}/approve`, { decisionRemarks });
+  return data;
+}

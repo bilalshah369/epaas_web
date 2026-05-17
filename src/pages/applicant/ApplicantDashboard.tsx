@@ -7,7 +7,7 @@ import { useAuthStore } from '@/store/authStore';
 import { COLORS } from '@/utils/colors';
 import BinCard from '@/components/ui/BinCard';
 import StatusBadge from '@/components/ui/StatusBadge';
-import { fetchMyApplications, deleteDraftApplication, getBin, type Application, type Bin } from '@/services/application.service';
+import { fetchMyApplications, deleteDraftApplication, requestWithdrawal, getBin, type Application, type Bin } from '@/services/application.service';
 
 // ── Helpers: extract address/food-category from formData for any app type ─────
 function getAddress(r: Application): string {
@@ -174,6 +174,9 @@ export default function ApplicantDashboard() {
   const [binFilters, setBinFilters] = useState<Record<Bin, BinFilters>>(initBinFilters);
   const [apps, setApps]             = useState<Application[]>([]);
   const [loading, setLoading]       = useState(true);
+  const [withdrawApp,        setWithdrawApp]        = useState<Application | null>(null);
+  const [withdrawJustification, setWithdrawJustification] = useState('');
+  const [withdrawSubmitting,    setWithdrawSubmitting]    = useState(false);
 
   // Always fetch ALL apps — no backend filters so bin counts are never affected by filters
   const loadApps = useCallback(() => {
@@ -231,6 +234,23 @@ export default function ApplicantDashboard() {
     }
   }
 
+  async function handleWithdrawSubmit() {
+    if (!withdrawApp || !withdrawJustification.trim()) return;
+    setWithdrawSubmitting(true);
+    try {
+      await requestWithdrawal(withdrawApp.id, withdrawJustification);
+      toast.success('Withdrawal request submitted. Nodal Officer will be notified.');
+      setWithdrawApp(null);
+      setWithdrawJustification('');
+      loadApps();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'Failed to submit withdrawal request');
+    } finally { setWithdrawSubmitting(false); }
+  }
+
+  const WITHDRAWAL_INELIGIBLE = ['Draft', 'Rejected', 'Withdrawn', 'WithdrawnByAuthority'];
+
   function fmtDate(iso: string | null) {
     if (!iso) return '—';
     return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -253,11 +273,15 @@ export default function ApplicantDashboard() {
           )}
           <td style={td}>
             {bin === 'incomplete' && <ActionBtn label="Delete Draft" variant="danger" onClick={() => handleDeleteDraft(r.id)} />}
-            {bin === 'submitted'  && <ActionBtn label="View / Respond" variant="outline" onClick={() => navigate(`/app/applications/${r.id}`)} />}
+            {bin === 'submitted'  && <>
+              <ActionBtn label="View / Respond" variant="outline" onClick={() => navigate(`/app/applications/${r.id}`)} />
+              {!WITHDRAWAL_INELIGIBLE.includes(r.stage) && <ActionBtn label="Withdraw" variant="danger" onClick={() => { setWithdrawApp(r); setWithdrawJustification(''); }} />}
+            </>}
             {bin === 'reverted'   && <>
               <ActionBtn label="Respond"        onClick={() => navigate(`/app/applications/${r.id}?tab=2`)} />
               <ActionBtn label="View Query"     variant="info"    onClick={() => navigate(`/app/applications/${r.id}?tab=2`)} />
-              <ActionBtn label="Req. Extension" variant="warning" onClick={() => navigate('/app/requests/extension')} />
+              <ActionBtn label="Req. Extension" variant="warning" onClick={() => navigate(`/app/extension-request/${r.id}`)} />
+              {!WITHDRAWAL_INELIGIBLE.includes(r.stage) && <ActionBtn label="Withdraw" variant="danger" onClick={() => { setWithdrawApp(r); setWithdrawJustification(''); }} />}
             </>}
             {bin === 'rejected'   && <>
               <ActionBtn label="View"         variant="outline" onClick={() => navigate(`/app/applications/${r.id}`)} />
@@ -273,8 +297,9 @@ export default function ApplicantDashboard() {
             {bin === 'all' && r.stage === 'Draft'      && <ActionBtn label="Edit"         variant="primary" onClick={() => navigate(getEditPath(r))} />}
             {bin === 'all' && r.stage === 'Draft'      && <ActionBtn label="Delete Draft" variant="danger"  onClick={() => handleDeleteDraft(r.id)} />}
             {bin === 'all' && r.stage === 'QuerySent'  && <>
-              <ActionBtn label="Respond"    onClick={() => navigate(`/app/applications/${r.id}?tab=2`)} />
-              <ActionBtn label="View Query" variant="info" onClick={() => navigate(`/app/applications/${r.id}?tab=2`)} />
+              <ActionBtn label="Respond"        onClick={() => navigate(`/app/applications/${r.id}?tab=2`)} />
+              <ActionBtn label="View Query"     variant="info"    onClick={() => navigate(`/app/applications/${r.id}?tab=2`)} />
+              <ActionBtn label="Req. Extension" variant="warning" onClick={() => navigate(`/app/extension-request/${r.id}`)} />
             </>}
             {bin === 'all' && r.stage !== 'Draft' && r.stage !== 'QuerySent' && <ActionBtn label="View" variant="outline" onClick={() => navigate(`/app/applications/${r.id}`)} />}
           </td>
@@ -286,6 +311,44 @@ export default function ApplicantDashboard() {
 
   return (
     <div>
+      {/* ── Withdrawal Modal ─────────────────────────────────────────── */}
+      {withdrawApp && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#fff', borderRadius: 12, width: 500, maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.22)' }}>
+            <div style={{ background: COLORS.danger, borderRadius: '12px 12px 0 0', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>Request Withdrawal</div>
+              <div onClick={() => setWithdrawApp(null)} style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.7)', fontSize: 20 }}>✕</div>
+            </div>
+            <div style={{ padding: 20 }}>
+              <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '10px 14px', marginBottom: 14 }}>
+                <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 2 }}>Application</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.primary }}>{withdrawApp.referenceNumber}</div>
+                <div style={{ fontSize: 11, color: COLORS.text, marginTop: 2 }}>{withdrawApp.companyName}</div>
+              </div>
+              <div style={{ background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: 6, padding: '10px 14px', fontSize: 11, color: '#92400E', marginBottom: 14, lineHeight: 1.6 }}>
+                Once submitted, your withdrawal request will be reviewed by the Nodal Officer. This action cannot be undone.
+              </div>
+              <label style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 4 }}>
+                Justification for Withdrawal <span style={{ color: COLORS.danger }}>*</span>
+              </label>
+              <textarea
+                value={withdrawJustification}
+                onChange={(e) => setWithdrawJustification(e.target.value)}
+                placeholder="State clearly why you wish to withdraw this application..."
+                style={{ width: '100%', resize: 'vertical', fontFamily: "'Noto Sans','Segoe UI',sans-serif", fontSize: 12, padding: '8px 10px', border: `1px solid ${COLORS.border}`, borderRadius: 6, outline: 'none', minHeight: 90, marginBottom: 16 }}
+              />
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button onClick={() => setWithdrawApp(null)} style={{ background: 'transparent', color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 5, padding: '8px 18px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                <button onClick={handleWithdrawSubmit} disabled={withdrawSubmitting || !withdrawJustification.trim()}
+                  style={{ background: COLORS.danger, color: '#fff', border: 'none', borderRadius: 5, padding: '8px 18px', fontSize: 11, fontWeight: 600, cursor: 'pointer', opacity: withdrawJustification.trim() ? 1 : 0.5 }}>
+                  {withdrawSubmitting ? 'Submitting…' : 'Submit Withdrawal Request'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Welcome Banner ───────────────────────────────────────────── */}
       <div style={{ background: `linear-gradient(130deg, ${COLORS.primary} 0%, #0e2419 100%)`, borderRadius: 12, padding: '22px 28px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>

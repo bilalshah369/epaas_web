@@ -7,7 +7,7 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import { fetchApplication, type Application, type AppFormData } from '@/services/application.service';
 import { getDocRows } from '@/utils/docResolver';
 import {
-  fetchChairpersonReviews, chairpersonDisposeReview, type Review,
+  fetchChairpersonReviews, chairpersonDisposeReview, chairpersonApproveReview, type Review,
 } from '@/services/chairperson.service';
 
 const card: React.CSSProperties = {
@@ -78,8 +78,13 @@ export default function ChairpersonApplicationReview() {
     if (!pendingReview) { toast.error('No pending review petition found for this application'); setSaving(false); return; }
     setSaving(true);
     try {
-      await chairpersonDisposeReview(pendingReview.id, remarks);
-      toast.success('Review petition disposed — CEO decision upheld; application routed to Nodal A for final dispatch');
+      if (decision === 'Approve Review (Restart Workflow)') {
+        await chairpersonApproveReview(pendingReview.id, remarks);
+        toast.success('Review approved — application restarted through full workflow via Nodal A');
+      } else {
+        await chairpersonDisposeReview(pendingReview.id, remarks);
+        toast.success('Review petition disposed — CEO decision upheld; application routed to Nodal A for final dispatch');
+      }
       navigate('/chairperson/dashboard');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -245,6 +250,7 @@ export default function ChairpersonApplicationReview() {
             <select value={decision} onChange={(e) => setDecision(e.target.value)}
               style={{ padding: '7px 10px', border: `1px solid ${COLORS.border}`, borderRadius: 6, fontSize: 12, background: COLORS.bg, cursor: 'pointer', width: '100%' }}>
               <option>Dispose Review (Uphold CEO Decision)</option>
+              <option>Approve Review (Restart Workflow)</option>
             </select>
           </div>
 
@@ -259,10 +265,17 @@ export default function ChairpersonApplicationReview() {
           </div>
 
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <button onClick={handleSubmit} disabled={saving || reviews.length === 0}
-              style={{ background: COLORS.info, color: '#fff', border: 'none', borderRadius: 6, padding: '8px 20px', fontSize: 12, fontWeight: 700, cursor: (saving || reviews.length === 0) ? 'not-allowed' : 'pointer', opacity: (saving || reviews.length === 0) ? 0.6 : 1 }}>
-              {saving ? 'Processing…' : '⚖️ Dispose Review'}
-            </button>
+            {decision === 'Approve Review (Restart Workflow)' ? (
+              <button onClick={handleSubmit} disabled={saving || reviews.length === 0}
+                style={{ background: COLORS.success, color: '#fff', border: 'none', borderRadius: 6, padding: '8px 20px', fontSize: 12, fontWeight: 700, cursor: (saving || reviews.length === 0) ? 'not-allowed' : 'pointer', opacity: (saving || reviews.length === 0) ? 0.6 : 1 }}>
+                {saving ? 'Processing…' : '✓ Approve Review — Restart Workflow'}
+              </button>
+            ) : (
+              <button onClick={handleSubmit} disabled={saving || reviews.length === 0}
+                style={{ background: COLORS.info, color: '#fff', border: 'none', borderRadius: 6, padding: '8px 20px', fontSize: 12, fontWeight: 700, cursor: (saving || reviews.length === 0) ? 'not-allowed' : 'pointer', opacity: (saving || reviews.length === 0) ? 0.6 : 1 }}>
+                {saving ? 'Processing…' : '⚖️ Dispose Review (Uphold CEO Decision)'}
+              </button>
+            )}
             <button onClick={() => navigate('/chairperson/dashboard')}
               style={{ background: 'transparent', color: COLORS.primary, border: `1px solid ${COLORS.primary}`, borderRadius: 6, padding: '8px 16px', fontSize: 12, cursor: 'pointer' }}>
               Cancel
@@ -272,7 +285,8 @@ export default function ChairpersonApplicationReview() {
           <div style={{ marginTop: 16, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '12px 14px', fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6 }}>
             <strong style={{ color: COLORS.text }}>Stage transitions:</strong>
             <ul style={{ margin: '6px 0 0 0', paddingLeft: 16 }}>
-              <li><strong>Dispose Review</strong> → review petition disposed; CEO&apos;s rejection upheld; application routed to Nodal A for final dispatch to applicant</li>
+              <li><strong>Dispose Review</strong> → CEO&apos;s rejection upheld; Nodal A dispatches the Chairman&apos;s order to applicant (final rejection)</li>
+              <li><strong>Approve Review</strong> → rejection overturned; application restarts full workflow from Nodal A → TO → EC</li>
             </ul>
           </div>
         </div>
