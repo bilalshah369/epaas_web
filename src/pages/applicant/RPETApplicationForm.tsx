@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { COLORS, S } from '@/utils/colors';
+import { scrollToFirstError } from '@/utils/scrollToError';
 import Stepper from '@/components/ui/Stepper';
 import UploadBox from '@/components/ui/UploadBox';
 import {
@@ -132,7 +133,7 @@ export default function RPETApplicationForm() {
 
   const errMsg = (field: string) =>
     stepErrors[field]
-      ? <div style={{ fontSize: 11, color: COLORS.danger, marginTop: 3 }}>{stepErrors[field]}</div>
+      ? <div className="form-field-error" style={{ fontSize: 11, color: COLORS.danger, marginTop: 3 }}>{stepErrors[field]}</div>
       : null;
 
   const eb = (base: React.CSSProperties, field: string): React.CSSProperties =>
@@ -227,7 +228,7 @@ export default function RPETApplicationForm() {
 
   function advanceStep() {
     const errs = validateStep(step);
-    if (Object.keys(errs).length > 0) { setStepErrors(errs); return; }
+    if (Object.keys(errs).length > 0) { setStepErrors(errs); scrollToFirstError(); return; }
     setStepErrors({});
     setStep(step + 1);
   }

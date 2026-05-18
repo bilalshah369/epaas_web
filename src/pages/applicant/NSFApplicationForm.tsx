@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { COLORS, S } from '@/utils/colors';
+import { scrollToFirstError } from '@/utils/scrollToError';
 import Stepper from '@/components/ui/Stepper';
 import UploadBox from '@/components/ui/UploadBox';
 import {
@@ -145,7 +146,7 @@ export default function NSFApplicationForm() {
   }
 
   const errMsg = (field: string) =>
-    stepErrors[field] ? <div style={{ fontSize: 11, color: COLORS.danger, marginTop: 3 }}>{stepErrors[field]}</div> : null;
+    stepErrors[field] ? <div className="form-field-error" style={{ fontSize: 11, color: COLORS.danger, marginTop: 3 }}>{stepErrors[field]}</div> : null;
 
   const eb = (base: React.CSSProperties, field: string): React.CSSProperties =>
     stepErrors[field] ? { ...base, borderColor: COLORS.danger } : base;
@@ -201,11 +202,6 @@ export default function NSFApplicationForm() {
       if (!step1.applicationFor) errs.applicationFor = 'Please select an application type';
       if (step1.applicationFor === APPLICATION_FOR_OPTIONS[4] && !step1.specifyFood.trim())
         errs.specifyFood = 'Please specify the food type';
-      // Block if a pending row is partially filled but not added
-      if (pendingIng.name.trim())
-        errs.pendingIng = 'Please click "+ Add" to add the pending ingredient, or clear it first';
-      if (pendingAdd.name.trim())
-        errs.pendingAdd = 'Please click "+ Add" to add the pending additive, or clear it first';
     }
 
     if (stepIndex === 1) {
@@ -284,7 +280,7 @@ export default function NSFApplicationForm() {
 
   function advanceStep() {
     const errs = validateStep(step);
-    if (Object.keys(errs).length > 0) { setStepErrors(errs); return; }
+    if (Object.keys(errs).length > 0) { setStepErrors(errs); scrollToFirstError(); return; }
     setStepErrors({});
     setStep(step + 1);
   }
@@ -293,80 +289,8 @@ export default function NSFApplicationForm() {
 
   // ── Step content ───────────────────────────────────────────────────────────
   const stepContent = [
-    // ── Step 0: Ingredients & Type ──────────────────────────────────────────
+    // ── Step 0: Application Type ────────────────────────────────────────────
     <div key={0}>
-      <div style={secCard}>
-        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12 }}>Ingredients</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-          <select style={select} value={pendingIng.name} onChange={(e) => setPendingIng((p) => ({ ...p, name: e.target.value }))}>
-            <option value="">— Select ingredient —</option>
-            {INGREDIENTS.map((o) => <option key={o} value={o}>{o}</option>)}
-          </select>
-          <input placeholder="Quantity" type="number" min="0" style={input} value={pendingIng.quantity} onChange={(e) => setPendingIng((p) => ({ ...p, quantity: e.target.value }))} />
-          <input placeholder="Standardize" style={input} value={pendingIng.standardize} onChange={(e) => setPendingIng((p) => ({ ...p, standardize: e.target.value }))} />
-          <button onClick={() => {
-            if (!pendingIng.name) return;
-            set('step1', 'ingredients', [...step1.ingredients, pendingIng]);
-            setPendingIng({ name: '', quantity: '', standardize: '' });
-            setStepErrors((p) => { const n = { ...p }; delete n.pendingIng; return n; });
-          }} style={{ background: 'transparent', color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 6, padding: '7px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-            + Add
-          </button>
-        </div>
-        {errMsg('pendingIng')}
-        {step1.ingredients.length > 0 && (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-            <thead><tr style={{ background: COLORS.bg }}><th style={S.th}>Ingredient</th><th style={S.th}>Quantity</th><th style={S.th}>Standardize</th><th style={S.th}></th></tr></thead>
-            <tbody>
-              {step1.ingredients.map((ing, i) => (
-                <tr key={i}>
-                  <td style={S.td}>{ing.name}</td>
-                  <td style={S.td}>{ing.quantity || '—'}</td>
-                  <td style={S.td}>{ing.standardize || '—'}</td>
-                  <td style={S.td}><button onClick={() => set('step1', 'ingredients', step1.ingredients.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: COLORS.danger, cursor: 'pointer', fontSize: 14 }}>✕</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      <div style={secCard}>
-        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12 }}>Additives</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-          <select style={select} value={pendingAdd.name} onChange={(e) => setPendingAdd((p) => ({ ...p, name: e.target.value }))}>
-            <option value="">— Select additive —</option>
-            {ADDITIVES.map((o) => <option key={o} value={o}>{o}</option>)}
-          </select>
-          <input placeholder="Quantity" type="number" min="0" style={input} value={pendingAdd.quantity} onChange={(e) => setPendingAdd((p) => ({ ...p, quantity: e.target.value }))} />
-          <input placeholder="Standardize" style={input} value={pendingAdd.standardize} onChange={(e) => setPendingAdd((p) => ({ ...p, standardize: e.target.value }))} />
-          <button onClick={() => {
-            if (!pendingAdd.name) return;
-            set('step1', 'additives', [...step1.additives, pendingAdd]);
-            setPendingAdd({ name: '', quantity: '', standardize: '' });
-            setStepErrors((p) => { const n = { ...p }; delete n.pendingAdd; return n; });
-          }} style={{ background: 'transparent', color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 6, padding: '7px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-            + Add
-          </button>
-        </div>
-        {errMsg('pendingAdd')}
-        {step1.additives.length > 0 && (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-            <thead><tr style={{ background: COLORS.bg }}><th style={S.th}>Additive</th><th style={S.th}>Quantity</th><th style={S.th}>Standardize</th><th style={S.th}></th></tr></thead>
-            <tbody>
-              {step1.additives.map((add, i) => (
-                <tr key={i}>
-                  <td style={S.td}>{add.name}</td>
-                  <td style={S.td}>{add.quantity || '—'}</td>
-                  <td style={S.td}>{add.standardize || '—'}</td>
-                  <td style={S.td}><button onClick={() => set('step1', 'additives', step1.additives.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: COLORS.danger, cursor: 'pointer', fontSize: 14 }}>✕</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
       <div style={secCard}>
         <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12 }}>Application Type *</div>
         <div style={row}>
