@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { COLORS, S } from '@/utils/colors';
 import { fetchTechnicalExtensionRequests } from '@/services/technical.service';
 import type { ExtensionRecord } from '@/services/officer.service';
+import { API_BASE } from '@/services/api';
 
 type StatusFilter = 'Pending' | 'Completed';
 
@@ -80,7 +81,16 @@ export default function TechExtensionOfTime() {
                     <td style={S.td}>{fmtDate(r.createdAt)}</td>
                     <td style={S.td}><span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: bg, color: fg }}>{r.status}</span></td>
                     <td style={S.td}><span style={{ color: COLORS.textMuted, cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setRemarksModal(r.justification)}>View</span></td>
-                    <td style={S.td}><span style={{ color: COLORS.primary, cursor: 'pointer', fontWeight: 600 }}>📎 Docs</span></td>
+                    <td style={S.td}>
+                      {r.supportingDocument ? (
+                        <a href={`${API_BASE}/uploads/${r.supportingDocument}`} target="_blank" rel="noreferrer"
+                          style={{ color: COLORS.primary, fontWeight: 600, textDecoration: 'none', fontSize: 12 }}>
+                          📎 View Doc
+                        </a>
+                      ) : (
+                        <span style={{ color: COLORS.textMuted, fontSize: 11 }}>—</span>
+                      )}
+                    </td>
                     <td style={S.td}><span style={{ color: COLORS.primary, cursor: 'pointer', fontWeight: 600 }}>📋 History</span></td>
                     <td style={{ ...S.td, whiteSpace: 'nowrap' }}>
                       {r.status === 'Pending' ? (

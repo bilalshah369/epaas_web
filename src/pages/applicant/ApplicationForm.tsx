@@ -14,7 +14,7 @@ import {
 } from '@/services/application.service';
 
 // ── Static options ────────────────────────────────────────────────────────────
-const STEPS = ['Ingredients & Type', 'General Info', 'Documents', 'Additional Info', 'Payment'];
+const STEPS = ['Application Type', 'General Info', 'Documents', 'Additional Info', 'Payment'];
 
 const APPLICATION_FOR_OPTIONS = [
   'Novel food or novel food ingredients or processed with the use of novel technology',
@@ -640,7 +640,7 @@ export default function ApplicationForm() {
     </div>,
   ];
 
-  const sectionTitles = ['Ingredients & Application Type', 'General Information', 'Documents & Regulatory', 'Additional Specific Information', 'Payment & Submit'];
+  const sectionTitles = ['Application Type', 'General Information', 'Documents & Regulatory', 'Additional Specific Information', 'Payment & Submit'];
 
   return (
     <div>

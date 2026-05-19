@@ -5,9 +5,16 @@ import { COLORS, S } from '@/utils/colors';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { fetchApplication, fetchQueries, nodalForwardQueryToApplicant, nodalForwardResponseToTech, type Application, type AppFormData, type Query } from '@/services/application.service';
 import { getDocRows, getProfileDisplay } from '@/utils/docResolver';
+import FormDataTable from '@/components/ui/FormDataTable';
 import { nodalAForward, nodalAReturnWithQuery, nodalASendDecision, nodalADispatchReviewDecision, nodalAForwardReviewToChairperson } from '@/services/officer.service';
 
 const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_URL ?? 'http://localhost:3000/api';
+
+function parseResponse(text: string): { body: string; attachmentFile: string | null; attachmentName: string | null } {
+  const m = text.match(/\n\n📎 Attachment: (.+?) \[(.+?)\]$/);
+  if (!m || m.index === undefined) return { body: text, attachmentFile: null, attachmentName: null };
+  return { body: text.slice(0, m.index), attachmentFile: m[2], attachmentName: m[1] };
+}
 
 // ── Checklist definition ──────────────────────────────────────────────────────
 const CHECKLIST = [
@@ -211,27 +218,12 @@ export default function ApplicationScrutiny() {
             ))}
           </div>
 
-          {/* Applicant & General Info */}
+          {/* Applicant & Form Data */}
           <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 16, marginBottom: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.primary, borderBottom: `2px solid ${COLORS.primaryLight}`, paddingBottom: 6, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
               Applicant &amp; Product Details
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 20px' }}>
-              <Field label="Applicant Name"       value={display?.applicantName} />
-              <Field label="Organisation"         value={display?.orgName} />
-              <Field label="FSSAI License No."    value={display?.licenseNumber} />
-              <Field label="Mobile"               value={display?.mobileNo} />
-              <Field label="Email"                value={display?.email} />
-              <Field label="Nature of Business"   value={display?.natureOfBusiness} />
-              <Field label="Product Name"         value={display?.productName} />
-              <Field label="Product Category"     value={display?.productCategory} />
-              {display?.subCategory  && <Field label="Sub-Category"  value={display.subCategory} />}
-              {display?.source       && <Field label="Source"        value={display.source} />}
-              {display?.gstNo        && <Field label="GST No."       value={display.gstNo} />}
-              <Field label="Payment Reference"    value={display?.paymentReference} />
-            </div>
-            <Field label="Manufacturing Address"  value={display?.mfgAddress} />
-            <Field label="Justification"          value={display?.justification} />
+            <FormDataTable formData={fd} />
           </div>
 
           {/* Query & Response History */}
@@ -304,7 +296,7 @@ export default function ApplicationScrutiny() {
                               {q.respondedAt ? new Date(q.respondedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}
                             </span>
                           </div>
-                          <p style={{ margin: 0, fontSize: 12, color: '#065F46', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{q.response}</p>
+                          {(() => { const { body, attachmentFile, attachmentName } = parseResponse(q.response!); return (<><p style={{ margin: 0, fontSize: 12, color: '#065F46', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{body}</p>{attachmentFile && <div style={{ marginTop: 8 }}><a href={`${API_BASE}/uploads/${attachmentFile}`} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#D1FAE5', color: '#065F46', padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, textDecoration: 'none' }}>📎 {attachmentName}</a></div>}</>); })()}
                         </div>
                       )}
 

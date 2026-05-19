@@ -21,6 +21,7 @@ export interface ExtensionRecord {
   reason: string;
   extensionDays: number;
   justification: string;
+  supportingDocument: string | null;
   status: string;
   authorityRemarks: string | null;
   createdAt: string;

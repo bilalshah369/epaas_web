@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { COLORS, S } from '@/utils/colors';
 import { fetchECExtensionRequests } from '@/services/ec.service';
 import type { ExtensionRecord } from '@/services/officer.service';
+import { API_BASE } from '@/services/api';
 
 type StatusFilter = 'Pending' | 'Completed';
 
@@ -53,11 +54,11 @@ export default function ECExtensionOfTime() {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
-              <tr>{['Sr. No.', 'Application No.', 'Company', 'Product', 'Requested On', 'Extension Days', 'Reason', 'Status'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
+              <tr>{['Sr. No.', 'Application No.', 'Company', 'Product', 'Requested On', 'Extension Days', 'Reason', 'Supporting Doc', 'Status'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
             </thead>
             <tbody>
-              {loading && <tr><td colSpan={8} style={{ ...S.td, textAlign: 'center', padding: '40px 0', color: COLORS.textMuted }}>Loading…</td></tr>}
-              {!loading && visible.length === 0 && <tr><td colSpan={8} style={{ ...S.td, textAlign: 'center', padding: '48px 0', color: COLORS.textMuted }}>No {statusFilter.toLowerCase()} extension requests.</td></tr>}
+              {loading && <tr><td colSpan={9} style={{ ...S.td, textAlign: 'center', padding: '40px 0', color: COLORS.textMuted }}>Loading…</td></tr>}
+              {!loading && visible.length === 0 && <tr><td colSpan={9} style={{ ...S.td, textAlign: 'center', padding: '48px 0', color: COLORS.textMuted }}>No {statusFilter.toLowerCase()} extension requests.</td></tr>}
               {visible.map((r, i) => (
                 <tr key={r.id} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg }}>
                   <td style={S.td}>{i + 1}</td>
@@ -67,6 +68,14 @@ export default function ECExtensionOfTime() {
                   <td style={S.td}>{fmtDate(r.createdAt)}</td>
                   <td style={S.td}>{r.extensionDays ?? '—'} days</td>
                   <td style={{ ...S.td, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.reason ?? r.justification ?? '—'}</td>
+                  <td style={S.td}>
+                    {r.supportingDocument ? (
+                      <a href={`${API_BASE}/uploads/${r.supportingDocument}`} target="_blank" rel="noreferrer"
+                        style={{ color: COLORS.primary, fontWeight: 600, textDecoration: 'none', fontSize: 12 }}>
+                        📎 View
+                      </a>
+                    ) : <span style={{ color: COLORS.textMuted, fontSize: 11 }}>—</span>}
+                  </td>
                   <td style={S.td}>
                     <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: r.status === 'Approved' ? COLORS.successLight : r.status === 'Rejected' ? COLORS.dangerLight : COLORS.warningLight, color: r.status === 'Approved' ? COLORS.success : r.status === 'Rejected' ? COLORS.danger : COLORS.warning }}>
                       {r.status}

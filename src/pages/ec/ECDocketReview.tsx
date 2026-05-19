@@ -6,6 +6,13 @@ import { COLORS, S } from '@/utils/colors';
 import { fetchApplication, fetchQueries, type Application, type AppFormData, type Query } from '@/services/application.service';
 import { getDocRows } from '@/utils/docResolver';
 import { ecForwardToTechnicalOfficer, ecReject, ecRequestClarification, ecSaveAssessment } from '@/services/ec.service';
+import FormDataTable from '@/components/ui/FormDataTable';
+
+function parseResponse(text: string): { body: string; attachmentFile: string | null; attachmentName: string | null } {
+  const m = text.match(/\n\n📎 Attachment: (.+?) \[(.+?)\]$/);
+  if (!m || m.index === undefined) return { body: text, attachmentFile: null, attachmentName: null };
+  return { body: text.slice(0, m.index), attachmentFile: m[2], attachmentName: m[1] };
+}
 
 const card: React.CSSProperties = {
   background: COLORS.white, border: `1px solid ${COLORS.border}`,
@@ -189,26 +196,17 @@ export default function ECDocketReview() {
             <div style={cardTitle}>APPLICATION DOSSIER — READ ONLY</div>
             <span style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, background: COLORS.bg, padding: '3px 8px', borderRadius: 4, border: `1px solid ${COLORS.border}` }}>READ-ONLY</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 12 }}>
+          {/* Summary chips */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 14 }}>
             {([
-              ['APPLICATION ID',    app.referenceNumber],
-              ['APPLICATION TYPE',  app.applicationType],
-              ['APPLICANT',         app.companyName],
-              ['PRODUCT',           app.productName ?? (fd?.step2?.productName || '—')],
-              ['FOOD CATEGORY',     app.foodCategory || '—'],
-              ['SUBMITTED ON',      fmtDate(app.submittedAt)],
-              ['DAYS IN REVIEW',    days !== null ? `${days} days` : '—'],
-              ['CURRENT STAGE',     app.stage],
-              ['APPLICANT NAME',    fd?.step2?.applicantName || '—'],
-              ['ORGANISATION',      fd?.step2?.orgName || '—'],
-              ['FSSAI LICENSE NO.', fd?.step2?.licenseNumber || '—'],
-              ['MOBILE',            fd?.step2?.mobileNo || '—'],
-              ['EMAIL',             fd?.step2?.email || '—'],
-              ['NATURE OF BUSINESS',fd?.step2?.natureOfBusiness || '—'],
-              ['GST NO.',           fd?.step3?.gstNo || '—'],
-              ['PAYMENT REF.',      fd?.step5?.paymentReference || '—'],
-              ['RISK LEVEL',        'Medium'],
-              ['CURRENT OWNER',     'Expert Committee'],
+              ['Application ID',   app.referenceNumber],
+              ['Application Type', app.applicationType],
+              ['Applicant',        app.companyName],
+              ['Product',          app.productName || '—'],
+              ['Food Category',    app.foodCategory || '—'],
+              ['Submitted On',     fmtDate(app.submittedAt)],
+              ['Days in Review',   days !== null ? `${days} days` : '—'],
+              ['Current Stage',    app.stage],
             ] as [string, string][]).map(([k, v]) => (
               <div key={k} style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '7px 12px' }}>
                 <div style={{ fontSize: 9, color: COLORS.primary, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 2 }}>{k}</div>
@@ -216,12 +214,7 @@ export default function ECDocketReview() {
               </div>
             ))}
           </div>
-          {fd?.step2?.justification && (
-            <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '10px 14px' }}>
-              <div style={{ fontSize: 9, color: COLORS.primary, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 }}>Justification / Purpose</div>
-              <div style={{ fontSize: 12, color: COLORS.text, lineHeight: 1.6 }}>{fd.step2.justification}</div>
-            </div>
-          )}
+          <FormDataTable formData={fd} />
           {queries.length > 0 && (
             <div style={{ marginTop: 14 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Query History ({queries.length} queries)</div>
@@ -232,7 +225,7 @@ export default function ECDocketReview() {
                   {q.response && (
                     <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 8 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.success, marginBottom: 4 }}>✅ Applicant Response — {fmtDate(q.respondedAt)}</div>
-                      <div style={{ fontSize: 12, color: COLORS.text, whiteSpace: 'pre-wrap' }}>{q.response}</div>
+                      {(() => { const { body, attachmentFile, attachmentName } = parseResponse(q.response!); return (<><div style={{ fontSize: 12, color: COLORS.text, whiteSpace: 'pre-wrap' }}>{body}</div>{attachmentFile && <div style={{ marginTop: 8 }}><a href={`${API_BASE}/uploads/${attachmentFile}`} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#D1FAE5', color: '#065F46', padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, textDecoration: 'none' }}>📎 {attachmentName}</a></div>}</>); })()}
                     </div>
                   )}
                 </div>

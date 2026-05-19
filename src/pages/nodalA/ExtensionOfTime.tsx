@@ -5,6 +5,7 @@ import type React from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { COLORS, S } from '@/utils/colors';
+import { API_BASE } from '@/services/api';
 import {
   fetchNodalAExtensionRequests, nodalAGrantExtension, nodalARejectExtension, nodalACreateExtension,
 } from '@/services/officer.service';
@@ -192,14 +193,14 @@ export default function ExtensionOfTime() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr>
-                  {['App. Ref. No.', 'Company / Org.', 'Product', 'Type', 'Application Date', 'Requested Date', 'Days Req.', 'Status', 'Justification', 'Action'].map((h) => (
+                  {['App. Ref. No.', 'Company / Org.', 'Product', 'Type', 'Application Date', 'Requested Date', 'Days Req.', 'Status', 'Justification', 'Supporting Doc', 'Action'].map((h) => (
                     <th key={h} style={S.th}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {loading && <tr><td colSpan={10} style={{ ...S.td, textAlign: 'center', color: COLORS.textMuted, padding: 32 }}>Loading…</td></tr>}
-                {!loading && visible.length === 0 && <tr><td colSpan={10} style={{ ...S.td, textAlign: 'center', color: COLORS.textMuted, padding: 32 }}>No extension requests found.</td></tr>}
+                {loading && <tr><td colSpan={11} style={{ ...S.td, textAlign: 'center', color: COLORS.textMuted, padding: 32 }}>Loading…</td></tr>}
+                {!loading && visible.length === 0 && <tr><td colSpan={11} style={{ ...S.td, textAlign: 'center', color: COLORS.textMuted, padding: 32 }}>No extension requests found.</td></tr>}
                 {visible.map((r, i) => {
                   const isApproved = r.status === 'Approved';
                   const badgeBg    = r.status === 'Pending' ? COLORS.warningLight : isApproved ? COLORS.successLight : COLORS.dangerLight;
@@ -221,6 +222,14 @@ export default function ExtensionOfTime() {
                         {r.authorityRemarks && (
                           <span style={{ marginLeft: 6, fontSize: 10, color: COLORS.textMuted }}>· Remarks: {r.authorityRemarks}</span>
                         )}
+                      </td>
+                      <td style={S.td}>
+                        {r.supportingDocument ? (
+                          <a href={`${API_BASE}/uploads/${r.supportingDocument}`} target="_blank" rel="noreferrer"
+                            style={{ color: COLORS.primary, fontWeight: 600, textDecoration: 'none', fontSize: 12 }}>
+                            📎 View
+                          </a>
+                        ) : <span style={{ color: COLORS.textMuted, fontSize: 11 }}>—</span>}
                       </td>
                       <td style={{ ...S.td, whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'flex', gap: 4 }}>

@@ -5,7 +5,7 @@ import type React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { COLORS } from '@/utils/colors';
-import { fetchApplication, fetchQueries, type Application, type Query } from '@/services/application.service';
+import { fetchApplication, fetchQueries, uploadFile, type Application, type Query } from '@/services/application.service';
 import { createExtension } from '@/services/extension.service';
 
 const EXTENSION_DAYS = 15; // Default — only admin can change
@@ -33,6 +33,9 @@ export default function ApplicantExtensionRequest() {
   const [loading,   setLoading]   = useState(true);
   const [reason,    setReason]    = useState('Technical / Lab Delay');
   const [justification, setJustification] = useState('');
+  const [supportingDoc,  setSupportingDoc]  = useState<string | null>(null);
+  const [supportingDocName, setSupportingDocName] = useState('');
+  const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -43,13 +46,26 @@ export default function ApplicantExtensionRequest() {
       .finally(() => setLoading(false));
   }, [appId]);
 
-  // The open query: latest forwarded-to-applicant query with no response yet
+  // The open query: either a TO query forwarded by Nodal (nodalForwardedAt set)
+  // or a direct Nodal deficiency query (originStage is null — goes straight to QuerySent).
   const openQuery = queries
-    .filter((q) => q.nodalForwardedAt && !q.response)
+    .filter((q) => !q.response && (q.nodalForwardedAt !== null || q.originStage !== 'WithTechnicalOfficer'))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] ?? null;
 
   // Check if extension was already filed for this query
   // We can't check from the frontend without an extra API call — backend will reject with a clear error
+
+  async function handleFileUpload(file: File) {
+    setUploading(true);
+    try {
+      const storedName = await uploadFile(file, appId!, 'extensionDoc');
+      setSupportingDoc(storedName);
+      setSupportingDocName(file.name);
+      toast.success('Document uploaded');
+    } catch {
+      toast.error('File upload failed');
+    } finally { setUploading(false); }
+  }
 
   async function handleSubmit() {
     if (!app || !appId) return;
@@ -59,12 +75,13 @@ export default function ApplicantExtensionRequest() {
     setSubmitting(true);
     try {
       await createExtension({
-        applicationId: appId,
+        applicationId:     appId,
         reason,
-        extensionDays: EXTENSION_DAYS,
-        contactEmail:  '',
-        justification: justification.trim(),
-        queryId:       openQuery.id,
+        extensionDays:     EXTENSION_DAYS,
+        contactEmail:      '',
+        justification:     justification.trim(),
+        queryId:           openQuery.id,
+        ...(supportingDoc ? { supportingDocument: supportingDoc } : {}),
       });
       toast.success('Extension request submitted. Nodal Officer will review it shortly.');
       navigate('/app/requests/extension');
@@ -122,7 +139,7 @@ export default function ApplicantExtensionRequest() {
       ) : (
         <div style={{ background: '#FFF1F2', border: '1px solid #FECDD3', borderRadius: 8, padding: '12px 16px', marginBottom: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#9F1239' }}>No open query found</div>
-          <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 4 }}>Extension requests can only be filed when a query has been forwarded to you by the Nodal Officer.</div>
+          <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 4 }}>Extension requests can only be filed when there is an open query awaiting your response.</div>
         </div>
       )}
 
@@ -180,6 +197,25 @@ export default function ApplicantExtensionRequest() {
             />
           </div>
 
+          {/* Supporting document (optional) */}
+          <div style={{ marginBottom: 18 }}>
+            {fieldLabel('Supporting Document (optional)')}
+            {supportingDoc ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 6, padding: '8px 12px' }}>
+                <span style={{ fontSize: 13 }}>📎</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#065F46', flex: 1 }}>{supportingDocName}</span>
+                <button onClick={() => { setSupportingDoc(null); setSupportingDocName(''); }}
+                  style={{ background: 'none', border: 'none', color: COLORS.danger, fontSize: 14, cursor: 'pointer', fontWeight: 700, padding: '0 4px' }}>✕</button>
+              </div>
+            ) : (
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: COLORS.bg, border: `1px dashed ${COLORS.border}`, borderRadius: 6, padding: '8px 14px', fontSize: 12, cursor: uploading ? 'not-allowed' : 'pointer', color: COLORS.primary, fontWeight: 600 }}>
+                {uploading ? '⏳ Uploading…' : '📎 Attach Supporting Document'}
+                <input type="file" style={{ display: 'none' }} disabled={uploading}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); e.target.value = ''; }} />
+              </label>
+            )}
+          </div>
+
           <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '10px 14px', marginBottom: 18, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6 }}>
             <strong style={{ color: COLORS.text }}>Note:</strong> This extension request will be reviewed by the Nodal Officer. If approved, you will have an additional 15 days to respond to the query. You can only file one extension request per query.
           </div>
@@ -187,10 +223,10 @@ export default function ApplicantExtensionRequest() {
           <div style={{ display: 'flex', gap: 10 }}>
             <button
               onClick={handleSubmit}
-              disabled={submitting || justification.trim().length < 10}
+              disabled={submitting || uploading || justification.trim().length < 10}
               style={{
                 padding: '10px 24px', background: COLORS.primary, color: '#fff', border: 'none',
-                borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: submitting || justification.trim().length < 10 ? 'not-allowed' : 'pointer',
+                borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: submitting || uploading || justification.trim().length < 10 ? 'not-allowed' : 'pointer',
                 opacity: justification.trim().length < 10 ? 0.5 : 1,
               }}>
               {submitting ? 'Submitting…' : 'Submit Extension Request'}

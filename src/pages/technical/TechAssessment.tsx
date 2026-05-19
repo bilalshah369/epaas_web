@@ -11,6 +11,13 @@ import {
   technicalRecordDecision,
 } from '@/services/technical.service';
 import { API_BASE } from '@/services/api';
+import FormDataTable from '@/components/ui/FormDataTable';
+
+function parseResponse(text: string): { body: string; attachmentFile: string | null; attachmentName: string | null } {
+  const m = text.match(/\n\n📎 Attachment: (.+?) \[(.+?)\]$/);
+  if (!m || m.index === undefined) return { body: text, attachmentFile: null, attachmentName: null };
+  return { body: text.slice(0, m.index), attachmentFile: m[2], attachmentName: m[1] };
+}
 
 const card: React.CSSProperties = {
   background: COLORS.white, border: `1px solid ${COLORS.border}`,
@@ -288,25 +295,17 @@ export default function TechAssessment() {
       {activeTab === 'profile' && (
         <div style={card}>
           <div style={cardTitle}>APPLICANT &amp; APPLICATION DETAILS</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 12 }}>
+          {/* Summary chips */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 14 }}>
             {([
-              ['Reference No.',      app.referenceNumber],
-              ['Application Type',   app.applicationType],
-              ['Company Name',       app.companyName],
-              ['Product Name',       app.productName ?? (profile.productName || '—')],
-              ['Food Category',      app.foodCategory || '—'],
-              ['Submitted On',       fmtDate(app.submittedAt)],
-              ['Days in Review',     days !== null ? `${days} days` : '—'],
-              ['Applicant Name',     profile.applicantName    || '—'],
-              ['Organisation',       profile.orgName          || '—'],
-              ['FSSAI License No.',  profile.licenseNumber    || '—'],
-              ['Mobile',             profile.mobileNo         || '—'],
-              ['Email',              profile.email            || '—'],
-              ['Nature of Business', profile.natureOfBusiness || '—'],
-              ['Product Category',   profile.productCategory  || '—'],
-              ['GST No.',            profile.gstNo            || '—'],
-              ['Payment Ref.',       profile.paymentReference || '—'],
-              ['Current Stage',      app.stage],
+              ['Reference No.',  app.referenceNumber],
+              ['Application Type', app.applicationType],
+              ['Company',        app.companyName],
+              ['Product Name',   app.productName || '—'],
+              ['Food Category',  app.foodCategory || '—'],
+              ['Submitted On',   fmtDate(app.submittedAt)],
+              ['Days in Review', days !== null ? `${days} days` : '—'],
+              ['Current Stage',  app.stage],
             ] as [string, string][]).map(([k, v]) => (
               <div key={k} style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '7px 12px' }}>
                 <div style={{ fontSize: 9, color: COLORS.primary, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 2 }}>{k}</div>
@@ -314,12 +313,7 @@ export default function TechAssessment() {
               </div>
             ))}
           </div>
-          {profile.justification && (
-            <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '10px 14px' }}>
-              <div style={{ fontSize: 9, color: COLORS.primary, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 }}>Justification</div>
-              <div style={{ fontSize: 12, color: COLORS.text, lineHeight: 1.6 }}>{profile.justification}</div>
-            </div>
-          )}
+          <FormDataTable formData={fd} />
         </div>
       )}
 
@@ -436,13 +430,13 @@ export default function TechAssessment() {
                             <span style={{ fontSize: 11, fontWeight: 700, color: '#065F46' }}>✅ Applicant Response</span>
                             <span style={{ fontSize: 10, color: COLORS.textMuted }}>{fmtDate(q.respondedAt)}</span>
                           </div>
-                          <p style={{ margin: 0, fontSize: 12, color: '#065F46', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{q.response}</p>
+                          {(() => { const { body, attachmentFile, attachmentName } = parseResponse(q.response!); return (<><p style={{ margin: 0, fontSize: 12, color: '#065F46', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{body}</p>{attachmentFile && <div style={{ marginTop: 8 }}><a href={`${API_BASE}/uploads/${attachmentFile}`} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#D1FAE5', color: '#065F46', padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, textDecoration: 'none' }}>📎 {attachmentName}</a></div>}</>); })()}
                         </div>
                       )}
                       {!isTechQuery && q.response && (
                         <div style={{ background: '#F0FDF4', padding: '10px 14px', borderTop: `1px solid ${COLORS.border}` }}>
                           <span style={{ fontSize: 11, fontWeight: 700, color: '#065F46' }}>✅ Applicant Response — {fmtDate(q.respondedAt)}</span>
-                          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#065F46', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{q.response}</p>
+                          {(() => { const { body, attachmentFile, attachmentName } = parseResponse(q.response!); return (<><p style={{ margin: '4px 0 0', fontSize: 12, color: '#065F46', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{body}</p>{attachmentFile && <div style={{ marginTop: 8 }}><a href={`${API_BASE}/uploads/${attachmentFile}`} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#D1FAE5', color: '#065F46', padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, textDecoration: 'none' }}>📎 {attachmentName}</a></div>}</>); })()}
                         </div>
                       )}
                     </div>

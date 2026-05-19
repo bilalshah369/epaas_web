@@ -7,9 +7,10 @@ export interface ExtensionItem {
   reason:          string;
   extensionDays:   number;
   contactEmail:    string;
-  justification:   string;
-  status:          'Pending' | 'Approved' | 'Rejected';
-  authorityRemarks: string | null;
+  justification:      string;
+  supportingDocument: string | null;
+  status:             'Pending' | 'Approved' | 'Rejected';
+  authorityRemarks:   string | null;
   createdAt:       string;
   application: {
     referenceNumber: string;
@@ -25,12 +26,13 @@ export async function fetchExtensions(): Promise<ExtensionItem[]> {
 }
 
 export async function createExtension(payload: {
-  applicationId: string;
-  reason:        string;
-  extensionDays: number;
-  contactEmail:  string;
-  justification: string;
-  queryId?:      string;
+  applicationId:      string;
+  reason:             string;
+  extensionDays:      number;
+  contactEmail:       string;
+  justification:      string;
+  queryId?:           string;
+  supportingDocument?: string;
 }): Promise<ExtensionItem> {
   const { data } = await api.post<{ extension: ExtensionItem }>('/extensions', payload);
   return data.extension;
