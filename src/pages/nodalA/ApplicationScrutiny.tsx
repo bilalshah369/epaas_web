@@ -6,6 +6,7 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import { fetchApplication, fetchQueries, nodalForwardQueryToApplicant, nodalForwardResponseToTech, type Application, type AppFormData, type Query } from '@/services/application.service';
 import { getDocRows, getProfileDisplay } from '@/utils/docResolver';
 import FormDataTable from '@/components/ui/FormDataTable';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { nodalAForward, nodalAReturnWithQuery, nodalASendDecision, nodalADispatchReviewDecision, nodalAForwardReviewToChairperson } from '@/services/officer.service';
 
 const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_URL ?? 'http://localhost:3000/api';
@@ -56,6 +57,7 @@ export default function ApplicationScrutiny() {
   const [decision, setDecision] = useState<'forward' | 'return' | 'send-decision' | null>(null);
   const [queryText, setQueryText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [dialog, setDialog] = useState<{ msg: string; action: () => void } | null>(null);
   const [queries, setQueries]   = useState<Query[]>([]);
 
   useEffect(() => {
@@ -434,7 +436,7 @@ export default function ApplicationScrutiny() {
                     <div style={{ fontSize: 11, color: '#3730A3', lineHeight: 1.5 }}>The applicant has filed a review petition against the appellate order. Review the petition and forward it to the Chairperson for a final decision.</div>
                   </div>
                   <button
-                    onClick={() => handleForwardReviewToChairperson(reviewPendingForward)}
+                    onClick={() => setDialog({ msg: 'Are you sure you want to forward this review petition to the Chairperson?', action: () => handleForwardReviewToChairperson(reviewPendingForward) })}
                     disabled={submitting}
                     style={{ width: '100%', padding: '12px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', border: 'none', background: '#3730A3', color: '#fff', opacity: submitting ? 0.7 : 1 }}
                   >
@@ -460,7 +462,7 @@ export default function ApplicationScrutiny() {
                     <div style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 1.5 }}>The Chairperson has disposed the review petition (upheld CEO's rejection). Dispatch the final order to the applicant.</div>
                   </div>
                   <button
-                    onClick={() => handleDispatchReviewOrder(pendingReviewId)}
+                    onClick={() => setDialog({ msg: "Are you sure you want to dispatch the Chairperson's review order to the applicant?", action: () => handleDispatchReviewOrder(pendingReviewId) })}
                     disabled={submitting}
                     style={{ width: '100%', padding: '12px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', border: 'none', background: '#1E3A5F', color: '#fff', opacity: submitting ? 0.7 : 1 }}
                   >
@@ -470,7 +472,7 @@ export default function ApplicationScrutiny() {
               ) : (
                 /* Case 3: Normal dispatch after EC/TO decision */
                 <button
-                  onClick={handleSendDecision}
+                  onClick={() => setDialog({ msg: 'Are you sure you want to dispatch the final decision to the applicant?', action: handleSendDecision })}
                   disabled={submitting}
                   style={{ width: '100%', padding: '12px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', border: 'none', background: COLORS.success, color: '#fff', opacity: submitting ? 0.7 : 1 }}
                 >
@@ -537,7 +539,12 @@ export default function ApplicationScrutiny() {
 
                   {decision && (
                     <button
-                      onClick={decision === 'forward' ? handleForward : handleReturn}
+                      onClick={() => setDialog({
+                        msg: decision === 'forward'
+                          ? 'Are you sure you want to forward this application to the Technical Officer?'
+                          : 'Are you sure you want to return this application with a deficiency notice?',
+                        action: decision === 'forward' ? handleForward : handleReturn,
+                      })}
                       disabled={submitting}
                       style={{ width: '100%', padding: '11px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', border: 'none', background: decision === 'forward' ? COLORS.primary : COLORS.accent, color: '#fff', opacity: submitting ? 0.7 : 1 }}>
                       {submitting ? 'Processing…' : decision === 'forward' ? 'Confirm Forward →' : 'Confirm Return →'}
@@ -578,6 +585,7 @@ export default function ApplicationScrutiny() {
           )}
         </div>
       </div>
+      {dialog && <ConfirmDialog message={dialog.msg} onConfirm={() => { setDialog(null); dialog.action(); }} onCancel={() => setDialog(null)} />}
     </div>
   );
 }

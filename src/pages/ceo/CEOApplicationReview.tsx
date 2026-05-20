@@ -9,6 +9,7 @@ import { getDocRows } from '@/utils/docResolver';
 import {
   fetchCEOAppeals, ceoApproveAppeal, ceoRejectAppeal, type Appeal,
 } from '@/services/ceo.service';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 const card: React.CSSProperties = {
   background: COLORS.white, border: `1px solid ${COLORS.border}`,
@@ -53,6 +54,7 @@ export default function CEOApplicationReview() {
   const [decision,  setDecision]  = useState('Approve Appeal');
   const [remarks,   setRemarks]   = useState('');
   const [saving,    setSaving]    = useState(false);
+  const [dialog,    setDialog]    = useState<{ msg: string; action: () => void; variant?: 'primary' | 'danger' } | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -261,13 +263,13 @@ export default function CEOApplicationReview() {
 
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {decision === 'Approve Appeal' && (
-              <button onClick={handleSubmit} disabled={saving || appeals.length === 0}
+              <button onClick={() => setDialog({ msg: 'Are you sure you want to approve this appeal? The application will be routed to Nodal Officer A for dispatch.', action: handleSubmit })} disabled={saving || appeals.length === 0}
                 style={{ background: COLORS.success, color: '#fff', border: 'none', borderRadius: 6, padding: '8px 20px', fontSize: 12, fontWeight: 700, cursor: (saving || appeals.length === 0) ? 'not-allowed' : 'pointer', opacity: (saving || appeals.length === 0) ? 0.6 : 1 }}>
                 {saving ? 'Processing…' : '⚖️ Approve Appeal'}
               </button>
             )}
             {decision === 'Reject Appeal' && (
-              <button onClick={handleSubmit} disabled={saving || appeals.length === 0}
+              <button onClick={() => setDialog({ msg: 'Are you sure you want to reject this appeal? The application will be routed to Nodal Officer A.', action: handleSubmit, variant: 'danger' })} disabled={saving || appeals.length === 0}
                 style={{ background: 'transparent', color: COLORS.danger, border: `1.5px solid ${COLORS.danger}`, borderRadius: 6, padding: '8px 20px', fontSize: 12, fontWeight: 700, cursor: (saving || appeals.length === 0) ? 'not-allowed' : 'pointer', opacity: (saving || appeals.length === 0) ? 0.6 : 1 }}>
                 {saving ? 'Processing…' : '✗ Reject Appeal'}
               </button>
@@ -294,6 +296,7 @@ export default function CEOApplicationReview() {
           ← Back to CEO Dashboard
         </button>
       </div>
+      {dialog && <ConfirmDialog message={dialog.msg} variant={dialog.variant} onConfirm={() => { setDialog(null); dialog.action(); }} onCancel={() => setDialog(null)} />}
     </div>
   );
 }

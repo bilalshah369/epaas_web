@@ -7,6 +7,7 @@ import { fetchApplication, fetchQueries, type Application, type AppFormData, typ
 import { getDocRows } from '@/utils/docResolver';
 import { ecForwardToTechnicalOfficer, ecReject, ecRequestClarification, ecSaveAssessment } from '@/services/ec.service';
 import FormDataTable from '@/components/ui/FormDataTable';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 function parseResponse(text: string): { body: string; attachmentFile: string | null; attachmentName: string | null } {
   const m = text.match(/\n\n📎 Attachment: (.+?) \[(.+?)\]$/);
@@ -88,6 +89,7 @@ export default function ECDocketReview() {
   const [assessDirty,    setAssessDirty]    = useState(false);
   const [assessSaving,   setAssessSaving]   = useState(false);
   const [saving,         setSaving]         = useState(false);
+  const [dialog,         setDialog]         = useState<{ msg: string; action: () => void; variant?: 'primary' | 'danger' | 'warning' } | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -349,19 +351,19 @@ export default function ECDocketReview() {
                     style={{ ...textarea, minHeight: 100, borderColor: clarText.length > 0 && clarText.trim().length < 10 ? COLORS.danger : COLORS.border }} />
                   <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 4 }}>{clarText.trim().length} / min 10 chars</div>
                 </div>
-                <button style={btn('outline')} disabled={saving} onClick={handleClarification}>
+                <button style={btn('outline')} disabled={saving} onClick={() => setDialog({ msg: 'Are you sure you want to request clarification from the applicant?', action: handleClarification })}>
                   {saving ? 'Processing…' : '↩ Request Clarification from Applicant'}
                 </button>
               </>
             ) : decision === 'Recommend Approval' ? (
               <div style={{ display: 'flex', gap: 10 }}>
-                <button style={btn()} disabled={saving} onClick={handleForwardTechnicalOfficer}>
+                <button style={btn()} disabled={saving} onClick={() => setDialog({ msg: 'Are you sure you want to recommend approval and forward this application to the Technical Officer?', action: handleForwardTechnicalOfficer })}>
                   {saving ? 'Processing…' : '✅ Recommend Approval — Forward to Technical Officer'}
                 </button>
               </div>
             ) : (
               <div style={{ display: 'flex', gap: 10 }}>
-                <button style={btn('danger')} disabled={saving} onClick={handleReject}>
+                <button style={btn('danger')} disabled={saving} onClick={() => setDialog({ msg: 'Are you sure you want to recommend rejection and forward this application to the Technical Officer?', action: handleReject, variant: 'danger' })}>
                   {saving ? 'Processing…' : '✗ Recommend Rejection — Forward to Technical Officer'}
                 </button>
               </div>
@@ -384,6 +386,7 @@ export default function ECDocketReview() {
         <button style={btn('outline')} onClick={() => navigate('/ec/dockets')}>← Back to Case Dockets</button>
         <button style={btn('outline')} onClick={() => navigate('/ec/agenda')}>View Meeting Agenda →</button>
       </div>
+      {dialog && <ConfirmDialog message={dialog.msg} variant={dialog.variant} onConfirm={() => { setDialog(null); dialog.action(); }} onCancel={() => setDialog(null)} />}
     </div>
   );
 }

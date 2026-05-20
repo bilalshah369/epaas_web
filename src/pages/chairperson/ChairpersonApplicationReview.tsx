@@ -9,6 +9,7 @@ import { getDocRows } from '@/utils/docResolver';
 import {
   fetchChairpersonReviews, chairpersonDisposeReview, chairpersonApproveReview, type Review,
 } from '@/services/chairperson.service';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 const card: React.CSSProperties = {
   background: COLORS.white, border: `1px solid ${COLORS.border}`,
@@ -53,6 +54,7 @@ export default function ChairpersonApplicationReview() {
   const [decision,  setDecision]  = useState('Dispose Review (Uphold CEO Decision)');
   const [remarks,   setRemarks]   = useState('');
   const [saving,    setSaving]    = useState(false);
+  const [dialog,    setDialog]    = useState<{ msg: string; action: () => void; variant?: 'primary' | 'danger' } | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -266,12 +268,12 @@ export default function ChairpersonApplicationReview() {
 
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {decision === 'Approve Review (Restart Workflow)' ? (
-              <button onClick={handleSubmit} disabled={saving || reviews.length === 0}
+              <button onClick={() => setDialog({ msg: 'Are you sure you want to approve this review petition? The application will restart the full workflow from Nodal Officer A.', action: handleSubmit })} disabled={saving || reviews.length === 0}
                 style={{ background: COLORS.success, color: '#fff', border: 'none', borderRadius: 6, padding: '8px 20px', fontSize: 12, fontWeight: 700, cursor: (saving || reviews.length === 0) ? 'not-allowed' : 'pointer', opacity: (saving || reviews.length === 0) ? 0.6 : 1 }}>
                 {saving ? 'Processing…' : '✓ Approve Review — Restart Workflow'}
               </button>
             ) : (
-              <button onClick={handleSubmit} disabled={saving || reviews.length === 0}
+              <button onClick={() => setDialog({ msg: "Are you sure you want to dispose this review petition? The CEO's rejection will be upheld and the final order dispatched.", action: handleSubmit })} disabled={saving || reviews.length === 0}
                 style={{ background: COLORS.info, color: '#fff', border: 'none', borderRadius: 6, padding: '8px 20px', fontSize: 12, fontWeight: 700, cursor: (saving || reviews.length === 0) ? 'not-allowed' : 'pointer', opacity: (saving || reviews.length === 0) ? 0.6 : 1 }}>
                 {saving ? 'Processing…' : '⚖️ Dispose Review (Uphold CEO Decision)'}
               </button>
@@ -298,6 +300,7 @@ export default function ChairpersonApplicationReview() {
           ← Back to Chairperson Dashboard
         </button>
       </div>
+      {dialog && <ConfirmDialog message={dialog.msg} variant={dialog.variant} onConfirm={() => { setDialog(null); dialog.action(); }} onCancel={() => setDialog(null)} />}
     </div>
   );
 }

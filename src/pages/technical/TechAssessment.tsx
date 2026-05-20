@@ -12,6 +12,7 @@ import {
 } from '@/services/technical.service';
 import { API_BASE } from '@/services/api';
 import FormDataTable from '@/components/ui/FormDataTable';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 function parseResponse(text: string): { body: string; attachmentFile: string | null; attachmentName: string | null } {
   const m = text.match(/\n\n📎 Attachment: (.+?) \[(.+?)\]$/);
@@ -102,6 +103,7 @@ export default function TechAssessment() {
   const [f2TechDetails, setF2TechDetails] = useState('');      // rPET
 
   const [saving, setSaving] = useState(false);
+  const [dialog, setDialog] = useState<{ msg: string; action: () => void } | null>(null);
   const form2Ref = useRef<HTMLDivElement>(null);
 
   function printForm2() {
@@ -467,7 +469,7 @@ export default function TechAssessment() {
                 placeholder="Specify exactly what additional information or documents are needed from the applicant…"
                 style={{ ...textarea, minHeight: 130, borderColor: clarText.length > 0 && clarText.trim().length < 10 ? COLORS.danger : COLORS.border }} />
             </div>
-            <button style={btn()} disabled={saving} onClick={handleRequestClarification}>
+            <button style={btn()} disabled={saving} onClick={() => setDialog({ msg: 'Are you sure you want to send this application back for clarification? It will be forwarded to Nodal Officer A.', action: handleRequestClarification })}>
               {saving ? 'Processing…' : '↩ Request Clarification — Forward to Nodal A'}
             </button>
             <div style={{ marginTop: 14, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '10px 14px', fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6 }}>
@@ -490,7 +492,7 @@ export default function TechAssessment() {
               placeholder="State your technical findings and grounds for recommending EC review…"
               style={{ ...textarea, minHeight: 130 }} />
           </div>
-          <button style={btn()} disabled={saving} onClick={handleForwardEC}>
+          <button style={btn()} disabled={saving} onClick={() => setDialog({ msg: 'Are you sure you want to forward this application to the Expert Committee?', action: handleForwardEC })}>
             {saving ? 'Processing…' : '✅ Forward to Expert Committee'}
           </button>
           <div style={{ marginTop: 14, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '10px 14px', fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6 }}>
@@ -661,7 +663,7 @@ export default function TechAssessment() {
                   </div>
                   <button
                     style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 8, padding: '11px 26px', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, display: 'flex', alignItems: 'center', gap: 8 }}
-                    disabled={saving} onClick={handleRecordDecision}>
+                    disabled={saving} onClick={() => setDialog({ msg: 'Are you sure you want to submit Form 2 and forward this application to Nodal Officer A?', action: handleRecordDecision })}>
                     <span>📄</span>
                     {saving ? 'Processing…' : 'Submit Form 2 & Forward to Nodal Officer A →'}
                   </button>
@@ -677,6 +679,7 @@ export default function TechAssessment() {
       <div style={{ display: 'flex', gap: 10, marginTop: 16, paddingTop: 14, borderTop: `1px solid ${COLORS.border}`, justifyContent: 'flex-end' }}>
         <button style={btn('outline')} onClick={() => navigate('/technical/dashboard')}>← Back to Dashboard</button>
       </div>
+      {dialog && <ConfirmDialog message={dialog.msg} onConfirm={() => { setDialog(null); dialog.action(); }} onCancel={() => setDialog(null)} />}
     </div>
   );
 }

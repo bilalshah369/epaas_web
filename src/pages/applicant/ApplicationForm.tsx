@@ -7,6 +7,7 @@ import { COLORS, S } from '@/utils/colors';
 import { scrollToFirstError } from '@/utils/scrollToError';
 import Stepper from '@/components/ui/Stepper';
 import UploadBox from '@/components/ui/UploadBox';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import {
   emptyFormData, createDraftApplication, fetchApplication,
   fetchMyApplications, saveDraftApplication, submitDraftApplication,
@@ -109,6 +110,7 @@ export default function ApplicationForm() {
   const [appId, setAppId]     = useState<string | null>(idParam);
   const [step, setStep]       = useState(0);
   const [saving, setSaving]   = useState(false);
+  const [dialog, setDialog]   = useState<{ msg: string; action: () => void } | null>(null);
   const [formData, setFormData] = useState<AppFormData>(emptyFormData);
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
 
@@ -706,7 +708,7 @@ export default function ApplicationForm() {
                 onClick={() => {
                   const errs = validateStep(step);
                   if (Object.keys(errs).length > 0) { setStepErrors(errs); return; }
-                  handleSubmit();
+                  setDialog({ msg: 'Are you sure you want to submit this application? This action cannot be undone.', action: handleSubmit });
                 }}
                 disabled={saving || !appId}
                 style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 8, padding: '9px 24px', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}
@@ -717,6 +719,7 @@ export default function ApplicationForm() {
           </div>
         </div>
       </div>
+      {dialog && <ConfirmDialog message={dialog.msg} onConfirm={() => { setDialog(null); dialog.action(); }} onCancel={() => setDialog(null)} />}
     </div>
   );
 }
