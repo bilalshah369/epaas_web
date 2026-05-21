@@ -270,7 +270,7 @@ export default function TechSearchConsole() {
                       </td>
                       <td style={S.td}>{a.productName ?? '—'}</td>
                       <td style={S.td}>{fmtDate(a.submittedAt)}</td>
-                      <td style={S.td}>—</td>
+                      <td style={{ ...S.td, fontWeight: 700 }}>{a.approvalNumber ?? '—'}</td>
                       <td style={S.td}>—</td>
                       <td style={S.td}>—</td>
                       <td style={S.td}>—</td>

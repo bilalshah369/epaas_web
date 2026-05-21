@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type React from 'react';
+import { validateEmail } from '@/utils/validators';
 import toast from 'react-hot-toast';
 import { COLORS, S } from '@/utils/colors';
 import {
@@ -97,7 +98,9 @@ export default function AdminOfficers() {
 
   async function handleEditSave() {
     if (!editTarget) return;
-    if (!editUsername.trim() || !editEmail.trim()) { toast.error('Username and email are required'); return; }
+    if (!editUsername.trim()) { toast.error('Username is required'); return; }
+    const editEmailErr = validateEmail(editEmail);
+    if (editEmailErr) { toast.error(editEmailErr); return; }
     if (editCategories.length === 0) { toast.error('Select at least one category'); return; }
     setEditSaving(true);
     try {
@@ -159,9 +162,11 @@ export default function AdminOfficers() {
   }
 
   async function handleAddOfficer() {
-    if (!newUsername.trim() || !newEmail.trim() || !newPassword.trim() || !newRoleCode) {
+    if (!newUsername.trim() || !newPassword.trim() || !newRoleCode) {
       toast.error('Please fill all required fields'); return;
     }
+    const addEmailErr = validateEmail(newEmail);
+    if (addEmailErr) { toast.error(addEmailErr); return; }
     if (newCategories.length === 0) {
       toast.error('Select at least one application category'); return;
     }

@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { COLORS, S } from '@/utils/colors';
+import { validatePhone, validateEmail, filterPhone } from '@/utils/validators';
 import { scrollToFirstError } from '@/utils/scrollToError';
 import Stepper from '@/components/ui/Stepper';
 import UploadBox from '@/components/ui/UploadBox';
@@ -82,7 +83,7 @@ const textarea: React.CSSProperties = {
   ...input, resize: 'vertical', minHeight: 72,
 };
 const select: React.CSSProperties = {
-  ...input, cursor: 'pointer', appearance: 'auto',
+  ...input, cursor: 'pointer', appearance: 'auto', background: '#fff', color: COLORS.text,
 };
 const secCard: React.CSSProperties = {
   background: COLORS.white, border: `1px solid ${COLORS.border}`,
@@ -214,12 +215,16 @@ export default function ApplicationForm() {
 
     if (stepIndex === 1) {
       const reqFields = [
-        'applicantName', 'mobileNo', 'email', 'orgName', 'orgAddress',
+        'applicantName', 'orgName', 'orgAddress',
         'productName', 'justification', 'subCategory', 'genusSp', 'functionalBenefits',
       ] as (keyof typeof step2)[];
       reqFields.forEach((f) => {
         if (!(step2[f] as string).trim()) errs[f as string] = 'This field is required';
       });
+      const phoneErr = validatePhone(step2.mobileNo);
+      if (phoneErr) errs.mobileNo = phoneErr;
+      const emailErr = validateEmail(step2.email);
+      if (emailErr) errs.email = emailErr;
       if (!step2.authorisedPerson || step2.authorisedPerson === 'Select')
         errs.authorisedPerson = 'Please select an authorised person';
       if (!step2.productCategory)
@@ -359,7 +364,13 @@ export default function ApplicationForm() {
                 style={eb(input, field as string)}
                 placeholder={placeholder as string}
                 value={step2[field] as string}
-                onChange={(e) => { set('step2', field, e.target.value); setStepErrors((p) => { const n = { ...p }; delete n[field as string]; return n; }); }}
+                inputMode={field === 'mobileNo' ? 'numeric' : undefined}
+                maxLength={field === 'mobileNo' ? 10 : undefined}
+                onChange={(e) => {
+                  const val = field === 'mobileNo' ? filterPhone(e.target.value) : e.target.value;
+                  set('step2', field, val);
+                  setStepErrors((p) => { const n = { ...p }; delete n[field as string]; return n; });
+                }}
               />
             )}
             {errMsg(field as string)}

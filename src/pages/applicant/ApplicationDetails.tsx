@@ -208,7 +208,14 @@ export default function ApplicationDetails() {
                   <tr key={r.id} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg }}>
                     <td style={S.td}>{i + 1}</td>
                     <td style={S.td}><span style={{ fontWeight: 600 }}>{r.companyName}</span></td>
-                    <td style={S.td}><span style={{ color: COLORS.primary, fontWeight: 600 }}>{r.referenceNumber}</span></td>
+                    <td style={S.td}>
+                      <span style={{ color: COLORS.primary, fontWeight: 600 }}>{r.referenceNumber}</span>
+                      {r.approvalNumber && (
+                        <div style={{ marginTop: 2, fontSize: 10, fontWeight: 700, color: r.stage === 'Approved' ? COLORS.success : COLORS.danger }}>
+                          {r.stage === 'Approved' ? 'Appr.' : 'Rjct.'} {r.approvalNumber}
+                        </div>
+                      )}
+                    </td>
                     <td style={S.td}><span style={{ color: COLORS.primary, fontWeight: 600 }}>{getAddress(r)}</span></td>
                     <td style={S.td}>{TYPE_LABELS[r.applicationType] ?? r.applicationType}</td>
                     <td style={S.td}>{getFoodCategory(r)}</td>

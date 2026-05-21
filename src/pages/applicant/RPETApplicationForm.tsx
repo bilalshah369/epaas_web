@@ -72,7 +72,7 @@ const input: React.CSSProperties = {
   fontFamily: "'Noto Sans','Segoe UI',sans-serif",
 };
 const textarea: React.CSSProperties = { ...input, resize: 'vertical', minHeight: 80 };
-const select: React.CSSProperties   = { ...input, cursor: 'pointer', appearance: 'auto' };
+const select: React.CSSProperties   = { ...input, cursor: 'pointer', appearance: 'auto', background: '#fff', color: COLORS.text };
 const secCard: React.CSSProperties  = {
   background: COLORS.white, border: `1px solid ${COLORS.border}`,
   borderRadius: 10, padding: 16, marginBottom: 12,

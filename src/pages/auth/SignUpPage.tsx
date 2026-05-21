@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import PublicNavbar from '@/components/layout/PublicNavbar';
 import { useAuthStore } from '@/store/authStore';
 import { COLORS } from '@/utils/colors';
+import { validatePhone, validateEmail, filterPhone } from '@/utils/validators';
 import { ROLE_DEFAULT_ROUTES } from '@/types/auth.types';
 
 const STEP_LABELS = ['Personal Info', 'Organisation Details', 'Review & Submit'];
@@ -57,6 +58,10 @@ export default function SignUpPage() {
     setForm((f) => ({ ...f, [k]: e.target.value }));
 
   async function handleSubmit() {
+    const phoneErr = validatePhone(form.mobile);
+    if (phoneErr) { setError(phoneErr); return; }
+    const emailErr = validateEmail(form.email);
+    if (emailErr) { setError(emailErr); return; }
     if (form.password !== form.confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -171,7 +176,8 @@ export default function SignUpPage() {
               </div>
               <div style={{ marginBottom: 24 }}>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: COLORS.text, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>Mobile Number</label>
-                <input value={form.mobile} onChange={set('mobile')} placeholder="+91 XXXXX XXXXX" style={fieldStyle} />
+                <input value={form.mobile} placeholder="10-digit mobile number" inputMode="numeric" maxLength={10} style={fieldStyle}
+                  onChange={(e) => setForm((f) => ({ ...f, mobile: filterPhone(e.target.value) }))} />
                 <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 4 }}>An OTP will be sent to this number for verification</div>
               </div>
               <button onClick={() => setStep(2)} style={{ width: '100%', padding: 13, background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: 'pointer', letterSpacing: 0.3 }}>
@@ -185,7 +191,7 @@ export default function SignUpPage() {
             <>
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: COLORS.text, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>Email ID</label>
-                <input type="email" value={form.email} onChange={set('email')} placeholder="your@email.com" style={fieldStyle} />
+                <input value={form.email} onChange={set('email')} placeholder="your@email.com" style={fieldStyle} />
                 <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 4 }}>A verification link will be sent to this email</div>
               </div>
               <div style={{ marginBottom: 16 }}>
@@ -194,7 +200,7 @@ export default function SignUpPage() {
               </div>
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: COLORS.text, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>Nature of Business</label>
-                <select value={form.natureOfBusiness} onChange={set('natureOfBusiness')} style={{ ...fieldStyle, appearance: 'auto', cursor: 'pointer' }}>
+                <select value={form.natureOfBusiness} onChange={set('natureOfBusiness')} style={{ ...fieldStyle, appearance: 'auto', cursor: 'pointer', background: '#fff', color: COLORS.text }}>
                   <option value="">Select nature of business</option>
                   <option>Manufacturer</option>
                   <option>Importer</option>

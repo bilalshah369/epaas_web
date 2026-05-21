@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { COLORS, S } from '@/utils/colors';
@@ -59,6 +59,7 @@ export default function ApplicationScrutiny() {
   const [submitting, setSubmitting] = useState(false);
   const [dialog, setDialog] = useState<{ msg: string; action: () => void } | null>(null);
   const [queries, setQueries]   = useState<Query[]>([]);
+  const form2Ref = useRef<HTMLDivElement>(null);
   const [toModal, setToModal]   = useState(false);
   const [eligibleTOs, setEligibleTOs] = useState<EligibleOfficer[]>([]);
   const [loadingTOs, setLoadingTOs]   = useState(false);
@@ -194,6 +195,14 @@ export default function ApplicationScrutiny() {
   const docRows = getDocRows(app);
   const toDecision    = app.toDecision as Record<string, unknown> | null;
   const fromEC        = !!toDecision?.fromEC;
+
+  // A TO query is "active" when stage has returned to Nodal but the query cycle isn't complete:
+  // either Nodal hasn't forwarded it to applicant yet, OR applicant responded and Nodal hasn't sent it back to TO.
+  const activeTechQuery = queries.find(
+    (q) =>
+      q.originStage === 'WithTechnicalOfficer' &&
+      (!q.nodalForwardedAt || (!!q.nodalForwardedAt && !!q.response && !q.nodalFwdResponseAt)),
+  ) ?? null;
   const ecDecision    = toDecision?.ecDecision as string | undefined;
   const form2         = toDecision?.form2Data as Record<string, unknown> | undefined;
   const f2Decision    = toDecision?.decision as string | undefined;
@@ -408,36 +417,110 @@ export default function ApplicationScrutiny() {
         {/* ── Right: Checklist + Decision ────────────────────────── */}
         <div>
           {fromEC ? (
-            /* ── Post-EC mode: show Form 2 summary + appropriate action ── */
+            /* ── Post-EC mode: show Form 2 + appropriate action ── */
             <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.primary, borderBottom: `2px solid ${COLORS.primaryLight}`, paddingBottom: 6, marginBottom: 14, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                Form II — Decision Summary
+                Form II — Review &amp; Dispatch
               </div>
 
               {/* EC Recommendation */}
               {ecDecision && (
-                <div style={{ background: ecDecision === 'RecommendRejection' ? '#FFF1F2' : '#F0FDF4', border: `1px solid ${ecDecision === 'RecommendRejection' ? '#FECDD3' : '#BBF7D0'}`, borderRadius: 8, padding: '10px 14px', marginBottom: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: ecDecision === 'RecommendRejection' ? '#9F1239' : '#166534', marginBottom: 2 }}>
-                    EC Recommendation: {ecDecision === 'RecommendRejection' ? 'Recommend Rejection' : 'Recommend Approval'}
+                <div style={{ background: ecDecision === 'RecommendRejection' ? '#FFF1F2' : '#F0FDF4', border: `1px solid ${ecDecision === 'RecommendRejection' ? '#FECDD3' : '#BBF7D0'}`, borderRadius: 8, padding: '8px 12px', marginBottom: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: ecDecision === 'RecommendRejection' ? '#9F1239' : '#166534' }}>
+                    EC: {ecDecision === 'RecommendRejection' ? 'Recommend Rejection' : 'Recommend Approval'}
                   </div>
                 </div>
               )}
 
-              {/* TO Final Decision */}
-              {f2Decision && (
-                <div style={{ background: f2Decision === 'Rejected' ? '#FFF1F2' : '#F0FDF4', border: `1px solid ${f2Decision === 'Rejected' ? '#FECDD3' : '#BBF7D0'}`, borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
+              {/* Full Form 2 card */}
+              {form2 && f2Decision ? (
+                <div ref={form2Ref} style={{ border: `1px solid ${COLORS.border}`, borderRadius: 8, overflow: 'hidden', marginBottom: 12 }}>
+                  <div style={{ background: COLORS.primary, padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.7)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 }}>FSSAI — FORM II</div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: '#fff', fontFamily: "'Libre Baskerville',Georgia,serif" }}>
+                        {app.applicationType === 'RPET' ? 'Authorization/Rejection of FCM-rPET' : 'Approval / Rejection'}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const el = form2Ref.current;
+                        if (!el) return;
+                        const win = window.open('', '_blank', 'width=900,height=700');
+                        if (!win) return;
+                        win.document.write(`<!DOCTYPE html><html><head><title>Form II</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#111;background:#fff;padding:32px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;margin-bottom:16px}.field label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#666;display:block;margin-bottom:2px}.field span{font-size:12px;font-weight:600;color:#111}.decision{padding:10px 14px;border-radius:6px;font-size:13px;font-weight:800;margin-bottom:14px}.approved{background:#F0FDF4;color:#166534;border:1px solid #BBF7D0}.rejected{background:#FEF2F2;color:#991B1B;border:1px solid #FECACA}.section label{font-size:10px;font-weight:700;text-transform:uppercase;color:#555;display:block;margin-bottom:4px}.section p{font-size:12px;color:#111;line-height:1.6;white-space:pre-wrap;background:#f9f9f9;padding:8px 10px;border-radius:4px}@media print{body{padding:0}}</style></head><body>
+                          <div style="background:#1A3C34;color:#fff;padding:16px 24px;text-align:center;border-radius:8px 8px 0 0;margin-bottom:0">
+                            <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;opacity:.7;margin-bottom:4px">Food Safety and Standards Authority of India</div>
+                            <div style="font-size:20px;font-weight:800;font-family:Georgia,serif;margin-bottom:2px">FORM - II</div>
+                            <div style="font-size:11px;opacity:.85">${app.applicationType === 'RPET' ? 'Authorization/Rejection of FCM-rPET' : '(Approval/Rejection)'}</div>
+                          </div>
+                          <div style="border:1px solid #ccc;border-top:none;border-radius:0 0 8px 8px;padding:20px">
+                            <div class="grid">
+                              <div class="field"><label>Application No.</label><span>${app.referenceNumber}</span></div>
+                              ${app.approvalNumber ? `<div class="field"><label>${f2Decision === 'Approved' ? 'Approval No.' : 'Rejection No.'}</label><span style="font-weight:800">${app.approvalNumber}</span></div>` : ''}
+                              <div class="field"><label>Date of Application</label><span>${String(form2['dateOfApplication'] ?? '—')}</span></div>
+                              <div class="field"><label>Organisation</label><span>${String(form2['orgName'] ?? app.companyName)}</span></div>
+                              <div class="field"><label>Applicant Name</label><span>${String(form2['applicantName'] ?? '—')}</span></div>
+                              <div class="field"><label>Registered Address</label><span>${String(form2['address'] ?? '—')}</span></div>
+                              <div class="field"><label>Authorised Person</label><span>${String(form2['authorizedPerson'] ?? '—')}</span></div>
+                              ${form2['productName'] ? `<div class="field"><label>Name of Food Product</label><span>${String(form2['productName'])}</span></div>` : ''}
+                              ${form2['productCategory'] ? `<div class="field"><label>Product Category</label><span>${String(form2['productCategory'])}</span></div>` : ''}
+                            </div>
+                            <div class="decision ${f2Decision === 'Approved' ? 'approved' : 'rejected'}">${f2Decision === 'Approved' ? '✓ APPROVED' : '✗ REJECTED'}</div>
+                            ${toDecision?.['conditions'] ? `<div class="section" style="margin-bottom:12px"><label>Conditions for Approval</label><p>${toDecision['conditions']}</p></div>` : ''}
+                            ${toDecision?.['reasons'] ? `<div class="section" style="margin-bottom:12px"><label>Reasons for Rejection</label><p>${toDecision['reasons']}</p></div>` : ''}
+                          </div>
+                        </body></html>`);
+                        win.document.close(); win.focus(); win.print(); win.close();
+                      }}
+                      style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: 6, padding: '5px 12px', fontSize: 11, fontWeight: 600, color: '#fff', cursor: 'pointer' }}
+                    >
+                      🖨 Print Form II
+                    </button>
+                  </div>
+                  <div style={{ padding: '12px 14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px' }}>
+                    {[
+                      ['Application No.', app.referenceNumber],
+                      ...(app.approvalNumber ? [[f2Decision === 'Approved' ? 'Approval No.' : 'Rejection No.', app.approvalNumber]] : []),
+                      ['Date', String(form2['dateOfApplication'] ?? '—')],
+                      ['Organisation', String(form2['orgName'] ?? app.companyName)],
+                      ['Applicant', String(form2['applicantName'] ?? '—')],
+                      ['Auth. Person', String(form2['authorizedPerson'] ?? '—')],
+                      ...(form2['productName'] ? [['Product', String(form2['productName'])]] : []),
+                      ...(form2['productCategory'] ? [['Category', String(form2['productCategory'])]] : []),
+                    ].map(([lbl, val]) => (
+                      <div key={lbl}>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 1 }}>{lbl}</div>
+                        <div style={{ fontSize: 11, fontWeight: lbl.includes('No.') ? 700 : 500, color: COLORS.text }}>{val}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ margin: '0 14px 12px', background: f2Decision === 'Approved' ? '#F0FDF4' : '#FEF2F2', border: `1px solid ${f2Decision === 'Approved' ? '#BBF7D0' : '#FECACA'}`, borderRadius: 6, padding: '8px 12px' }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: f2Decision === 'Approved' ? '#166534' : '#991B1B' }}>
+                      {f2Decision === 'Approved' ? '✓ APPROVED' : '✗ REJECTED'}
+                    </div>
+                  </div>
+                  {!!toDecision?.['conditions'] && (
+                    <div style={{ margin: '0 14px 10px' }}>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 3 }}>Conditions for Approval</div>
+                      <div style={{ fontSize: 11, color: COLORS.text, background: COLORS.bg, borderRadius: 4, padding: '6px 8px', whiteSpace: 'pre-wrap' }}>{String(toDecision['conditions'])}</div>
+                    </div>
+                  )}
+                  {!!toDecision?.['reasons'] && (
+                    <div style={{ margin: '0 14px 10px' }}>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 3 }}>Reasons for Rejection</div>
+                      <div style={{ fontSize: 11, color: COLORS.text, background: COLORS.bg, borderRadius: 4, padding: '6px 8px', whiteSpace: 'pre-wrap' }}>{String(toDecision['reasons'])}</div>
+                    </div>
+                  )}
+                </div>
+              ) : f2Decision ? (
+                <div style={{ background: f2Decision === 'Rejected' ? '#FFF1F2' : '#F0FDF4', border: `1px solid ${f2Decision === 'Rejected' ? '#FECDD3' : '#BBF7D0'}`, borderRadius: 8, padding: '10px 14px', marginBottom: 10 }}>
                   <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 2 }}>Technical Officer Final Decision</div>
                   <div style={{ fontSize: 15, fontWeight: 800, color: f2Decision === 'Rejected' ? '#9F1239' : '#166534' }}>
                     {f2Decision === 'Rejected' ? '✗ Rejected' : '✓ Approved'}
                   </div>
-                  {form2 && (
-                    <div style={{ marginTop: 8, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6 }}>
-                      {!!form2['productName'] && <div><strong>Product:</strong> {String(form2['productName'])}</div>}
-                      {!!form2['orgName']     && <div><strong>Organisation:</strong> {String(form2['orgName'])}</div>}
-                    </div>
-                  )}
                 </div>
-              )}
+              ) : null}
 
               {/* Case 0a: App already forwarded to Chairperson — locked, waiting */}
               {app.stage === 'WithChairperson' ? (
@@ -526,8 +609,19 @@ export default function ApplicationScrutiny() {
                 ))}
               </div>
 
-              {/* Decision — only actionable when stage is WithNodalOfficerA */}
-              {app.stage === 'WithNodalOfficerA' ? (
+              {/* Decision — only actionable when stage is WithNodalOfficerA AND no active TO query */}
+              {activeTechQuery ? (
+                <div style={{ background: '#FFF7ED', border: `1px solid #FED7AA`, borderRadius: 10, padding: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#92400E', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    🔒 Actions Locked — Query Cycle in Progress
+                  </div>
+                  <div style={{ fontSize: 11, color: '#92400E', lineHeight: 1.6 }}>
+                    {!activeTechQuery.nodalForwardedAt
+                      ? 'A Technical Officer query is pending. Forward the query to the applicant (see above) before taking any other action.'
+                      : 'The applicant has responded. Forward the response to the Technical Officer (see above) to complete the query cycle.'}
+                  </div>
+                </div>
+              ) : app.stage === 'WithNodalOfficerA' ? (
                 <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.primary, borderBottom: `2px solid ${COLORS.primaryLight}`, paddingBottom: 6, marginBottom: 14, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                     Scrutiny Decision
@@ -588,10 +682,22 @@ export default function ApplicationScrutiny() {
                 }}>
                   <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6,
                     color: app.stage === 'Rejected' ? COLORS.danger : app.stage === 'WithChairperson' ? '#3730A3' : COLORS.textMuted }}>
-                    {app.stage === 'Rejected'         ? '✕ Application Rejected'
-                      : app.stage === 'WithChairperson' ? '⚖️ Review Pending with Chairperson'
+                    {app.stage === 'Rejected'              ? '✕ Application Rejected'
+                      : app.stage === 'WithChairperson'    ? '⚖️ Review Pending with Chairperson'
+                      : app.stage === 'WithTechnicalOfficer' ? '📋 Application With Technical Officer'
+                      : app.stage === 'QuerySent'          ? '⏳ Awaiting Applicant Response'
                       : `Status: ${app.stage}`}
                   </div>
+                  {app.stage === 'WithTechnicalOfficer' && (
+                    <div style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6 }}>
+                      Application has been forwarded to the Technical Officer for assessment. Actions will be available once the TO returns a decision or raises a query.
+                    </div>
+                  )}
+                  {app.stage === 'QuerySent' && (
+                    <div style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6 }}>
+                      A deficiency notice has been sent to the applicant. Actions will be available once the applicant responds and the query cycle is complete.
+                    </div>
+                  )}
                   {app.stage === 'Rejected' && (
                     <div style={{ fontSize: 11, color: COLORS.text, lineHeight: 1.6 }}>
                       This application has been rejected. The applicant may file an appeal (goes to CEO) or a review petition (goes to Chairperson). This view will be unlocked when a decision is routed back here.
@@ -599,7 +705,7 @@ export default function ApplicationScrutiny() {
                   )}
                   {app.stage === 'WithChairperson' && (
                     <div style={{ fontSize: 11, color: '#3730A3', lineHeight: 1.6 }}>
-                      The applicant has filed a review petition against the appellate order. The petition is currently with the Chairperson for a final decision. This application will return here once the Chairperson decides.
+                      The applicant has filed a review petition against the appellate order. The petition is currently with the Chairperson for a final decision.
                     </div>
                   )}
                 </div>

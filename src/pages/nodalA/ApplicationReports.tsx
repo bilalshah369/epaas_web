@@ -93,10 +93,6 @@ function fmtDate(iso: string | null | undefined) {
   return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function genApprNum(a: Application, idx: number, prefix: string) {
-  return `${prefix}-${new Date(a.updatedAt).getFullYear()}-${String(idx + 100).padStart(4, '0')}`;
-}
-
 const BLANK = { refNo: '', approvalNo: '', company: '', appType: 'All', fromDate: '', toDate: '' };
 
 export default function ApplicationReports() {
@@ -106,7 +102,7 @@ export default function ApplicationReports() {
   const segment = location.pathname.split('/').pop() as ReportKey;
   const cfg = CONFIGS[segment] ?? CONFIGS.approved;
 
-  const numPrefix = segment === 'approved' ? 'APPR' : segment === 'rejected' ? 'RJCT' : '';
+  const showApprNum = segment === 'approved' || segment === 'rejected';
 
   const [apps,    setApps]    = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
@@ -137,10 +133,9 @@ export default function ApplicationReports() {
   useEffect(() => { load(); setDraft(BLANK); setActive(BLANK); }, [load]);
 
   // Apply filters
-  const displayed = apps.filter((a, idx) => {
-    const num = numPrefix ? genApprNum(a, idx, numPrefix).toLowerCase() : '';
-    if (active.refNo     && !a.referenceNumber.toLowerCase().includes(active.refNo.toLowerCase()))     return false;
-    if (active.approvalNo && !num.includes(active.approvalNo.toLowerCase()))                           return false;
+  const displayed = apps.filter((a) => {
+    if (active.refNo     && !a.referenceNumber.toLowerCase().includes(active.refNo.toLowerCase()))            return false;
+    if (active.approvalNo && !(a.approvalNumber ?? '').toLowerCase().includes(active.approvalNo.toLowerCase())) return false;
     if (active.company   && !a.companyName.toLowerCase().includes(active.company.toLowerCase()))        return false;
     if (active.appType !== 'All' && a.applicationType !== TYPE_VALUE_MAP[active.appType])               return false;
     if (active.fromDate) {
@@ -178,7 +173,7 @@ export default function ApplicationReports() {
         </div>
 
         {/* Approval / Rejection No. — only for approved & rejected pages */}
-        {numPrefix && (
+        {showApprNum && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 140, flex: '1 1 140px' }}>
             <label style={{ fontSize: 10, fontWeight: 600, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 }}>
               {segment === 'approved' ? 'Approval No.' : 'Rejection No.'}
@@ -186,7 +181,7 @@ export default function ApplicationReports() {
             <input
               value={draft.approvalNo}
               onChange={(e) => setDraft((d) => ({ ...d, approvalNo: e.target.value }))}
-              placeholder={segment === 'approved' ? 'APPR-…' : 'RJCT-…'}
+              placeholder="YY SS AA CC NNNNNN"
               style={iStyle}
             />
           </div>
@@ -240,7 +235,7 @@ export default function ApplicationReports() {
               <tr>
                 {[
                   'Sr. No.', 'App. No.',
-                  ...(numPrefix ? [segment === 'approved' ? 'Approval No.' : 'Rejection No.'] : []),
+                  ...(showApprNum ? [segment === 'approved' ? 'Approval No.' : 'Rejection No.'] : []),
                   'Company / Org.', 'Product', 'App. Type', 'Received',
                   'EC Number', 'EC Status', 'Date of Issue of Form 2', 'Final Status', 'Action',
                 ].map((h) => <th key={h} style={S.th}>{h}</th>)}
@@ -254,13 +249,11 @@ export default function ApplicationReports() {
                 <tr><td colSpan={12} style={{ ...S.td, textAlign: 'center', color: COLORS.textMuted, padding: 32 }}>{cfg.emptyMsg}</td></tr>
               )}
               {displayed.map((a, i) => {
-                const origIdx = apps.indexOf(a);
-                const num = numPrefix ? genApprNum(a, origIdx, numPrefix) : null;
                 return (
                   <tr key={a.id} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg }}>
                     <td style={S.td}>{i + 1}</td>
                     <td style={{ ...S.td, color: COLORS.primary, fontWeight: 600 }}>{a.referenceNumber}</td>
-                    {num && <td style={{ ...S.td, color: COLORS.primary, fontWeight: 600 }}>{num}</td>}
+                    {showApprNum && <td style={{ ...S.td, fontWeight: 700 }}>{a.approvalNumber ?? '—'}</td>}
                     <td style={S.td}>{a.companyName}</td>
                     <td style={S.td}>{a.productName ?? '—'}</td>
                     <td style={S.td}>
@@ -269,7 +262,7 @@ export default function ApplicationReports() {
                       </span>
                     </td>
                     <td style={S.td}>{fmtDate(a.submittedAt)}</td>
-                    <td style={S.td}>—</td>
+                    <td style={{ ...S.td, fontWeight: 700 }}>{a.approvalNumber ?? '—'}</td>
                     <td style={S.td}>
                       <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: cfg.badgeBg, color: cfg.badgeColor }}>
                         {segment === 'approved' ? 'EC Approved' : segment === 'rejected' ? 'EC Rejected' : '—'}

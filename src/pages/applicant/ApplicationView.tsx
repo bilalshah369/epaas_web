@@ -2515,6 +2515,7 @@ export default function ApplicationView() {
 <div class="body">
   <div class="grid">
     <div class="field"><label>Application No.</label><span>${f2?.applicationNo ?? app!.referenceNumber}</span></div>
+    ${app!.approvalNumber ? `<div class="field"><label>${isApproved ? 'Approval No.' : 'Rejection No.'}</label><span style="font-weight:800">${app!.approvalNumber}</span></div>` : ''}
     <div class="field"><label>Date of Application</label><span>${f2?.dateOfApplication ?? "—"}</span></div>
     <div class="field"><label>Name of Organisation</label><span>${f2?.orgName ?? app!.companyName}</span></div>
     <div class="field"><label>Name of Applicant</label><span>${f2?.applicantName ?? "—"}</span></div>
@@ -2675,6 +2676,7 @@ export default function ApplicationView() {
                                   f2?.applicationNo ?? app!.referenceNumber,
                                 ),
                               ],
+                              ...(app!.approvalNumber ? [[isApproved ? "Approval No." : "Rejection No.", app!.approvalNumber]] : []),
                               [
                                 "Date of Application",
                                 String(f2?.dateOfApplication ?? "—"),

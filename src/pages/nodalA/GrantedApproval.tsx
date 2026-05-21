@@ -118,7 +118,7 @@ export default function GrantedApproval() {
                 <tr key={a.id} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg }}>
                   <td style={S.td}>{i + 1}</td>
                   <td style={{ ...S.td, color: COLORS.primary, fontWeight: 600 }}>{a.referenceNumber}</td>
-                  <td style={S.td}>APPR-{new Date(a.updatedAt).getFullYear()}-{String(i + 100).padStart(4, '0')}</td>
+                  <td style={{ ...S.td, fontWeight: 700 }}>{a.approvalNumber ?? '—'}</td>
                   <td style={S.td}>{a.companyName}</td>
                   <td style={S.td}>{a.productName ?? '—'}</td>
                   <td style={S.td}>

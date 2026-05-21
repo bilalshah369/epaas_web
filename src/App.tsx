@@ -90,6 +90,7 @@ import ECSearchConsole    from '@/pages/ec/ECSearchConsole';
 import NodalALayout               from '@/layouts/NodalALayout';
 import NodalADashboard            from '@/pages/nodalA/NodalADashboard';
 import ApplicationScrutiny        from '@/pages/nodalA/ApplicationScrutiny';
+import NodalApplicationView       from '@/pages/nodalA/NodalApplicationView';
 import DocumentScrutiny           from '@/pages/nodalA/DocumentScrutiny';
 import GrantedApproval            from '@/pages/nodalA/GrantedApproval';
 import AppForEditing              from '@/pages/nodalA/AppForEditing';
@@ -159,6 +160,7 @@ export default function App() {
             <Route path="/nodal/dashboard"      element={<NodalADashboard />}      />
             <Route path="/nodal/scrutiny"       element={<DocumentScrutiny />}     />
             <Route path="/nodal/scrutiny/:id"   element={<ApplicationScrutiny />}  />
+            <Route path="/nodal/view/:id"       element={<NodalApplicationView />} />
             <Route path="/nodal/approved"       element={<GrantedApproval />}      />
             <Route path="/nodal/editing"        element={<AppForEditing />}        />
             <Route path="/nodal/withdrawal"          element={<WithdrawalOfApproval />}  />

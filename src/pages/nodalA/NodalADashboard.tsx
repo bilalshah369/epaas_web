@@ -710,7 +710,7 @@ export default function NodalADashboard() {
                   <td style={S.td}>—</td>
                   <td style={S.td}>—</td>
                   <td style={S.td}>—</td>
-                  <td style={S.td}>—</td>
+                  <td style={{ ...S.td, fontWeight: 700 }}>{a.approvalNumber ?? "—"}</td>
                   <td style={S.td}>{ecBadge(a.stage)}</td>
                   <td style={S.td}>—</td>
                   <td style={S.td}>{finalBadge(a.stage)}</td>
@@ -1148,21 +1148,20 @@ export default function NodalADashboard() {
                         <StatusBadge status={stageToStatus(a.stage)} />
                       </td>
                       <td style={S.td}>
-                        <button
-                          onClick={() => navigate(`/nodal/scrutiny/${a.id}`)}
-                          style={{
-                            background: COLORS.primary,
-                            color: "#fff",
-                            padding: "4px 10px",
-                            borderRadius: 4,
-                            fontSize: 10,
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            border: "none",
-                          }}
-                        >
-                          View
-                        </button>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          <button
+                            onClick={() => navigate(`/nodal/view/${a.id}`)}
+                            style={{ background: 'transparent', color: COLORS.primary, border: `1px solid ${COLORS.primary}`, padding: '4px 10px', borderRadius: 4, fontSize: 10, fontWeight: 600, cursor: 'pointer' }}
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={() => navigate(`/nodal/scrutiny/${a.id}`)}
+                            style={{ background: COLORS.primary, color: '#fff', border: 'none', padding: '4px 10px', borderRadius: 4, fontSize: 10, fontWeight: 600, cursor: 'pointer' }}
+                          >
+                            Proceed
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -1484,14 +1483,14 @@ export default function NodalADashboard() {
                             }}
                           >
                             <Btn
-                              label="Proceed"
-                              onClick={() =>
-                                navigate(`/nodal/scrutiny/${a.id}`)
-                              }
+                              label="View"
+                              variant="outline"
+                              onClick={() => navigate(`/nodal/view/${a.id}`)}
                             />
-                            <Btn label="Assign I/O" variant="outline" />
-                            <Btn label="Forward" variant="outline" />
-                            <Btn label="View Purpose" variant="outline" />
+                            <Btn
+                              label="Proceed"
+                              onClick={() => navigate(`/nodal/scrutiny/${a.id}`)}
+                            />
                           </div>
                         </td>
                       </tr>

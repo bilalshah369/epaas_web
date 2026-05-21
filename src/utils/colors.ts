@@ -44,8 +44,19 @@ export const S = {
   } as React.CSSProperties,
 
   select: {
-    appearance: 'auto',
+    width: '100%',
+    border: '1px solid var(--color-border)',
+    borderRadius: 6,
+    padding: '8px 10px',
+    fontSize: 13,
+    outline: 'none',
+    boxSizing: 'border-box',
+    fontFamily: "'Noto Sans', 'Segoe UI', sans-serif",
+    background: '#fff',
+    color: 'var(--color-text)',
     cursor: 'pointer',
+    appearance: 'auto',
+    transition: 'border-color 0.15s',
   } as React.CSSProperties,
 
   // Page-header pattern shared across all role dashboards (mock S.roleLabel/pageTitle/pageDesc)

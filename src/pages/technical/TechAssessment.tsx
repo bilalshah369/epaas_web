@@ -256,9 +256,10 @@ export default function TechAssessment() {
 
     setSaving(true);
     try {
-      await technicalRecordDecision(appId, f2Decision, f2Conditions, f2Reasons, form2Data, f2Decision === 'Approved' ? f2WithPms : false);
-      toast.success('Form 2 decision recorded — application forwarded to Nodal Officer');
-      navigate('/technical/dashboard');
+      const updated = await technicalRecordDecision(appId, f2Decision, f2Conditions, f2Reasons, form2Data, f2Decision === 'Approved' ? f2WithPms : false);
+      setApp(updated);
+      toast.success(`Form 2 recorded — ${f2Decision === 'Approved' ? 'Approval' : 'Rejection'} No. ${updated.approvalNumber ?? ''}`);
+      setTimeout(() => navigate('/technical/dashboard'), 2000);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast.error(msg ?? 'Could not record decision');
@@ -576,6 +577,10 @@ export default function TechAssessment() {
                   <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.primary, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 14 }}>Application Details (Pre-filled)</div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px 24px' }}>
                     {readField('Application No.', app.referenceNumber)}
+                    {app.approvalNumber && readField(
+                      f2Decision === 'Approved' ? 'Approval No.' : 'Rejection No.',
+                      app.approvalNumber,
+                    )}
                     {readField('Date of Application', fmtDate(app.submittedAt))}
                     {readField(appType === 'RPET' ? 'Name of Manufacturer' : 'Name of Organisation', app.companyName)}
                     {readField('Name of Applicant', profile.applicantName || '—')}

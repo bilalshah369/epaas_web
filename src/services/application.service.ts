@@ -13,6 +13,7 @@ export interface Application {
   formData:        AppFormData | null;
   ecAssessment:    { checklist: Record<string, boolean>; notes: string } | null;
   toDecision:      Record<string, unknown> | null;
+  approvalNumber:  string | null;
   submittedAt:     string | null;
   createdAt:       string;
   updatedAt:       string;

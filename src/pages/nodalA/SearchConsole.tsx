@@ -283,7 +283,7 @@ export default function SearchConsole() {
                       <td style={S.td}>{a.companyName}{a.address ? `, ${a.address}` : ''}</td>
                       <td style={S.td}>{a.productName ?? '—'}</td>
                       <td style={S.td}>{fmtDate(a.submittedAt)}</td>
-                      <td style={S.td}>—</td>
+                      <td style={{ ...S.td, fontWeight: 700 }}>{a.approvalNumber ?? '—'}</td>
                       <td style={S.td}>—</td>
                       <td style={S.td}>—</td>
                       <td style={S.td}>—</td>

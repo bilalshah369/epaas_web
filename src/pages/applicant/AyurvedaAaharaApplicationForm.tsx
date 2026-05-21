@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { COLORS, S } from '@/utils/colors';
+import { validatePhone, validateEmail, filterPhone } from '@/utils/validators';
 import { scrollToFirstError } from '@/utils/scrollToError';
 import Stepper from '@/components/ui/Stepper';
 import UploadBox from '@/components/ui/UploadBox';
@@ -426,7 +427,7 @@ const input: React.CSSProperties = {
   fontFamily: "'Noto Sans','Segoe UI',sans-serif",
 };
 const textarea: React.CSSProperties = { ...input, resize: 'vertical', minHeight: 80 };
-const select: React.CSSProperties   = { ...input, cursor: 'pointer', appearance: 'auto' };
+const select: React.CSSProperties   = { ...input, cursor: 'pointer', appearance: 'auto', background: '#fff', color: COLORS.text };
 const secCard: React.CSSProperties  = {
   background: COLORS.white, border: `1px solid ${COLORS.border}`,
   borderRadius: 10, padding: 16, marginBottom: 12,
@@ -970,8 +971,10 @@ export default function AyurvedaAaharaApplicationForm() {
       if (!d.manufacturingAddress.trim())         errs.manufacturingAddress  = 'This field is required';
       if (!d.manufacturingPremisesContactDetails.trim()) errs.manufacturingPremisesContactDetails = 'This field is required';
       if (!d.authorisedPerson.trim())             errs.authorisedPerson      = 'This field is required';
-      if (!d.authorisedEmail.trim())              errs.authorisedEmail       = 'This field is required';
-      if (!d.authorisedContact.trim())            errs.authorisedContact     = 'This field is required';
+      const emailErr = validateEmail(d.authorisedEmail);
+      if (emailErr) errs.authorisedEmail = emailErr;
+      const phoneErr = validatePhone(d.authorisedContact);
+      if (phoneErr) errs.authorisedContact = phoneErr;
       if (!d.natureOfBusiness.trim())             errs.natureOfBusiness      = 'This field is required';
       if (countWords(d.natureOfBusiness) > 100)   errs.natureOfBusiness      = 'Nature of business exceeds 100 words';
       if (!d.productName.trim())                  errs.productName           = 'This field is required';
@@ -1267,7 +1270,7 @@ export default function AyurvedaAaharaApplicationForm() {
         <div style={row}>
           <label style={fieldLabel}>Contact Number of the Authorised Person *</label>
           <div>
-            <input style={eb(input, 'authorisedContact')} value={d.authorisedContact} onChange={(e) => setField('authorisedContact', e.target.value)} />
+            <input style={eb(input, 'authorisedContact')} value={d.authorisedContact} placeholder="10-digit mobile number" inputMode="numeric" maxLength={10} onChange={(e) => setField('authorisedContact', filterPhone(e.target.value))} />
             {errMsg('authorisedContact')}
           </div>
         </div>
@@ -1275,7 +1278,7 @@ export default function AyurvedaAaharaApplicationForm() {
         <div style={row}>
           <label style={fieldLabel}>Email of the Authorised Person *</label>
           <div>
-            <input type="email" style={eb(input, 'authorisedEmail')} value={d.authorisedEmail} onChange={(e) => setField('authorisedEmail', e.target.value)} />
+            <input style={eb(input, 'authorisedEmail')} value={d.authorisedEmail} placeholder="officer@example.com" onChange={(e) => setField('authorisedEmail', e.target.value)} />
             {errMsg('authorisedEmail')}
           </div>
         </div>

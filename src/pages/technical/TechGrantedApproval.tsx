@@ -82,10 +82,10 @@ export default function TechGrantedApproval() {
                 <tr key={a.id} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg, cursor: 'pointer' }} onClick={() => navigate(`/technical/assessment/${a.id}`)}>
                   <td style={S.td}>{i + 1}</td>
                   <td style={{ ...S.td, color: COLORS.primary, fontWeight: 600 }}>{a.referenceNumber}</td>
-                  <td style={S.td}>APPR-{new Date(a.updatedAt).getFullYear()}-{String(i + 100).padStart(4, '0')}</td>
+                  <td style={{ ...S.td, fontWeight: 700 }}>{a.approvalNumber ?? '—'}</td>
                   <td style={S.td}>{a.companyName}</td>
                   <td style={S.td}>{a.productName ?? '—'}</td>
-                  <td style={S.td}>—</td>
+                  <td style={{ ...S.td, fontWeight: 700 }}>{a.approvalNumber ?? '—'}</td>
                   <td style={S.td}><span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: COLORS.successLight, color: COLORS.success }}>EC Approved</span></td>
                   <td style={S.td}>{fmtDate(a.updatedAt)}</td>
                   <td style={S.td}><span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: COLORS.successLight, color: COLORS.success }}>Approved</span></td>

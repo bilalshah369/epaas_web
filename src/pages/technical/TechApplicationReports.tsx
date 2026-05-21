@@ -111,7 +111,7 @@ export default function TechApplicationReports() {
                   <td style={S.td}>{a.productName ?? '—'}</td>
                   <td style={S.td}><span style={{ background: COLORS.infoLight, color: COLORS.info, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4 }}>{TYPE_LABELS[a.applicationType] ?? a.applicationType}</span></td>
                   <td style={S.td}>{fmtDate(a.submittedAt)}</td>
-                  <td style={S.td}>—</td>
+                  <td style={{ ...S.td, fontWeight: 700 }}>{a.approvalNumber ?? '—'}</td>
                   <td style={S.td}><span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: cfg.badgeBg, color: cfg.badgeColor }}>{segment === 'approved' ? 'EC Approved' : segment === 'rejected' ? 'EC Rejected' : '—'}</span></td>
                   <td style={S.td}>{segment === 'approved' ? fmtDate(a.updatedAt) : '—'}</td>
                   <td style={S.td}><span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: cfg.badgeBg, color: cfg.badgeColor }}>{cfg.statusLabel}</span></td>
