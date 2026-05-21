@@ -116,7 +116,7 @@ export default function ExtensionOfTime() {
       {/* Page header */}
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <div style={S.roleLabel}>NODAL OFFICER A</div>
+          <div style={S.roleLabel}>NODAL OFFICER</div>
           <div style={S.pageTitle}>Extension of Time Requests</div>
           <div style={S.pageDesc}>Manage applicant requests for additional time. You may also create manual or assisted extension requests on behalf of applicants.</div>
         </div>

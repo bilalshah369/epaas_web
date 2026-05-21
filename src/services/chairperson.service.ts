@@ -13,6 +13,8 @@ export interface Review {
   filedAt: string;
   decisionAt: string | null;
   decisionRemarks: string | null;
+  attachmentUrl: string | null;
+  authorityDocUrl: string | null;
 }
 
 export async function fetchChairpersonPending(): Promise<Application[]> {

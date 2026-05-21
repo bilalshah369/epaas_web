@@ -10,6 +10,7 @@ import {
   technicalRequestClarification,
   technicalRecordDecision,
 } from '@/services/technical.service';
+import { fetchEligibleEC, type EligibleOfficer } from '@/services/officer.service';
 import { API_BASE } from '@/services/api';
 import FormDataTable from '@/components/ui/FormDataTable';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -104,6 +105,10 @@ export default function TechAssessment() {
 
   const [saving, setSaving] = useState(false);
   const [dialog, setDialog] = useState<{ msg: string; action: () => void } | null>(null);
+  const [ecModal, setEcModal] = useState(false);
+  const [eligibleECs, setEligibleECs] = useState<EligibleOfficer[]>([]);
+  const [loadingECs, setLoadingECs] = useState(false);
+  const [selectedECId, setSelectedECId] = useState('');
   const form2Ref = useRef<HTMLDivElement>(null);
 
   function printForm2() {
@@ -157,11 +162,25 @@ export default function TechAssessment() {
   const fromEC = !!(app?.toDecision as Record<string, unknown> | null)?.fromEC;
   const visibleTabs: Tab[] = fromEC ? [...BASE_TABS, 'decision'] : BASE_TABS;
 
-  async function handleForwardEC() {
+  async function openECModal() {
     if (!recRemarks.trim()) { toast.error('Please enter remarks before forwarding to EC'); return; }
-    setSaving(true);
+    setLoadingECs(true);
+    setEcModal(true);
     try {
-      await technicalForwardToEC(appId);
+      const officers = await fetchEligibleEC(appId);
+      setEligibleECs(officers);
+      if (officers.length > 0) setSelectedECId(officers[0].id);
+    } catch {
+      toast.error('Could not load eligible EC members');
+    } finally { setLoadingECs(false); }
+  }
+
+  async function handleForwardEC() {
+    if (!selectedECId) { toast.error('Please select an EC member'); return; }
+    setSaving(true);
+    setEcModal(false);
+    try {
+      await technicalForwardToEC(appId, selectedECId);
       toast.success('Application forwarded to Expert Committee');
       navigate('/technical/dashboard');
     } catch (err: unknown) {
@@ -177,7 +196,7 @@ export default function TechAssessment() {
     const fullText = `${querySubject.trim() ? querySubject.trim() + '\n\n' : ''}${clarText.trim()}`;
     try {
       await technicalRequestClarification(appId, fullText);
-      toast.success('Clarification requested — application routed to Nodal Officer A for forwarding');
+      toast.success('Clarification requested — application routed to Nodal Officer for forwarding');
       navigate('/technical/dashboard');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -238,7 +257,7 @@ export default function TechAssessment() {
     setSaving(true);
     try {
       await technicalRecordDecision(appId, f2Decision, f2Conditions, f2Reasons, form2Data, f2Decision === 'Approved' ? f2WithPms : false);
-      toast.success('Form 2 decision recorded — application forwarded to Nodal Officer A');
+      toast.success('Form 2 decision recorded — application forwarded to Nodal Officer');
       navigate('/technical/dashboard');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -452,7 +471,7 @@ export default function TechAssessment() {
           <div style={card}>
             <div style={cardTitle}>REQUEST CLARIFICATION FROM APPLICANT</div>
             <div style={{ marginBottom: 6, fontSize: 12, color: COLORS.textMuted, lineHeight: 1.6 }}>
-              Use this to formally request clarification or additional documents from the applicant. The application will be routed to Nodal Officer A, who will forward it to the applicant.
+              Use this to formally request clarification or additional documents from the applicant. The application will be routed to Nodal Officer, who will forward it to the applicant.
             </div>
             <div style={{ marginBottom: 14, marginTop: 14 }}>
               <label style={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>Query Subject (optional)</label>
@@ -469,11 +488,11 @@ export default function TechAssessment() {
                 placeholder="Specify exactly what additional information or documents are needed from the applicant…"
                 style={{ ...textarea, minHeight: 130, borderColor: clarText.length > 0 && clarText.trim().length < 10 ? COLORS.danger : COLORS.border }} />
             </div>
-            <button style={btn()} disabled={saving} onClick={() => setDialog({ msg: 'Are you sure you want to send this application back for clarification? It will be forwarded to Nodal Officer A.', action: handleRequestClarification })}>
+            <button style={btn()} disabled={saving} onClick={() => setDialog({ msg: 'Are you sure you want to send this application back for clarification? It will be forwarded to Nodal Officer.', action: handleRequestClarification })}>
               {saving ? 'Processing…' : '↩ Request Clarification — Forward to Nodal A'}
             </button>
             <div style={{ marginTop: 14, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '10px 14px', fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6 }}>
-              <strong style={{ color: COLORS.text }}>Stage transition:</strong> Application moves to <strong>QuerySent</strong> → Nodal Officer A forwards to applicant for response.
+              <strong style={{ color: COLORS.text }}>Stage transition:</strong> Application moves to <strong>QuerySent</strong> → Nodal Officer forwards to applicant for response.
             </div>
           </div>
         </div>
@@ -492,7 +511,7 @@ export default function TechAssessment() {
               placeholder="State your technical findings and grounds for recommending EC review…"
               style={{ ...textarea, minHeight: 130 }} />
           </div>
-          <button style={btn()} disabled={saving} onClick={() => setDialog({ msg: 'Are you sure you want to forward this application to the Expert Committee?', action: handleForwardEC })}>
+          <button style={btn()} disabled={saving} onClick={openECModal}>
             {saving ? 'Processing…' : '✅ Forward to Expert Committee'}
           </button>
           <div style={{ marginTop: 14, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '10px 14px', fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6 }}>
@@ -525,7 +544,7 @@ export default function TechAssessment() {
                   EC Recommendation: {ecRec === 'Approve' ? 'Recommend Approval' : 'Recommend Rejection'}
                 </div>
                 <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>
-                  Complete Form 2 below and submit to forward this decision to Nodal Officer A for dispatch.
+                  Complete Form 2 below and submit to forward this decision to Nodal Officer for dispatch.
                 </div>
               </div>
             </div>
@@ -663,9 +682,9 @@ export default function TechAssessment() {
                   </div>
                   <button
                     style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 8, padding: '11px 26px', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, display: 'flex', alignItems: 'center', gap: 8 }}
-                    disabled={saving} onClick={() => setDialog({ msg: 'Are you sure you want to submit Form 2 and forward this application to Nodal Officer A?', action: handleRecordDecision })}>
+                    disabled={saving} onClick={() => setDialog({ msg: 'Are you sure you want to submit Form 2 and forward this application to Nodal Officer?', action: handleRecordDecision })}>
                     <span>📄</span>
-                    {saving ? 'Processing…' : 'Submit Form 2 & Forward to Nodal Officer A →'}
+                    {saving ? 'Processing…' : 'Submit Form 2 & Forward to Nodal Officer →'}
                   </button>
                 </div>
 
@@ -680,6 +699,46 @@ export default function TechAssessment() {
         <button style={btn('outline')} onClick={() => navigate('/technical/dashboard')}>← Back to Dashboard</button>
       </div>
       {dialog && <ConfirmDialog message={dialog.msg} onConfirm={() => { setDialog(null); dialog.action(); }} onCancel={() => setDialog(null)} />}
+
+      {/* EC selection modal */}
+      {ecModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#fff', borderRadius: 12, width: 440, boxShadow: '0 24px 64px rgba(0,0,0,0.22)', overflow: 'hidden' }}>
+            <div style={{ background: COLORS.primary, padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>Forward Application</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginTop: 2 }}>Assign Expert Committee Member</div>
+              </div>
+              <div onClick={() => setEcModal(false)} style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.7)', fontSize: 18 }}>✕</div>
+            </div>
+            <div style={{ padding: 18 }}>
+              <label style={S.label}>Select EC Member <span style={{ color: COLORS.danger }}>*</span></label>
+              {loadingECs ? (
+                <div style={{ padding: '10px 0', color: COLORS.textMuted, fontSize: 12 }}>Loading eligible EC members…</div>
+              ) : eligibleECs.length === 0 ? (
+                <div style={{ padding: '10px 0', color: COLORS.danger, fontSize: 12 }}>No EC members assigned to this application category. Please contact admin.</div>
+              ) : (
+                <select value={selectedECId} onChange={(e) => setSelectedECId(e.target.value)}
+                  style={{ width: '100%', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '7px 10px', fontSize: 12, marginBottom: 14, background: '#fff', cursor: 'pointer' }}>
+                  {eligibleECs.map(o => (
+                    <option key={o.id} value={o.id}>{o.username} ({o.activeApplications} active app{o.activeApplications !== 1 ? 's' : ''})</option>
+                  ))}
+                </select>
+              )}
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button onClick={() => setEcModal(false)}
+                  style={{ padding: '7px 16px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1.5px solid ${COLORS.primary}`, background: 'transparent', color: COLORS.primary }}>
+                  Cancel
+                </button>
+                <button onClick={handleForwardEC} disabled={!selectedECId || eligibleECs.length === 0}
+                  style={{ padding: '7px 16px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: selectedECId ? 'pointer' : 'not-allowed', border: 'none', background: COLORS.primary, color: '#fff', opacity: selectedECId ? 1 : 0.5 }}>
+                  Forward to EC
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

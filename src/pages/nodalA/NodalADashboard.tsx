@@ -16,8 +16,8 @@ import toast from "react-hot-toast";
 // ── Stage helpers ──────────────────────────────────────────────────────────────
 
 const STAGE_PENDING_WITH: Record<string, string> = {
-  Submitted: "Nodal Officer A",
-  WithNodalOfficerA: "Nodal Officer A",
+  Submitted: "Nodal Officer",
+  WithNodalOfficerA: "Nodal Officer",
   QuerySent: "Applicant",
   WithTechnicalOfficer: "Technical Officer",
   WithExpertCommittee: "Expert Committee",
@@ -1629,7 +1629,7 @@ export default function NodalADashboard() {
             return (
               <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "14px 16px", marginBottom: 14 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.text, marginBottom: 8 }}>Withdrawal of Approval (Authority Action)</div>
-                <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 12 }}>Nodal Officer A can directly withdraw an approved application. Already-withdrawn applications are view-only.</div>
+                <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 12 }}>Nodal Officer can directly withdraw an approved application. Already-withdrawn applications are view-only.</div>
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                     <thead>

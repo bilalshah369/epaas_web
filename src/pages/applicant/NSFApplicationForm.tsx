@@ -130,7 +130,7 @@ export default function NSFApplicationForm() {
             setAppId(existing.id);
             if (existing.formData) setFormData(existing.formData as AppFormData);
           } else {
-            return createDraftApplication(typeParam, user?.username ?? '')
+            return createDraftApplication(typeParam, user?.username || 'Draft')
               .then((app) => setAppId(app.id));
           }
         })

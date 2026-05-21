@@ -41,9 +41,28 @@ export async function fetchNodalAPending(): Promise<Application[]> {
   return data.applications;
 }
 
-export async function nodalAForward(appId: string): Promise<Application> {
-  const { data } = await api.post<{ application: Application }>(`/nodal-a/applications/${appId}/forward`);
+export interface EligibleOfficer {
+  id: string;
+  username: string;
+  email: string;
+  officeLocation: string | null;
+  assignedCategories: string[];
+  activeApplications: number;
+}
+
+export async function fetchEligibleTO(appId: string): Promise<EligibleOfficer[]> {
+  const { data } = await api.get<{ officers: EligibleOfficer[] }>(`/nodal-a/applications/${appId}/eligible-to`);
+  return data.officers;
+}
+
+export async function nodalAForward(appId: string, toId: string): Promise<Application> {
+  const { data } = await api.post<{ application: Application }>(`/nodal-a/applications/${appId}/forward`, { toId });
   return data.application;
+}
+
+export async function fetchEligibleEC(appId: string): Promise<EligibleOfficer[]> {
+  const { data } = await api.get<{ officers: EligibleOfficer[] }>(`/technical/applications/${appId}/eligible-ec`);
+  return data.officers;
 }
 
 // Return with query: reuses the shared query endpoint
@@ -93,6 +112,10 @@ export async function fetchNodalAReviewsReport(): Promise<Application[]> {
 export async function nodalASendDecision(appId: string): Promise<Application> {
   const { data } = await api.post<{ application: Application }>(`/nodal-a/applications/${appId}/send-decision`);
   return data.application;
+}
+
+export async function nodalAForwardAppealToCEO(appealId: string): Promise<void> {
+  await api.post(`/nodal-a/appeals/${appealId}/forward-to-ceo`);
 }
 
 export async function nodalADispatchAppealDecision(appealId: string): Promise<Application> {

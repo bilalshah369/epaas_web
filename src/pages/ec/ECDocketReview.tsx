@@ -374,7 +374,7 @@ export default function ECDocketReview() {
               <ul style={{ margin: '6px 0 0 0', paddingLeft: 16 }}>
                 <li><strong>Recommend Approval</strong> → forwards to Technical Officer for decision preparation</li>
                 <li><strong>Recommend Rejection</strong> → forwards to Technical Officer with EC rejection grounds</li>
-                <li><strong>Request Clarification</strong> → returns to applicant via Nodal Officer A</li>
+                <li><strong>Request Clarification</strong> → returns to applicant via Nodal Officer</li>
               </ul>
             </div>
           </div>

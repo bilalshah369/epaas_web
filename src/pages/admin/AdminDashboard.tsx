@@ -13,7 +13,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const STAGE_PENDING_WITH: Record<string, string> = {
-  WithNodalOfficerA: 'Nodal Officer A', WithTechnicalOfficer: 'Technical Officer',
+  WithNodalOfficerA: 'Nodal Officer', WithTechnicalOfficer: 'Technical Officer',
   WithExpertCommittee: 'Expert Committee', WithNodalPointB: 'Nodal Point B',
   WithCEO: 'CEO', WithChairperson: 'Chairperson',
   QuerySent: 'Applicant', AppealPending: 'CEO', ReviewPending: 'Chairperson',

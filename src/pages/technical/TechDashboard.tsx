@@ -125,7 +125,7 @@ const WITHDRAWAL_FILTERS: FilterField[] = [
 
 
 const NOTIFICATIONS = [
-  { id: 1, title: 'New application assigned — EPAAS-2025-007', desc: 'Mother Dairy NSF application forwarded from Nodal Officer A. Awaiting technical review.', time: '1h ago', read: false },
+  { id: 1, title: 'New application assigned — EPAAS-2025-007', desc: 'Mother Dairy NSF application forwarded from Nodal Officer. Awaiting technical review.', time: '1h ago', read: false },
   { id: 2, title: 'Query response received — EPAAS-2025-002', desc: 'Nestlé India Ltd. has responded to the stability data query.', time: '4h ago', read: false },
   { id: 3, title: 'Application forwarded to EC — EPAAS-2025-001', desc: 'Amul Dairy application recommended for Expert Committee review.', time: '2d ago', read: true },
   { id: 4, title: 'Reminder: EPAAS-2025-003 — 5 days remaining', desc: 'Dabur Chyawanprash application deadline approaching. Action required.', time: '2d ago', read: false },

@@ -12,13 +12,13 @@ const TYPE_LABELS: Record<string, string> = {
   AyurvedaAahara: 'Ayurveda Aahara', RPET: 'rPET', AnyOther: 'Any Other',
 };
 const STAGE_PENDING_WITH: Record<string, string> = {
-  WithNodalOfficerA: 'Nodal Officer A', WithTechnicalOfficer: 'Technical Officer',
+  WithNodalOfficerA: 'Nodal Officer', WithTechnicalOfficer: 'Technical Officer',
   WithExpertCommittee: 'Expert Committee', WithNodalPointB: 'Nodal Point B',
   WithCEO: 'CEO', WithChairperson: 'Chairperson',
   QuerySent: 'Applicant', AppealPending: 'CEO', ReviewPending: 'Chairperson',
   Approved: '—', Rejected: '—', Closed: '—', Withdrawn: '—',
 };
-const STATUS_LEVEL_OPTIONS = ['All', 'Nodal Officer A', 'Technical Officer', 'Expert Committee', 'Nodal Point B', 'CEO', 'Chairperson', 'Applicant'];
+const STATUS_LEVEL_OPTIONS = ['All', 'Nodal Officer', 'Technical Officer', 'Expert Committee', 'Nodal Point B', 'CEO', 'Chairperson', 'Applicant'];
 const TYPE_OPTIONS = ['All', 'NSF', 'ClaimApproval', 'AyurvedaAahara', 'RPET', 'AnyOther'];
 const STAGE_STATUS_OPTIONS = ['All', 'WithNodalOfficerA', 'WithTechnicalOfficer', 'WithExpertCommittee', 'WithNodalPointB', 'WithCEO', 'WithChairperson', 'QuerySent', 'Approved', 'Rejected', 'AppealPending', 'ReviewPending', 'Withdrawn'];
 

@@ -43,7 +43,7 @@ const TYPE_LABELS: Record<string, string> = {
 const STAGE_LABELS: Record<string, string> = {
   Draft: "Draft",
   Submitted: "Submitted",
-  WithNodalOfficerA: "With Nodal Officer A",
+  WithNodalOfficerA: "With Nodal Officer",
   WithTechnicalOfficer: "With Technical Officer",
   QuerySent: "Query Sent",
   WithExpertCommittee: "With Expert Committee",

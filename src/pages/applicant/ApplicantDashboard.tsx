@@ -139,11 +139,14 @@ const WORKFLOW_OPTIONS = [
 ];
 
 const STATUS_OPTIONS = [
-  { value: 'Submitted',            label: 'Submitted' },
+  { value: 'Draft',                label: 'Draft' },
   { value: 'WithNodalOfficerA',    label: 'Document Scrutiny' },
+  { value: 'WithTechnicalOfficer', label: 'Technical Assessment' },
   { value: 'WithExpertCommittee',  label: 'Expert Committee' },
   { value: 'QuerySent',            label: 'Query / Clarification' },
-  { value: 'Approved',             label: 'Approval' },
+  { value: 'WithCEO',              label: 'CEO (Appeal)' },
+  { value: 'WithChairperson',      label: 'Chairperson (Review)' },
+  { value: 'Approved',             label: 'Approved' },
   { value: 'Rejected',             label: 'Rejected' },
 ];
 

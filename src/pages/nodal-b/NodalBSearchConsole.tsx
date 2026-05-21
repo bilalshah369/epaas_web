@@ -5,7 +5,7 @@ import { fetchNodalBAll } from '@/services/nodal-b.service';
 import type { Application } from '@/services/application.service';
 
 const STAGE_PENDING_WITH: Record<string, string> = {
-  WithNodalOfficerA: 'Nodal Officer A', WithTechnicalOfficer: 'Technical Officer',
+  WithNodalOfficerA: 'Nodal Officer', WithTechnicalOfficer: 'Technical Officer',
   WithExpertCommittee: 'Expert Committee', WithNodalPointB: 'Nodal Point B',
   WithCEO: 'CEO', WithChairperson: 'Chairperson',
   Approved: '—', Rejected: '—', Closed: '—',

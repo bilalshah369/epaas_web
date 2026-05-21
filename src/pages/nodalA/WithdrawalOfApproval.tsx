@@ -15,7 +15,7 @@ export default function WithdrawalOfApproval() {
     <div>
       {/* Page header */}
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>NODAL OFFICER A</div>
+        <div style={S.roleLabel}>NODAL OFFICER</div>
         <div style={S.pageTitle}>Application for Withdrawal of Approval Granted</div>
         <div style={S.pageDesc}>Requests received from Applicants to withdraw a previously granted approval.</div>
       </div>

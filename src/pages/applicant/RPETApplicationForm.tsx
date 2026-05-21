@@ -116,7 +116,7 @@ export default function RPETApplicationForm() {
             setAppId(existing.id);
             if (existing.formData) setFormData(existing.formData as unknown as RPETFormData);
           } else {
-            return createDraftApplication('RPET', user?.username ?? '').then((app) => setAppId(app.id));
+            return createDraftApplication('RPET', user?.username || 'Draft').then((app) => setAppId(app.id));
           }
         })
         .catch(() => toast.error('Could not start application'));

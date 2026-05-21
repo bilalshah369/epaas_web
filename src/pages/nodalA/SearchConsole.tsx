@@ -8,7 +8,7 @@ import { fetchNodalAAll } from '@/services/officer.service';
 import type { Application } from '@/services/application.service';
 
 const STAGE_PENDING_WITH: Record<string, string> = {
-  WithNodalOfficerA:    'Nodal Officer A',
+  WithNodalOfficerA:    'Nodal Officer',
   WithTechnicalOfficer: 'Technical Officer',
   WithEC:               'Expert Committee',
   WithNodalOfficerB:    'Nodal Officer B',

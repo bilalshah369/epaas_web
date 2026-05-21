@@ -5,7 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { COLORS, S } from '@/utils/colors';
 import {
-  fetchNodalAAppealReview, nodalADispatchAppealDecision, nodalADispatchReviewDecision,
+  fetchNodalAAppealReview, nodalAForwardAppealToCEO, nodalAForwardReviewToChairperson,
+  nodalADispatchAppealDecision, nodalADispatchReviewDecision,
   uploadAppealAuthorityDoc, uploadReviewAuthorityDoc,
 } from '@/services/officer.service';
 import { uploadFile } from '@/services/application.service';
@@ -38,6 +39,7 @@ export default function AppealReview() {
   const [records,     setRecords]     = useState<AppealReviewRecord[]>([]);
   const [loading,     setLoading]     = useState(true);
   const [dispatching, setDispatching] = useState<string | null>(null);
+  const [forwarding,  setForwarding]  = useState<string | null>(null);
   const [viewRecord,  setViewRecord]  = useState<AppealReviewRecord | null>(null);
   const [uploading,   setUploading]   = useState(false);
   const [authorityFile, setAuthorityFile] = useState<string | null>(null);
@@ -66,6 +68,23 @@ export default function AppealReview() {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast.error(msg ?? 'Dispatch failed');
     } finally { setDispatching(null); }
+  }
+
+  async function handleForward(r: AppealReviewRecord) {
+    setForwarding(r.id);
+    try {
+      if (r.type === 'Appeal') {
+        await nodalAForwardAppealToCEO(r.id);
+        toast.success('Appeal forwarded to CEO');
+      } else {
+        await nodalAForwardReviewToChairperson(r.id);
+        toast.success('Review petition forwarded to Chairperson');
+      }
+      await load();
+    } catch (err: unknown) {
+      const d = (err as any)?.response?.data;
+      toast.error(d?.message ?? d?.error ?? 'Forward failed');
+    } finally { setForwarding(null); }
   }
 
   async function handleAuthorityFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -236,7 +255,7 @@ export default function AppealReview() {
 
       {/* Page header */}
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>NODAL OFFICER A</div>
+        <div style={S.roleLabel}>NODAL OFFICER</div>
         <div style={S.pageTitle}>Applicant Request for Appeal and Review</div>
         <div style={S.pageDesc}>Appeal against rejection orders and review against appellate orders.</div>
       </div>
@@ -315,6 +334,25 @@ export default function AppealReview() {
                           style={{ padding: '4px 12px', background: 'transparent', color: COLORS.textMuted, border: `1px solid ${COLORS.border}`, borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
                           Application
                         </button>
+                        {/* Forward to CEO — appeal is pending at Nodal before CEO has seen it */}
+                        {r.type === 'Appeal' && r.status === 'AppealPending' && r.application.stage === 'WithNodalOfficerA' && (
+                          <button
+                            onClick={() => handleForward(r)}
+                            disabled={forwarding === r.id}
+                            style={{ padding: '4px 12px', background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: forwarding === r.id ? 'not-allowed' : 'pointer', opacity: forwarding === r.id ? 0.6 : 1 }}>
+                            {forwarding === r.id ? '…' : 'Forward to CEO'}
+                          </button>
+                        )}
+                        {/* Forward to Chairperson — review petition is pending at Nodal */}
+                        {r.type === 'Review' && r.status === 'ReviewPending' && r.application.stage === 'WithNodalOfficerA' && (
+                          <button
+                            onClick={() => handleForward(r)}
+                            disabled={forwarding === r.id}
+                            style={{ padding: '4px 12px', background: '#6A0572', color: '#fff', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: forwarding === r.id ? 'not-allowed' : 'pointer', opacity: forwarding === r.id ? 0.6 : 1 }}>
+                            {forwarding === r.id ? '…' : 'Forward to Chairperson'}
+                          </button>
+                        )}
+                        {/* Dispatch — after CEO/Chairperson has decided and app is back at Nodal */}
                         {((r.type === 'Appeal' && (r.status === 'AppealApproved' || r.status === 'AppealRejected')) ||
                           (r.type === 'Review' && r.status === 'ReviewDisposed')) &&
                           r.application.stage === 'WithNodalOfficerA' && (

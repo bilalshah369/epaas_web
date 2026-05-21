@@ -362,7 +362,7 @@ const [trackError, setTrackError] = useState('');
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>NODAL OFFICER A</div>
+        <div style={S.roleLabel}>NODAL OFFICER</div>
         <div style={S.pageTitle}>Reports</div>
         <div style={S.pageDesc}>Standard reports for monitoring and compliance.</div>
       </div>

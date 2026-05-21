@@ -184,6 +184,14 @@ export default function ChairpersonApplicationReview() {
                   </div>
                   <div style={{ fontSize: 12, color: COLORS.text, marginBottom: 6, lineHeight: 1.5 }}><strong>Review Grounds:</strong> {r.grounds}</div>
                   <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 4 }}>Filed on: {fmtDate(r.filedAt)}</div>
+                  {r.attachmentUrl && (
+                    <div style={{ marginTop: 6 }}>
+                      <a href={`${API_BASE}/uploads/${r.attachmentUrl}`} target="_blank" rel="noreferrer"
+                        style={{ fontSize: 11, fontWeight: 600, color: COLORS.primary, background: 'transparent', border: `1px solid ${COLORS.primary}`, borderRadius: 5, padding: '3px 8px', textDecoration: 'none', display: 'inline-block' }}>
+                        📎 View Supporting Document
+                      </a>
+                    </div>
+                  )}
                   {r.appeal && (
                     <div style={{ background: COLORS.warningLight, border: `1px solid ${COLORS.warning}33`, borderRadius: 4, padding: '8px 10px', marginTop: 8 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.warning, marginBottom: 4 }}>Original Appeal Grounds</div>
@@ -268,7 +276,7 @@ export default function ChairpersonApplicationReview() {
 
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {decision === 'Approve Review (Restart Workflow)' ? (
-              <button onClick={() => setDialog({ msg: 'Are you sure you want to approve this review petition? The application will restart the full workflow from Nodal Officer A.', action: handleSubmit })} disabled={saving || reviews.length === 0}
+              <button onClick={() => setDialog({ msg: 'Are you sure you want to approve this review petition? The application will restart the full workflow from Nodal Officer.', action: handleSubmit })} disabled={saving || reviews.length === 0}
                 style={{ background: COLORS.success, color: '#fff', border: 'none', borderRadius: 6, padding: '8px 20px', fontSize: 12, fontWeight: 700, cursor: (saving || reviews.length === 0) ? 'not-allowed' : 'pointer', opacity: (saving || reviews.length === 0) ? 0.6 : 1 }}>
                 {saving ? 'Processing…' : '✓ Approve Review — Restart Workflow'}
               </button>

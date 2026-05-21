@@ -2,8 +2,10 @@
 // Same structure as nodalA/DocumentScrutiny but uses fetchTechnicalPending().
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { COLORS, S } from '@/utils/colors';
 import { fetchTechnicalPending, technicalForwardToEC } from '@/services/technical.service';
+import { fetchEligibleEC, type EligibleOfficer } from '@/services/officer.service';
 import type { Application } from '@/services/application.service';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -39,23 +41,42 @@ function Btn({ label, variant = 'primary', onClick }: { label: string; variant?:
   );
 }
 
-// ── Forward modal ──────────────────────────────────────────────────────────────
-function ForwardModal({ app, onClose, onForward }: { app: Application; onClose: () => void; onForward: (remarks: string) => Promise<void> }) {
-  const [remarks, setRemarks] = useState('');
-  const [busy,    setBusy]    = useState(false);
+// ── Forward to EC modal (API-driven) ─────────────────────────────────────────
+function ForwardToECModal({ app, onClose, onForward }: { app: Application; onClose: () => void; onForward: (ecId: string) => Promise<void> }) {
+  const [officers,   setOfficers]   = useState<EligibleOfficer[]>([]);
+  const [loadingEC,  setLoadingEC]  = useState(true);
+  const [selectedId, setSelectedId] = useState('');
+  const [busy,       setBusy]       = useState(false);
+
+  useEffect(() => {
+    fetchEligibleEC(app.id)
+      .then(o => { setOfficers(o); if (o.length > 0) setSelectedId(o[0].id); })
+      .catch(() => toast.error('Could not load eligible EC members'))
+      .finally(() => setLoadingEC(false));
+  }, [app.id]);
+
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
       <div style={{ background: '#fff', borderRadius: 10, padding: 24, width: 440, boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.text, marginBottom: 4 }}>Forward to Expert Committee</div>
         <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 16 }}>{app.referenceNumber} — {app.companyName}</div>
-        <label style={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, display: 'block', marginBottom: 6 }}>Remarks</label>
-        <textarea rows={4} value={remarks} onChange={(e) => setRemarks(e.target.value)}
-          placeholder="Add forwarding remarks…"
-          style={{ width: '100%', resize: 'vertical', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '8px 10px', fontSize: 12, fontFamily: 'inherit', boxSizing: 'border-box' }} />
-        <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
+        <label style={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, display: 'block', marginBottom: 6 }}>Select EC Member *</label>
+        {loadingEC ? (
+          <div style={{ fontSize: 12, color: COLORS.textMuted, padding: '8px 0' }}>Loading eligible members…</div>
+        ) : officers.length === 0 ? (
+          <div style={{ fontSize: 12, color: COLORS.danger, padding: '8px 0' }}>No EC members assigned to this application category. Please contact admin.</div>
+        ) : (
+          <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)}
+            style={{ width: '100%', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '7px 10px', fontSize: 12, marginBottom: 14, cursor: 'pointer' }}>
+            {officers.map(o => (
+              <option key={o.id} value={o.id}>{o.username} ({o.activeApplications} active app{o.activeApplications !== 1 ? 's' : ''})</option>
+            ))}
+          </select>
+        )}
+        <div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}>
           <button onClick={onClose} style={{ padding: '7px 16px', background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>Cancel</button>
-          <button disabled={busy} onClick={async () => { setBusy(true); await onForward(remarks); }}
-            style={{ padding: '7px 20px', background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: busy ? 0.7 : 1 }}>
+          <button disabled={busy || !selectedId || officers.length === 0} onClick={async () => { setBusy(true); await onForward(selectedId); }}
+            style={{ padding: '7px 20px', background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: selectedId ? 'pointer' : 'not-allowed', opacity: busy || !selectedId ? 0.7 : 1 }}>
             {busy ? 'Forwarding…' : 'Forward to EC'}
           </button>
         </div>
@@ -77,10 +98,16 @@ export default function TechDocScrutiny() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function handleForward(app: Application, _remarks: string) {
-    await technicalForwardToEC(app.id);
-    setForwardModal(null);
-    load();
+  async function handleForward(app: Application, ecId: string) {
+    try {
+      await technicalForwardToEC(app.id, ecId);
+      toast.success(`${app.referenceNumber} forwarded to Expert Committee.`);
+      setForwardModal(null);
+      load();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'Could not forward application');
+    }
   }
 
   return (
@@ -158,7 +185,7 @@ export default function TechDocScrutiny() {
       </div>
 
       {forwardModal && (
-        <ForwardModal app={forwardModal} onClose={() => setForwardModal(null)} onForward={(r) => handleForward(forwardModal, r)} />
+        <ForwardToECModal app={forwardModal} onClose={() => setForwardModal(null)} onForward={(ecId) => handleForward(forwardModal, ecId)} />
       )}
     </div>
   );

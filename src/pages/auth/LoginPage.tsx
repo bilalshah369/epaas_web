@@ -19,7 +19,7 @@ const APPLICANT_FEATURES = [
 ];
 
 const AUTHORITY_FEATURES = [
-  { icon: '🏛️', text: 'Nodal Officer A / Point B' },
+  { icon: '🏛️', text: 'Nodal Officer / Point B' },
   { icon: '🔬', text: 'Technical Officer' },
   { icon: '👥', text: 'Expert Committee Member' },
   { icon: '👔', text: 'CEO / Chairperson' },

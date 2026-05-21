@@ -1,16 +1,17 @@
 export interface AuthUser {
-  id:               string;
-  username:         string;
-  email:            string;
-  roleCode:         string;
-  roleName:         string;
-  licenseNumber?:   string;
-  officeLocation?:  string;
-  isActive:         boolean;
-  name?:            string;
-  mobile?:          string;
-  orgName?:         string;
-  natureOfBusiness?:string;
+  id:                 string;
+  username:           string;
+  email:              string;
+  roleCode:           string;
+  roleName:           string;
+  licenseNumber?:     string;
+  officeLocation?:    string;
+  assignedCategories: string[];
+  isActive:           boolean;
+  name?:              string;
+  mobile?:            string;
+  orgName?:           string;
+  natureOfBusiness?:  string;
 }
 
 export interface AuthResponse {

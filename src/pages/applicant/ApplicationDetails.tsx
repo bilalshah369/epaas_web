@@ -5,9 +5,19 @@ import { COLORS, S } from '@/utils/colors';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { fetchMyApplications, deleteDraftApplication, type Application } from '@/services/application.service';
 
-const STATUS_OPTIONS = ['All Statuses', 'Draft', 'Submitted', 'Query Raised', 'Approved', 'Rejected'];
+const STATUS_OPTIONS = ['All Statuses', 'Draft', 'WithNodalOfficerA', 'WithTechnicalOfficer', 'WithExpertCommittee', 'QuerySent', 'WithCEO', 'WithChairperson', 'Approved', 'Rejected'];
+const STATUS_LABELS: Record<string, string> = {
+  WithNodalOfficerA: 'Document Scrutiny', WithTechnicalOfficer: 'Technical Assessment',
+  WithExpertCommittee: 'Expert Committee', QuerySent: 'Query / Clarification',
+  WithCEO: 'CEO (Appeal)', WithChairperson: 'Chairperson (Review)',
+};
 const TYPE_OPTIONS   = ['All Types', 'NSF', 'Claim Approval', 'Ayurveda Aahara', 'rPET', 'Any Other'];
-const STATUS_MAP: Record<string, string> = { 'Query Raised': 'QuerySent', 'Claim Approval': 'ClaimApproval', 'Ayurveda Aahara': 'AyurvedaAahara', 'rPET': 'RPET', 'Any Other': 'AnyOther' };
+const STATUS_MAP: Record<string, string> = { 'Claim Approval': 'ClaimApproval', 'Ayurveda Aahara': 'AyurvedaAahara', 'rPET': 'RPET', 'Any Other': 'AnyOther' };
+const APP_TYPE_NORM: Record<string, string> = {
+  CA: 'ClaimApproval', ClaimApproval: 'ClaimApproval',
+  AA: 'AyurvedaAahara', AyurvedaAahara: 'AyurvedaAahara',
+  NSF: 'NSF', RPET: 'RPET', AnyOther: 'AnyOther',
+};
 const TYPE_LABELS: Record<string, string> = {
   NSF: 'NSF', ClaimApproval: 'Claim Approval', AyurvedaAahara: 'Ayurveda Aahara', RPET: 'rPET', AnyOther: 'Any Other',
 };
@@ -98,8 +108,11 @@ export default function ApplicationDetails() {
         a.companyName.toLowerCase().includes(q)
       );
     }
-    if (filterStatus !== 'All Statuses') list = list.filter((a) => a.stage === (STATUS_MAP[filterStatus] ?? filterStatus));
-    if (filterType   !== 'All Types')    list = list.filter((a) => a.applicationType === (STATUS_MAP[filterType] ?? filterType));
+    if (filterStatus !== 'All Statuses') list = list.filter((a) => a.stage === filterStatus);
+    if (filterType   !== 'All Types') {
+      const dbVal = STATUS_MAP[filterType] ?? filterType;
+      list = list.filter((a) => (APP_TYPE_NORM[a.applicationType] ?? a.applicationType) === dbVal);
+    }
     return list;
   }, [apps, search, filterStatus, filterType]);
 
@@ -151,7 +164,7 @@ export default function ApplicationDetails() {
             onChange={(e) => setFilterStatus(e.target.value)}
             style={{ border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '6px 8px', fontSize: 11, background: '#fff', cursor: 'pointer', minWidth: 150 }}
           >
-            {STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
+            {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{STATUS_LABELS[s] ?? s}</option>)}
           </select>
           <select
             value={filterType}

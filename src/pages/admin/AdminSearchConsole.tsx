@@ -7,7 +7,7 @@ import { fetchAdminAll } from '@/services/admin.service';
 import type { Application } from '@/services/application.service';
 
 const STAGE_PENDING_WITH: Record<string, string> = {
-  WithNodalOfficerA: 'Nodal Officer A', WithTechnicalOfficer: 'Technical Officer',
+  WithNodalOfficerA: 'Nodal Officer', WithTechnicalOfficer: 'Technical Officer',
   WithExpertCommittee: 'Expert Committee', WithNodalPointB: 'Nodal Point B',
   WithCEO: 'CEO', WithChairperson: 'Chairperson',
   QuerySent: 'Applicant', AppealPending: 'CEO', ReviewPending: 'Chairperson',
@@ -19,7 +19,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 const STAGE_OPTIONS: Record<string, string> = {
   'All Stages':              '',
-  'With Nodal Officer A':    'WithNodalOfficerA',
+  'With Nodal Officer':      'WithNodalOfficerA',
   'With Technical Officer':  'WithTechnicalOfficer',
   'With Expert Committee':   'WithExpertCommittee',
   'With Nodal Point B':      'WithNodalPointB',

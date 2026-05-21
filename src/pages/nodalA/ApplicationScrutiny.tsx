@@ -7,7 +7,7 @@ import { fetchApplication, fetchQueries, nodalForwardQueryToApplicant, nodalForw
 import { getDocRows, getProfileDisplay } from '@/utils/docResolver';
 import FormDataTable from '@/components/ui/FormDataTable';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
-import { nodalAForward, nodalAReturnWithQuery, nodalASendDecision, nodalADispatchReviewDecision, nodalAForwardReviewToChairperson } from '@/services/officer.service';
+import { nodalAForward, nodalAReturnWithQuery, nodalASendDecision, nodalADispatchReviewDecision, nodalAForwardReviewToChairperson, fetchEligibleTO, type EligibleOfficer } from '@/services/officer.service';
 
 const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_URL ?? 'http://localhost:3000/api';
 
@@ -59,6 +59,10 @@ export default function ApplicationScrutiny() {
   const [submitting, setSubmitting] = useState(false);
   const [dialog, setDialog] = useState<{ msg: string; action: () => void } | null>(null);
   const [queries, setQueries]   = useState<Query[]>([]);
+  const [toModal, setToModal]   = useState(false);
+  const [eligibleTOs, setEligibleTOs] = useState<EligibleOfficer[]>([]);
+  const [loadingTOs, setLoadingTOs]   = useState(false);
+  const [selectedTOId, setSelectedTOId] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -102,16 +106,31 @@ export default function ApplicationScrutiny() {
   const allChecked   = checked.every(Boolean);
   const checkedCount = checked.filter(Boolean).length;
 
-  async function handleForward() {
+  async function openTOModal() {
     if (!app) return;
     if (!allChecked) { toast.error('Please complete all checklist items before forwarding'); return; }
-    setSubmitting(true);
+    setLoadingTOs(true);
+    setToModal(true);
     try {
-      await nodalAForward(app.id);
+      const officers = await fetchEligibleTO(app.id);
+      setEligibleTOs(officers);
+      if (officers.length > 0) setSelectedTOId(officers[0].id);
+    } catch {
+      toast.error('Could not load eligible Technical Officers');
+    } finally { setLoadingTOs(false); }
+  }
+
+  async function handleForward() {
+    if (!app || !selectedTOId) return;
+    setSubmitting(true);
+    setToModal(false);
+    try {
+      await nodalAForward(app.id, selectedTOId);
       toast.success('Application forwarded to Technical Officer');
       navigate('/nodal/dashboard');
-    } catch {
-      toast.error('Could not forward application');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'Could not forward application');
     } finally { setSubmitting(false); }
   }
 
@@ -194,7 +213,7 @@ export default function ApplicationScrutiny() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <div style={S.roleLabel}>NODAL OFFICER A — SCRUTINY</div>
+          <div style={S.roleLabel}>NODAL OFFICER — SCRUTINY</div>
           <div style={{ ...S.pageTitle, display: 'flex', alignItems: 'center', gap: 10 }}>
             {app.referenceNumber} <StatusBadge status={app.stage} />
           </div>
@@ -539,15 +558,19 @@ export default function ApplicationScrutiny() {
 
                   {decision && (
                     <button
-                      onClick={() => setDialog({
-                        msg: decision === 'forward'
-                          ? 'Are you sure you want to forward this application to the Technical Officer?'
-                          : 'Are you sure you want to return this application with a deficiency notice?',
-                        action: decision === 'forward' ? handleForward : handleReturn,
-                      })}
+                      onClick={() => {
+                        if (decision === 'forward') {
+                          openTOModal();
+                        } else {
+                          setDialog({
+                            msg: 'Are you sure you want to return this application with a deficiency notice?',
+                            action: handleReturn,
+                          });
+                        }
+                      }}
                       disabled={submitting}
                       style={{ width: '100%', padding: '11px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', border: 'none', background: decision === 'forward' ? COLORS.primary : COLORS.accent, color: '#fff', opacity: submitting ? 0.7 : 1 }}>
-                      {submitting ? 'Processing…' : decision === 'forward' ? 'Confirm Forward →' : 'Confirm Return →'}
+                      {submitting ? 'Processing…' : decision === 'forward' ? 'Select Technical Officer →' : 'Confirm Return →'}
                     </button>
                   )}
 
@@ -585,6 +608,44 @@ export default function ApplicationScrutiny() {
           )}
         </div>
       </div>
+      {toModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#fff', borderRadius: 12, width: 440, boxShadow: '0 24px 64px rgba(0,0,0,0.22)', overflow: 'hidden' }}>
+            <div style={{ background: COLORS.primary, padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>Forward Application</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginTop: 2 }}>Assign Technical Officer</div>
+              </div>
+              <div onClick={() => setToModal(false)} style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.7)', fontSize: 18 }}>✕</div>
+            </div>
+            <div style={{ padding: 18 }}>
+              <label style={S.label}>Select Technical Officer <span style={{ color: COLORS.danger }}>*</span></label>
+              {loadingTOs ? (
+                <div style={{ padding: '10px 0', color: COLORS.textMuted, fontSize: 12 }}>Loading eligible officers…</div>
+              ) : eligibleTOs.length === 0 ? (
+                <div style={{ padding: '10px 0', color: COLORS.danger, fontSize: 12 }}>No Technical Officers assigned to this application category. Please contact admin.</div>
+              ) : (
+                <select value={selectedTOId} onChange={(e) => setSelectedTOId(e.target.value)}
+                  style={{ width: '100%', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '7px 10px', fontSize: 12, marginBottom: 14, background: '#fff', cursor: 'pointer' }}>
+                  {eligibleTOs.map(o => (
+                    <option key={o.id} value={o.id}>{o.username} ({o.activeApplications} active app{o.activeApplications !== 1 ? 's' : ''})</option>
+                  ))}
+                </select>
+              )}
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button onClick={() => setToModal(false)}
+                  style={{ padding: '7px 16px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1.5px solid ${COLORS.primary}`, background: 'transparent', color: COLORS.primary }}>
+                  Cancel
+                </button>
+                <button onClick={handleForward} disabled={!selectedTOId || eligibleTOs.length === 0}
+                  style={{ padding: '7px 16px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: selectedTOId ? 'pointer' : 'not-allowed', border: 'none', background: COLORS.primary, color: '#fff', opacity: selectedTOId ? 1 : 0.5 }}>
+                  Forward to Technical Officer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {dialog && <ConfirmDialog message={dialog.msg} onConfirm={() => { setDialog(null); dialog.action(); }} onCancel={() => setDialog(null)} />}
     </div>
   );

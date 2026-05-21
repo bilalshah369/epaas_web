@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { COLORS, S } from '@/utils/colors';
 import { resolveFoodCategory } from '@/utils/docResolver';
-import { fetchNodalAPending, nodalAForward } from '@/services/officer.service';
+import { fetchNodalAPending, nodalAForward, fetchEligibleTO, type EligibleOfficer } from '@/services/officer.service';
 import type { Application } from '@/services/application.service';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -27,8 +27,6 @@ const FILTER_FIELDS = [
   { label: 'Application Filter', type: 'select', options: ['All', 'Edited by Applicant', 'Recommended by TO', 'Recommended by EC', 'Extension of Additional Time'] },
 ];
 
-const ASSIGN_TARGETS  = ['Nodal Officer A', 'Nodal Officer B', 'Technical Officer'];
-const FORWARD_TARGETS = ['Technical Officer', 'Nodal Officer A', 'Nodal Officer B', 'Expert Committee (EC)', 'CEO'];
 
 function fmtDate(iso: string | null) {
   if (!iso) return '—';
@@ -60,55 +58,50 @@ function Btn({ label, variant = 'primary', onClick }: { label: string; variant?:
   );
 }
 
-// ── Assign / Forward Modal ────────────────────────────────────────────────────
+// ── Forward to Technical Officer Modal (API-driven) ───────────────────────────
 
-interface ModalProps {
-  app:      Application;
-  type:     'assign' | 'forward';
-  onClose:  () => void;
-  onSubmit: (target: string, remarks: string) => Promise<void>;
+interface ForwardToTOModalProps {
+  app:     Application;
+  onClose: () => void;
+  onSubmit:(toId: string) => Promise<void>;
 }
 
-function AssignForwardModal({ app, type, onClose, onSubmit }: ModalProps) {
-  const isAssign = type === 'assign';
-  const [target,      setTarget]      = useState('');
-  const [remarks,     setRemarks]     = useState('');
-  const [submitting,  setSubmitting]  = useState(false);
-  const targets = isAssign ? ASSIGN_TARGETS : FORWARD_TARGETS;
-  const canSubmit = target && remarks.trim();
+function ForwardToTOModal({ app, onClose, onSubmit }: ForwardToTOModalProps) {
+  const [officers,   setOfficers]   = useState<EligibleOfficer[]>([]);
+  const [loadingTO,  setLoadingTO]  = useState(true);
+  const [selectedId, setSelectedId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchEligibleTO(app.id)
+      .then(o => { setOfficers(o); if (o.length > 0) setSelectedId(o[0].id); })
+      .catch(() => toast.error('Could not load eligible Technical Officers'))
+      .finally(() => setLoadingTO(false));
+  }, [app.id]);
 
   async function handleConfirm() {
-    if (!canSubmit) return;
+    if (!selectedId) return;
     setSubmitting(true);
-    try { await onSubmit(target, remarks); } finally { setSubmitting(false); }
+    try { await onSubmit(selectedId); } finally { setSubmitting(false); }
   }
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ background: '#fff', borderRadius: 12, width: 480, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.22)' }}>
-        {/* Header */}
         <div style={{ background: COLORS.primary, borderRadius: '12px 12px 0 0', padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>
-              {isAssign ? 'Assign Officer' : 'Forward Application'}
-            </div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginTop: 2 }}>
-              {isAssign ? 'Assign I/O to Application' : 'Forward to Authority'}
-            </div>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>Forward Application</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginTop: 2 }}>Assign Technical Officer</div>
           </div>
           <div onClick={onClose} style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.7)', fontSize: 18, lineHeight: 1 }}>✕</div>
         </div>
-
         <div style={{ padding: 18 }}>
-          {/* App info chips */}
           <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '10px 14px', marginBottom: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 14px' }}>
             {([
               ['App. Ref. No.',   app.referenceNumber],
               ['Company',         app.companyName],
               ['Product',         app.productName ?? '—'],
               ['App. Type',       TYPE_LABELS[app.applicationType] ?? app.applicationType],
-              ['Food Category',   resolveFoodCategory(app)],
-              ['Current Handler', 'Nodal Officer A'],
             ] as [string, string][]).map(([k, v]) => (
               <div key={k}>
                 <div style={{ fontSize: 9, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>{k}</div>
@@ -117,35 +110,28 @@ function AssignForwardModal({ app, type, onClose, onSubmit }: ModalProps) {
             ))}
           </div>
 
-          {/* Target select */}
-          <label style={S.label}>
-            {isAssign ? 'Select Officer / Role' : 'Forward To'}{' '}
-            <span style={{ color: COLORS.danger }}>*</span>
-          </label>
-          <select value={target} onChange={(e) => setTarget(e.target.value)}
-            style={{ width: '100%', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '7px 10px', fontSize: 12, marginBottom: 12, background: '#fff', cursor: 'pointer' }}>
-            <option value="">— Select —</option>
-            {targets.map((o) => <option key={o}>{o}</option>)}
-          </select>
+          <label style={S.label}>Select Technical Officer <span style={{ color: COLORS.danger }}>*</span></label>
+          {loadingTO ? (
+            <div style={{ padding: '10px 0', color: COLORS.textMuted, fontSize: 12 }}>Loading eligible officers…</div>
+          ) : officers.length === 0 ? (
+            <div style={{ padding: '10px 0', color: COLORS.danger, fontSize: 12 }}>No Technical Officers assigned to this application category. Please contact admin.</div>
+          ) : (
+            <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)}
+              style={{ width: '100%', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '7px 10px', fontSize: 12, marginBottom: 14, background: '#fff', cursor: 'pointer' }}>
+              {officers.map(o => (
+                <option key={o.id} value={o.id}>{o.username} ({o.activeApplications} active app{o.activeApplications !== 1 ? 's' : ''})</option>
+              ))}
+            </select>
+          )}
 
-          {/* Remarks */}
-          <label style={S.label}>
-            Remarks / Comments <span style={{ color: COLORS.danger }}>*</span>
-          </label>
-          <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)}
-            placeholder={isAssign ? 'Add any notes for the assigned officer…' : 'State reason for forwarding…'}
-            rows={4}
-            style={{ width: '100%', resize: 'vertical', fontFamily: "'Noto Sans','Segoe UI',sans-serif", fontSize: 12, padding: '8px 10px', border: `1px solid ${COLORS.border}`, borderRadius: 6, outline: 'none', marginBottom: 14, boxSizing: 'border-box' }} />
-
-          {/* Actions */}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button onClick={onClose}
               style={{ padding: '7px 16px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1.5px solid ${COLORS.primary}`, background: 'transparent', color: COLORS.primary }}>
               Cancel
             </button>
-            <button onClick={handleConfirm} disabled={!canSubmit || submitting}
-              style={{ padding: '7px 16px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: canSubmit ? 'pointer' : 'not-allowed', border: 'none', background: COLORS.primary, color: '#fff', opacity: canSubmit ? 1 : 0.5 }}>
-              {submitting ? 'Processing…' : isAssign ? 'Confirm Assignment' : 'Forward'}
+            <button onClick={handleConfirm} disabled={!selectedId || submitting || officers.length === 0}
+              style={{ padding: '7px 16px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: selectedId ? 'pointer' : 'not-allowed', border: 'none', background: COLORS.primary, color: '#fff', opacity: selectedId && !submitting ? 1 : 0.5 }}>
+              {submitting ? 'Forwarding…' : 'Forward to Technical Officer'}
             </button>
           </div>
         </div>
@@ -217,7 +203,6 @@ export default function DocumentScrutiny() {
   const navigate = useNavigate();
   const [apps,          setApps]          = useState<Application[]>([]);
   const [loading,       setLoading]       = useState(true);
-  const [assignModal,   setAssignModal]   = useState<Application | null>(null);
   const [forwardModal,  setForwardModal]  = useState<Application | null>(null);
   const [purposeModal,  setPurposeModal]  = useState<Application | null>(null);
 
@@ -228,46 +213,26 @@ export default function DocumentScrutiny() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Assign I/O — UI only (no backend assignment model yet)
-  async function handleAssign(app: Application, target: string, _remarks: string) {
-    toast.success(`Application ${app.referenceNumber} assigned to ${target}.`);
-    setAssignModal(null);
-  }
-
-  // Forward — calls API when target is Technical Officer; toast for others
-  async function handleForward(app: Application, target: string, _remarks: string) {
-    if (target === 'Technical Officer') {
-      try {
-        await nodalAForward(app.id);
-        toast.success(`${app.referenceNumber} forwarded to Technical Officer.`);
-        await load();
-      } catch {
-        toast.error('Could not forward application. Please try again.');
-        return;
-      }
-    } else {
-      toast.success(`${app.referenceNumber} forwarded to ${target}.`);
+  async function handleForward(app: Application, toId: string) {
+    try {
+      await nodalAForward(app.id, toId);
+      toast.success(`${app.referenceNumber} forwarded to Technical Officer.`);
+      setForwardModal(null);
+      await load();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'Could not forward application. Please try again.');
     }
-    setForwardModal(null);
   }
 
   return (
     <div>
       {/* ── Modals ─────────────────────────────────────────────────────────── */}
-      {assignModal && (
-        <AssignForwardModal
-          app={assignModal}
-          type="assign"
-          onClose={() => setAssignModal(null)}
-          onSubmit={(target, remarks) => handleAssign(assignModal, target, remarks)}
-        />
-      )}
       {forwardModal && (
-        <AssignForwardModal
+        <ForwardToTOModal
           app={forwardModal}
-          type="forward"
           onClose={() => setForwardModal(null)}
-          onSubmit={(target, remarks) => handleForward(forwardModal, target, remarks)}
+          onSubmit={(toId) => handleForward(forwardModal, toId)}
         />
       )}
       {purposeModal && (
@@ -279,7 +244,7 @@ export default function DocumentScrutiny() {
 
       {/* Page header */}
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>NODAL OFFICER A</div>
+        <div style={S.roleLabel}>NODAL OFFICER</div>
         <div style={S.pageTitle}>Document Scrutinization</div>
         <div style={S.pageDesc}>Review and scrutinize submitted applications before forwarding to Technical Officer.</div>
       </div>
@@ -342,7 +307,7 @@ export default function DocumentScrutiny() {
                     <td style={{ ...S.td, fontSize: 11 }}>{resolveFoodCategory(a)}</td>
                     <td style={S.td}>{a.companyName}</td>
                     <td style={S.td}>{a.productName ?? '—'}</td>
-                    <td style={{ ...S.td, fontSize: 11, color: COLORS.primary, fontWeight: 600 }}>Nodal Officer A</td>
+                    <td style={{ ...S.td, fontSize: 11, color: COLORS.primary, fontWeight: 600 }}>Nodal Officer</td>
                     <td style={S.td}>{fmtDate(a.submittedAt)}</td>
                     <td style={S.td}>No</td>
                     <td style={S.td}>
@@ -354,8 +319,7 @@ export default function DocumentScrutiny() {
                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                         <Btn label="View"         variant="outline" onClick={() => navigate(`/nodal/scrutiny/${a.id}`)} />
                         <Btn label="Proceed"      onClick={() => navigate(`/nodal/scrutiny/${a.id}`)} />
-                        <Btn label="Assign I/O"   variant="outline" onClick={() => setAssignModal(a)} />
-                        <Btn label="Forward"      variant="outline" onClick={() => setForwardModal(a)} />
+                        <Btn label="Forward to TO" variant="outline" onClick={() => setForwardModal(a)} />
                         <Btn label="View Purpose" variant="outline" onClick={() => setPurposeModal(a)} />
                       </div>
                     </td>

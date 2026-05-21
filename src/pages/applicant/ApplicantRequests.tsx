@@ -1,6 +1,6 @@
 // Mirrors ApplicantAppealReview + ApplicantExtension from mock (App.jsx L9224, L10258).
 // Wired to real API: /api/appeals, /api/appeals/reviews, /api/extensions.
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import type React from 'react';
 import toast from 'react-hot-toast';
@@ -108,6 +108,10 @@ export default function ApplicantRequests() {
   const [extItems,   setExtItems]   = useState<ExtensionItem[]>([]);
   const [extLoading, setExtLoading] = useState(false);
 
+  // Search filters
+  const [appealFilter, setAppealFilter] = useState({ ref: '', company: '', from: '', to: '' });
+  const [reviewFilter, setReviewFilter] = useState({ ref: '', company: '', from: '', to: '' });
+
   // ── Loaders ─────────────────────────────────────────────────────────────────
 
   const loadAppeals = useCallback(async () => {
@@ -209,6 +213,26 @@ export default function ApplicantRequests() {
       await loadReviews();
     } finally { setReviewSubmitting(false); }
   }
+
+  // ── Filtered lists ───────────────────────────────────────────────────────────
+
+  const filteredAppealItems = useMemo(() => {
+    let list = appealItems;
+    if (appealFilter.ref)     list = list.filter((a) => a.ref.toLowerCase().includes(appealFilter.ref.toLowerCase()));
+    if (appealFilter.company) list = list.filter((a) => a.company.toLowerCase().includes(appealFilter.company.toLowerCase()));
+    if (appealFilter.from)    list = list.filter((a) => new Date(a.rejDate) >= new Date(appealFilter.from));
+    if (appealFilter.to)      list = list.filter((a) => new Date(a.rejDate) <= new Date(appealFilter.to + 'T23:59:59'));
+    return list;
+  }, [appealItems, appealFilter]);
+
+  const filteredReviewItems = useMemo(() => {
+    let list = reviewItems;
+    if (reviewFilter.ref)     list = list.filter((r) => r.ref.toLowerCase().includes(reviewFilter.ref.toLowerCase()));
+    if (reviewFilter.company) list = list.filter((r) => r.company.toLowerCase().includes(reviewFilter.company.toLowerCase()));
+    if (reviewFilter.from)    list = list.filter((r) => new Date(r.appealRejDate) >= new Date(reviewFilter.from));
+    if (reviewFilter.to)      list = list.filter((r) => new Date(r.appealRejDate) <= new Date(reviewFilter.to + 'T23:59:59'));
+    return list;
+  }, [reviewItems, reviewFilter]);
 
   // ── Stats ────────────────────────────────────────────────────────────────────
 
@@ -446,23 +470,39 @@ export default function ApplicantRequests() {
       </div>
 
       {/* ── Search bar (appeal + review only) ───────────────────────────────── */}
-      {activeTab !== 'extension' && (
-        <div style={{ ...card, padding: '10px 14px', marginBottom: 0, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'flex-end' }}>
-          {[
-            { label: 'Application No.',      ph: 'APP-2026-…'  },
-            { label: 'Company Name',          ph: 'Search…'     },
-            { label: 'Rejection Date (From)', ph: 'DD/MM/YYYY'  },
-            { label: 'Rejection Date (To)',   ph: 'DD/MM/YYYY'  },
-          ].map((f) => (
-            <div key={f.label} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <label style={{ fontSize: 9, fontWeight: 700, color: COLORS.primary, textTransform: 'uppercase', letterSpacing: 0.5 }}>{f.label}</label>
-              <input placeholder={f.ph} style={{ ...S.input, width: 155, padding: '5px 8px', fontSize: 11, border: `1px solid ${COLORS.border}`, borderRadius: 5 }} />
-            </div>
-          ))}
-          <button style={{ ...btn('outline'), padding: '5px 12px', fontSize: 11, alignSelf: 'flex-end' }}>Clear</button>
-          <button style={{ ...btn(),          padding: '5px 12px', fontSize: 11, alignSelf: 'flex-end' }}>Search</button>
-        </div>
-      )}
+      {activeTab !== 'extension' && (() => {
+        const isAppeal = activeTab === 'appeal';
+        const f = isAppeal ? appealFilter : reviewFilter;
+        const setF = isAppeal
+          ? (k: keyof typeof appealFilter, v: string) => setAppealFilter((p) => ({ ...p, [k]: v }))
+          : (k: keyof typeof reviewFilter, v: string) => setReviewFilter((p) => ({ ...p, [k]: v }));
+        const clearF = isAppeal
+          ? () => setAppealFilter({ ref: '', company: '', from: '', to: '' })
+          : () => setReviewFilter({ ref: '', company: '', from: '', to: '' });
+        const dateLabel = isAppeal ? 'Rejection Date' : 'Appeal Rej. Date';
+        return (
+          <div style={{ ...card, padding: '10px 14px', marginBottom: 0, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'flex-end' }}>
+            {([
+              { key: 'ref',     label: 'Application No.',         ph: 'APP-2026-…', type: 'text' },
+              { key: 'company', label: 'Company Name',             ph: 'Search…',    type: 'text' },
+              { key: 'from',    label: `${dateLabel} (From)`,      ph: '',           type: 'date' },
+              { key: 'to',      label: `${dateLabel} (To)`,        ph: '',           type: 'date' },
+            ] as { key: keyof typeof appealFilter; label: string; ph: string; type: string }[]).map((field) => (
+              <div key={field.key} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <label style={{ fontSize: 9, fontWeight: 700, color: COLORS.primary, textTransform: 'uppercase', letterSpacing: 0.5 }}>{field.label}</label>
+                <input
+                  type={field.type}
+                  value={f[field.key]}
+                  onChange={(e) => setF(field.key, e.target.value)}
+                  placeholder={field.ph}
+                  style={{ ...S.input, width: 155, padding: '5px 8px', fontSize: 11, border: `1px solid ${COLORS.border}`, borderRadius: 5 }}
+                />
+              </div>
+            ))}
+            <button onClick={clearF} style={{ ...btn('outline'), padding: '5px 12px', fontSize: 11, alignSelf: 'flex-end' }}>Clear</button>
+          </div>
+        );
+      })()}
 
       {/* ── Tab content ─────────────────────────────────────────────────────── */}
       <div style={{ ...card, marginTop: 0 }}>
@@ -481,10 +521,10 @@ export default function ApplicantRequests() {
                   <tr>{['Sr.','Reference No.','Company Name','Product Name','Type','Food Category','Rejection Date','Days Left','Appeal Status','Action'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
                 </thead>
                 <tbody>
-                  {appealItems.length === 0 && (
+                  {filteredAppealItems.length === 0 && (
                     <tr><td colSpan={10} style={{ ...S.td, textAlign: 'center', color: COLORS.textMuted, padding: 24 }}>No appeals found.</td></tr>
                   )}
-                  {appealItems.map((r, i) => {
+                  {filteredAppealItems.map((r, i) => {
                     const canFile = r.appealStatus === 'PendingFiling' && r.daysLeft > 0;
                     const badgeType = r.appealStatus === 'PendingFiling' ? 'pending' : r.appealStatus === 'AppealPending' ? 'ec' : r.appealStatus === 'AppealRejected' ? 'rejected' : 'approved';
                     const label    = r.appealStatus === 'PendingFiling' ? 'Pending Filing' : r.appealStatus === 'AppealPending' ? 'Appeal Pending' : r.appealStatus === 'AppealRejected' ? 'Appeal Rejected' : 'Appeal Approved';
@@ -534,10 +574,10 @@ export default function ApplicantRequests() {
                   <tr>{['Sr.','Reference No.','Company Name','Product Name','Type','Food Category','Appeal Rejected On','Days Left','Review Status','Action'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
                 </thead>
                 <tbody>
-                  {reviewItems.length === 0 && (
+                  {filteredReviewItems.length === 0 && (
                     <tr><td colSpan={10} style={{ ...S.td, textAlign: 'center', color: COLORS.textMuted, padding: 24 }}>No reviews found.</td></tr>
                   )}
-                  {reviewItems.map((r, i) => {
+                  {filteredReviewItems.map((r, i) => {
                     const canReview = r.reviewStatus === 'PendingReview' && r.daysLeft > 0;
                     const badgeType = r.reviewStatus === 'PendingReview' ? 'pending' : r.reviewStatus === 'ReviewPending' ? 'ec' : r.reviewStatus === 'DeadlinePassed' ? 'rejected' : r.reviewStatus === 'ReviewDisposed' ? 'rejected' : 'approved';
                     const label     = r.reviewStatus === 'PendingReview' ? 'Pending Review' : r.reviewStatus === 'ReviewPending' ? 'Review Pending' : r.reviewStatus === 'DeadlinePassed' ? 'Deadline Passed' : 'Review Disposed';

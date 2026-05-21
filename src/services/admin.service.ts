@@ -6,6 +6,7 @@ export interface Officer {
   username: string;
   email: string;
   officeLocation: string | null;
+  assignedCategories: string[];
   isActive: boolean;
   createdAt: string;
   role: { roleCode: string; roleName: string };
@@ -46,6 +47,11 @@ export async function fetchAdminRoles(): Promise<RoleOption[]> {
   return data.roles;
 }
 
+export async function fetchOfficerCreationRoles(): Promise<RoleOption[]> {
+  const { data } = await api.get<{ roles: RoleOption[] }>('/admin/officer-creation-roles');
+  return data.roles;
+}
+
 export async function updateOfficerRole(officerId: string, roleCode: string): Promise<Officer> {
   const { data } = await api.patch<{ user: Officer }>(`/admin/officers/${officerId}/role`, { roleCode });
   return data.user;
@@ -67,11 +73,29 @@ export interface CreateOfficerData {
   password: string;
   officeLocation?: string;
   roleCode: string;
+  assignedCategories: string[];
 }
 
 export async function createOfficer(data: CreateOfficerData): Promise<Officer> {
   const { data: res } = await api.post<{ user: Officer }>('/admin/officers', data);
   return res.user;
+}
+
+export interface UpdateOfficerProfileData {
+  username?: string;
+  email?: string;
+  password?: string;
+  officeLocation?: string;
+  assignedCategories?: string[];
+}
+
+export async function updateOfficerProfile(officerId: string, data: UpdateOfficerProfileData): Promise<Officer> {
+  const { data: res } = await api.patch<{ user: Officer }>(`/admin/officers/${officerId}/profile`, data);
+  return res.user;
+}
+
+export async function deleteOfficer(officerId: string): Promise<void> {
+  await api.delete(`/admin/officers/${officerId}`);
 }
 
 export interface CreateRoleData {

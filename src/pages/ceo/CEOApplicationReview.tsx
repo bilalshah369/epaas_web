@@ -263,13 +263,13 @@ export default function CEOApplicationReview() {
 
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {decision === 'Approve Appeal' && (
-              <button onClick={() => setDialog({ msg: 'Are you sure you want to approve this appeal? The application will be routed to Nodal Officer A for dispatch.', action: handleSubmit })} disabled={saving || appeals.length === 0}
+              <button onClick={() => setDialog({ msg: 'Are you sure you want to approve this appeal? The application will be routed to Nodal Officer for dispatch.', action: handleSubmit })} disabled={saving || appeals.length === 0}
                 style={{ background: COLORS.success, color: '#fff', border: 'none', borderRadius: 6, padding: '8px 20px', fontSize: 12, fontWeight: 700, cursor: (saving || appeals.length === 0) ? 'not-allowed' : 'pointer', opacity: (saving || appeals.length === 0) ? 0.6 : 1 }}>
                 {saving ? 'Processing…' : '⚖️ Approve Appeal'}
               </button>
             )}
             {decision === 'Reject Appeal' && (
-              <button onClick={() => setDialog({ msg: 'Are you sure you want to reject this appeal? The application will be routed to Nodal Officer A.', action: handleSubmit, variant: 'danger' })} disabled={saving || appeals.length === 0}
+              <button onClick={() => setDialog({ msg: 'Are you sure you want to reject this appeal? The application will be routed to Nodal Officer.', action: handleSubmit, variant: 'danger' })} disabled={saving || appeals.length === 0}
                 style={{ background: 'transparent', color: COLORS.danger, border: `1.5px solid ${COLORS.danger}`, borderRadius: 6, padding: '8px 20px', fontSize: 12, fontWeight: 700, cursor: (saving || appeals.length === 0) ? 'not-allowed' : 'pointer', opacity: (saving || appeals.length === 0) ? 0.6 : 1 }}>
                 {saving ? 'Processing…' : '✗ Reject Appeal'}
               </button>

@@ -32,8 +32,8 @@ export async function fetchTechnicalReviewsReport(): Promise<Application[]> {
   return data.applications;
 }
 
-export async function technicalForwardToEC(appId: string): Promise<Application> {
-  const { data } = await api.post<{ application: Application }>(`/technical/applications/${appId}/forward-ec`);
+export async function technicalForwardToEC(appId: string, ecId: string): Promise<Application> {
+  const { data } = await api.post<{ application: Application }>(`/technical/applications/${appId}/forward-ec`, { ecId });
   return data.application;
 }
 

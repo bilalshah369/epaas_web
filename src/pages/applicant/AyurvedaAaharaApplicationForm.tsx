@@ -508,7 +508,7 @@ export default function AyurvedaAaharaApplicationForm() {
             setAppId(existing.id);
             if (existing.formData) setFormData({ ...emptyAAFormData(), ...(existing.formData as unknown as AAFormData) });
           } else {
-            return createDraftApplication('AyurvedaAahara', user?.username ?? '').then((app) => setAppId(app.id));
+            return createDraftApplication('AyurvedaAahara', user?.username || 'Draft').then((app) => setAppId(app.id));
           }
         })
         .catch(() => toast.error('Could not start application'));

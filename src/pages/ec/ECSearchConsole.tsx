@@ -6,7 +6,7 @@ import { fetchECAll } from '@/services/ec.service';
 import type { Application } from '@/services/application.service';
 
 const STAGE_PENDING_WITH: Record<string, string> = {
-  WithNodalOfficerA: 'Nodal Officer A', WithTechnicalOfficer: 'Technical Officer',
+  WithNodalOfficerA: 'Nodal Officer', WithTechnicalOfficer: 'Technical Officer',
   WithExpertCommittee: 'Expert Committee', WithNodalPointB: 'Nodal Officer B',
   WithCEO: 'CEO', WithChairperson: 'Chairperson',
   Approved: '—', Rejected: '—', Closed: '—', Withdrawn: '—', QuerySent: 'Applicant',

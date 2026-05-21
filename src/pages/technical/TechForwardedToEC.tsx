@@ -129,7 +129,7 @@ function DetailView({ app, onClose }: { app: Application; onClose: () => void })
         <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
           {[
             { stage: 'Application Submitted',       date: fmtDate(app.submittedAt),  done: !!app.submittedAt },
-            { stage: 'Received by Nodal Officer A', date: fmtDate(app.submittedAt),  done: !!app.submittedAt },
+            { stage: 'Received by Nodal Officer', date: fmtDate(app.submittedAt),  done: !!app.submittedAt },
             { stage: 'Forwarded to Technical Officer', date: '—',                    done: true               },
             { stage: 'Scrutiny Completed by TO',    date: '—',                       done: true               },
             { stage: 'Forwarded to EC',             date: '—',                       done: EC_STAGES.includes(app.stage) },

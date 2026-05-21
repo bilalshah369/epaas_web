@@ -138,7 +138,7 @@ export default function CAApplicationForm() {
             setAppId(existing.id);
             if (existing.formData) setFormData(existing.formData as unknown as CAFormData);
           } else {
-            return createDraftApplication('CA', user?.username ?? '').then((app) => setAppId(app.id));
+            return createDraftApplication('CA', user?.username || 'Draft').then((app) => setAppId(app.id));
           }
         })
         .catch(() => toast.error('Could not start application'));
