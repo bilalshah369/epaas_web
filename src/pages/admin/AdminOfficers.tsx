@@ -368,7 +368,7 @@ export default function AdminOfficers() {
                               onChange={(e) => setPendingRoles((prev) => ({ ...prev, [o.id]: e.target.value }))}
                               disabled={isSaving}
                               style={{ padding: '4px 8px', border: `1px solid ${changed ? COLORS.warning : COLORS.border}`, borderRadius: 5, fontSize: 11, background: changed ? COLORS.warningLight : COLORS.bg, cursor: 'pointer', minWidth: 140 }}>
-                              {allRoles.map((r) => <option key={r.roleCode} value={r.roleCode}>{r.roleName}</option>)}
+                              {addRoles.map((r) => <option key={r.roleCode} value={r.roleCode}>{r.roleName}</option>)}
                             </select>
                             {changed && (
                               <button onClick={() => handleRoleChange(o)} disabled={isSaving}
