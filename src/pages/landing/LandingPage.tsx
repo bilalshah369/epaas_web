@@ -18,11 +18,11 @@ const NAV_LINKS = [
 ];
 
 const LANDING_APP_TYPES = [
-  { key: 'nsf',   icon: '🧪', code: 'NSF',      label: 'Non-Specified/Novel Food & Food Ingredients (NSF & FI)', desc: 'For approval of food products or ingredients covered under the Food Safety and Standards (Approval for Non-Specific Food and Food Ingredients) Regulation, 2017. Requires full dossier, safety and efficacy data and Expert Committee evaluation.',                                                                                                                                                                                  color: '#1565C0', lightColor: '#E3F2FD' },
-  { key: 'ca',    icon: '✅', code: 'CA',        label: 'Claim Approval (CA)',                                    desc: 'For approval of claims under the Food Safety and Standards (Advertising and Claims) Regulation, 2018. Requires scientific substantiation and evidence mapping.',                                                                                                                                                                                                                                                                  color: '#2E7D32', lightColor: '#E8F5E9' },
-  { key: 'aa',    icon: '🌿', code: 'AA',        label: 'Ayurveda Aahara (AA)',                                   desc: 'For approval of Ayurveda Aahara as per the Food Safety and Standards (Ayurveda Aahara) Regulations, 2022.',                                                                                                                                                                                                                                                                                                                  color: '#6A1E55', lightColor: '#F3E5F5' },
-  { key: 'other', icon: '📄', code: 'Any Other', label: 'Any Other',                                              desc: 'For approval of FSMP, notification of esters/derivatives/salts of vitamins, salts/chelates of minerals, and esters/derivatives/isomers/salts of amino acids and approval of any other food, product, process, or system for which prior approval is required by the Food Authority under the provisions of the FSS Act, 2006, and regulations made thereunder, or as notified from time to time.',                         color: '#546E7A', lightColor: '#ECEFF1' },
-  { key: 'rpet',  icon: '♻️', code: 'rPET',      label: 'Recycled PET Packaging (rPET)',                          desc: 'For authorization of recycle plastic manufacturers as per the Food Safety and Standards (Packaging) Regulation, 2018',                                                                                                                                                                                                                                                                                                          color: '#E65100', lightColor: '#FFF3E0' },
+  { key: 'nsf',   code: 'NSF',      label: 'Non-Specified/Novel Food & Food Ingredients (NSF & FI)', desc: 'For approval of food products or ingredients covered under the Food Safety and Standards (Approval for Non-Specific Food and Food Ingredients) Regulation, 2017. Requires full dossier, safety and efficacy data and Expert Committee evaluation.',                                                                                                                                                                                  color: '#1565C0', lightColor: '#E3F2FD' },
+  { key: 'ca',    code: 'CA',        label: 'Claim Approval (CA)',                                    desc: 'For approval of claims under the Food Safety and Standards (Advertising and Claims) Regulation, 2018. Requires scientific substantiation and evidence mapping.',                                                                                                                                                                                                                                                                  color: '#2E7D32', lightColor: '#E8F5E9' },
+  { key: 'aa',    code: 'AA',        label: 'Ayurveda Aahara (AA)',                                   desc: 'For approval of Ayurveda Aahara as per the Food Safety and Standards (Ayurveda Aahara) Regulations, 2022.',                                                                                                                                                                                                                                                                                                                  color: '#6A1E55', lightColor: '#F3E5F5' },
+  { key: 'other', code: 'Any Other', label: 'Any Other',                                              desc: 'For approval of FSMP, notification of esters/derivatives/salts of vitamins, salts/chelates of minerals, and esters/derivatives/isomers/salts of amino acids and approval of any other food, product, process, or system for which prior approval is required by the Food Authority under the provisions of the FSS Act, 2006, and regulations made thereunder, or as notified from time to time.',                         color: '#546E7A', lightColor: '#ECEFF1' },
+  { key: 'rpet',  code: 'rPET',      label: 'Recycled PET Packaging (rPET)',                          desc: 'For authorization of recycle plastic manufacturers as per the Food Safety and Standards (Packaging) Regulation, 2018',                                                                                                                                                                                                                                                                                                          color: '#E65100', lightColor: '#FFF3E0' },
 ];
 
 const PAGE_CONTENT: Record<string, { title: string; lastUpdated: string; sections: { heading: string; body: string }[] }> = {
@@ -470,8 +470,31 @@ export default function LandingPage() {
       </div>
 
       {/* ── Application Categories ──────────────────────────────────────── */}
-      <div id="lp-application-types" style={{ background: COLORS.bg, padding: '72px 0', borderTop: `1px solid ${COLORS.border}` }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 48px' }}>
+      <style>{`
+        .lp-cat-section { padding: 72px 0; }
+        .lp-cat-inner   { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
+        .lp-cat-grid    { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+        .lp-cat-card    { background: #fff; border-radius: 16px; overflow: hidden;
+                          box-shadow: 0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+                          display: flex; flex-direction: column; cursor: pointer;
+                          transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
+        @media (max-width: 1100px) {
+          .lp-cat-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 900px) {
+          .lp-cat-inner { padding: 0 24px; }
+          .lp-cat-grid  { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+          .lp-cat-section { padding: 48px 0; }
+        }
+        @media (max-width: 540px) {
+          .lp-cat-inner { padding: 0 16px; }
+          .lp-cat-grid  { grid-template-columns: 1fr; gap: 12px; }
+          .lp-cat-section { padding: 32px 0; }
+        }
+      `}</style>
+
+      <div id="lp-application-types" className="lp-cat-section" style={{ background: COLORS.bg, borderTop: `1px solid ${COLORS.border}` }}>
+        <div className="lp-cat-inner">
           <div style={{ textAlign: 'center', marginBottom: 48 }}>
             <div style={{ display: 'inline-block', background: COLORS.primaryLight, color: COLORS.primary, fontSize: 16, fontWeight: 700, padding: '4px 12px', borderRadius: 4, marginBottom: 10, letterSpacing: 0.5 }}>
               AVAILABLE CATEGORIES
@@ -481,22 +504,20 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 20 }}>
+          <div className="lp-cat-grid">
             {LANDING_APP_TYPES.map((t) => (
               <div
                 key={t.key}
+                className="lp-cat-card"
                 onClick={() => navigate('/login')}
-                style={{ background: '#fff', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', cursor: 'pointer', border: `1px solid ${COLORS.border}`, transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease' }}
+                style={{ border: `1px solid ${COLORS.border}` }}
                 onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-6px)'; e.currentTarget.style.boxShadow = `0 8px 32px ${t.color}28, 0 2px 8px rgba(0,0,0,0.08)`; e.currentTarget.style.borderColor = t.color + '60'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)'; e.currentTarget.style.borderColor = COLORS.border; }}
               >
                 {/* Coloured header band */}
                 <div style={{ background: t.color, padding: '18px 16px 16px', position: 'relative', overflow: 'hidden' }}>
                   <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative' }}>
-                    <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(255,255,255,0.20)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
-                      {t.icon}
-                    </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', position: 'relative' }}>
                     <div style={{ fontSize: 10, fontWeight: 900, color: '#fff', background: 'rgba(255,255,255,0.22)', border: '1px solid rgba(255,255,255,0.40)', padding: '3px 10px', borderRadius: 20, letterSpacing: 1.2, textTransform: 'uppercase' }}>
                       {t.code}
                     </div>

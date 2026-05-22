@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FlaskConical, BadgeCheck, Leaf, FileText, Recycle } from 'lucide-react';
 import { COLORS, S } from '@/utils/colors';
 
 interface AppType {
@@ -12,7 +11,6 @@ interface AppType {
   duration:   string;
   color:      string;
   lightColor: string;
-  Icon:       React.ElementType;
 }
 
 const APP_TYPES: AppType[] = [
@@ -25,7 +23,6 @@ const APP_TYPES: AppType[] = [
     duration:   '90–120 days',
     color:      '#1565C0',
     lightColor: '#E3F2FD',
-    Icon:       FlaskConical,
   },
   {
     key:        'ca',
@@ -36,7 +33,6 @@ const APP_TYPES: AppType[] = [
     duration:   '60–90 days',
     color:      '#7EC8E8',
     lightColor: '#EDF8FD',
-    Icon:       BadgeCheck,
   },
   {
     key:        'aa',
@@ -47,7 +43,6 @@ const APP_TYPES: AppType[] = [
     duration:   '60–90 days',
     color:      '#6A1B5D',
     lightColor: '#F8EEF5',
-    Icon:       Leaf,
   },
   {
     key:        'other',
@@ -58,7 +53,6 @@ const APP_TYPES: AppType[] = [
     duration:   '30–45 days',
     color:      '#607D8B',
     lightColor: '#EFF4F6',
-    Icon:       FileText,
   },
   {
     key:        'rpet',
@@ -69,7 +63,6 @@ const APP_TYPES: AppType[] = [
     duration:   '60–90 days',
     color:      '#EF6C00',
     lightColor: '#FFF4E8',
-    Icon:       Recycle,
   },
 ];
 
@@ -106,7 +99,6 @@ export default function ApplicationTypeSelector() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 20 }}>
         {APP_TYPES.map((t) => {
           const isSelected = selected === t.key;
-          const { Icon } = t;
           return (
             <div
               key={t.key}
@@ -150,21 +142,12 @@ export default function ApplicationTypeSelector() {
                 </div>
               )}
 
-              {/* Icon */}
-              <div style={{
-                width: 48, height: 48, borderRadius: 10,
-                background: t.lightColor,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <Icon size={24} color={t.color} strokeWidth={1.8} />
-              </div>
-
               {/* Label + description */}
               <div>
-                <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.text, marginBottom: 6, lineHeight: 1.35 }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text, marginBottom: 8, lineHeight: 1.35 }}>
                   {t.label}
                 </div>
-                <div style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 1.65 }}>
+                <div style={{ fontSize: 13, color: COLORS.textMuted, lineHeight: 1.65 }}>
                   {t.desc}
                 </div>
               </div>
@@ -173,9 +156,9 @@ export default function ApplicationTypeSelector() {
               <div style={{
                 borderTop: `1px solid ${COLORS.border}`, paddingTop: 10,
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                fontSize: 10, color: COLORS.textMuted, marginTop: 'auto',
+                fontSize: 12, color: COLORS.textMuted, marginTop: 'auto',
               }}>
-                <span style={{ fontWeight: 700, color: COLORS.text, fontSize: 11 }}>{t.fee}</span>
+                <span style={{ fontWeight: 700, color: COLORS.text, fontSize: 13 }}>{t.fee}</span>
                 <span>{t.duration}</span>
               </div>
 
@@ -193,7 +176,7 @@ export default function ApplicationTypeSelector() {
                   borderRadius: 6,
                   padding:      '8px 0',
                   width:        '100%',
-                  fontSize:     12,
+                  fontSize:     14,
                   fontWeight:   700,
                   cursor:       'pointer',
                   textAlign:    'center',
@@ -216,13 +199,6 @@ export default function ApplicationTypeSelector() {
         <div>
           {selectedType ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: 8,
-                background: selectedType.lightColor,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-              }}>
-                <selectedType.Icon size={20} color={selectedType.color} strokeWidth={1.8} />
-              </div>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.text }}>{selectedType.label}</div>
                 <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>
