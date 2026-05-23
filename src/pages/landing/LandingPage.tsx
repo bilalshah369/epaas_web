@@ -167,6 +167,13 @@ export default function LandingPage() {
   const [sgError, setSgError] = useState('');
   const { loginApplicant, loginAuthority, isLoading, register } = useAuthStore();
 
+  const [vw, setVw] = useState(() => window.innerWidth);
+  useEffect(() => {
+    const fn = () => setVw(window.innerWidth);
+    window.addEventListener('resize', fn);
+    return () => window.removeEventListener('resize', fn);
+  }, []);
+
   async function doTrack() {
     const ref = trackerInput.trim();
     if (!ref) return;
@@ -279,31 +286,33 @@ export default function LandingPage() {
 
         {/* Logo + nav bar */}
         <div style={{ display: 'flex', alignItems: 'stretch', background: '#fff' }}>
-          <div onClick={() => scrollTo('lp-top')} style={{ background: '#fff', width: 260, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 10px', cursor: 'pointer' }}>
-            <img src={fssaiLogo} alt="FSSAI" style={{ height: 92, width: 'auto', objectFit: 'contain' }} />
+          <div onClick={() => scrollTo('lp-top')} style={{ background: '#fff', width: vw >= 768 ? 260 : 'auto', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 10px', cursor: 'pointer' }}>
+            <img src={fssaiLogo} alt="FSSAI" style={{ height: vw >= 768 ? 92 : 56, width: 'auto', objectFit: 'contain' }} />
           </div>
-          <div style={{ background: '#fff', padding: '0 16px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
-            {NAV_LINKS.map(({ label, id }) => (
-              <span key={label} onClick={() => scrollTo(id)}
-                style={{ fontSize: 15, color: '#111', cursor: 'pointer', padding: '6px 10px' }}>
-                {label}
-              </span>
-            ))}
-            <div style={{ width: 1, height: 16, background: 'rgba(0,0,0,0.12)', margin: '0 6px' }} />
+          <div style={{ background: '#fff', padding: vw >= 768 ? '0 16px' : '0 8px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+            <div style={{ display: vw >= 768 ? 'flex' : 'none', alignItems: 'center', gap: 4 }}>
+              {NAV_LINKS.map(({ label, id }) => (
+                <span key={label} onClick={() => scrollTo(id)}
+                  style={{ fontSize: 15, color: '#111', cursor: 'pointer', padding: '6px 10px' }}>
+                  {label}
+                </span>
+              ))}
+              <div style={{ width: 1, height: 16, background: 'rgba(0,0,0,0.12)', margin: '0 6px' }} />
+            </div>
             <button onClick={() => openDrawer('applicant')}
-              style={{ background: '#fff', color: '#111', border: '1px solid rgba(0,0,0,0.14)', borderRadius: 5, padding: '6px 14px', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
-              Applicant Login
+              style={{ background: '#fff', color: '#111', border: '1px solid rgba(0,0,0,0.14)', borderRadius: 5, padding: vw >= 540 ? '6px 14px' : '5px 8px', fontSize: vw >= 540 ? 15 : 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              {vw >= 540 ? 'Applicant Login' : 'Applicant'}
             </button>
             <button onClick={() => openDrawer('authority')}
-              style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 5, padding: '6px 14px', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
-              Authority Login
+              style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 5, padding: vw >= 540 ? '6px 14px' : '5px 8px', fontSize: vw >= 540 ? 15 : 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              {vw >= 540 ? 'Authority Login' : 'Authority'}
             </button>
           </div>
         </div>
       </div>
 
       {/* ── Hero section ────────────────────────────────────────────────── */}
-      <div style={{ padding: '56px 48px 64px', background: `linear-gradient(135deg, ${COLORS.primary} 0%, #0f2d1a 55%, #0a1e10 100%)`, position: 'relative', overflow: 'hidden' }}>
+      <div style={{ padding: vw >= 960 ? '56px 48px 64px' : vw >= 540 ? '40px 24px 48px' : '28px 16px 36px', background: `linear-gradient(135deg, ${COLORS.primary} 0%, #0f2d1a 55%, #0a1e10 100%)`, position: 'relative', overflow: 'hidden' }}>
         {/* Decorative rings */}
         <div style={{ position: 'absolute', top: -120, right: 380, width: 420, height: 420, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.04)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', top: -60, right: 320, width: 280, height: 280, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.07)', pointerEvents: 'none' }} />
@@ -311,7 +320,7 @@ export default function LandingPage() {
         {/* Diagonal stripe */}
         <div style={{ position: 'absolute', top: 0, right: 370, bottom: 0, width: 1, background: 'rgba(255,255,255,0.06)', transform: 'skewX(-8deg)', pointerEvents: 'none' }} />
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 48, alignItems: 'center', position: 'relative', zIndex: 1 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: vw >= 900 ? '1fr 340px' : '1fr', gap: vw >= 900 ? 48 : 24, alignItems: 'center', position: 'relative', zIndex: 1 }}>
           {/* Left: text */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24 }}>
@@ -320,7 +329,7 @@ export default function LandingPage() {
                 Electronic Product &amp; Claim Approval Application System
               </div>
             </div>
-            <h1 style={{ fontSize: 44, fontWeight: 800, color: COLORS.accent, lineHeight: 1.2, margin: '0 0 20px', fontFamily: "'Libre Baskerville',Georgia,serif", letterSpacing: -0.5 }}>
+            <h1 style={{ fontSize: vw >= 960 ? 44 : vw >= 540 ? 34 : 26, fontWeight: 800, color: COLORS.accent, lineHeight: 1.2, margin: '0 0 20px', fontFamily: "'Libre Baskerville',Georgia,serif", letterSpacing: -0.5 }}>
               Food Product Approval & <br /> Application Management System
             </h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 32 }}>
@@ -545,8 +554,8 @@ export default function LandingPage() {
       </div>
 
       {/* ── How It Works ────────────────────────────────────────────────── */}
-      <div id="lp-for-applicants" style={{ background: COLORS.bg, padding: '56px 0', borderTop: `1px solid ${COLORS.border}`, borderBottom: `1px solid ${COLORS.border}` }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 32px' }}>
+      <div id="lp-for-applicants" style={{ background: COLORS.bg, padding: vw >= 640 ? '56px 0' : '36px 0', borderTop: `1px solid ${COLORS.border}`, borderBottom: `1px solid ${COLORS.border}` }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: vw >= 640 ? '0 32px' : '0 16px' }}>
           <div style={{ textAlign: 'center', marginBottom: 40 }}>
             <div style={{ display: 'inline-block', background: COLORS.primaryLight, color: COLORS.primary, fontSize: 16, fontWeight: 700, padding: '4px 12px', borderRadius: 4, marginBottom: 10, letterSpacing: 0.5 }}>
               PROCESS FLOW
@@ -558,9 +567,9 @@ export default function LandingPage() {
               A fully digital end-to-end approval workflow
             </p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 12, position: 'relative' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: vw >= 1024 ? 'repeat(6,1fr)' : vw >= 640 ? 'repeat(3,1fr)' : 'repeat(2,1fr)', gap: vw >= 640 ? 12 : 10, position: 'relative' }}>
             {/* Connecting line */}
-            <div style={{ position: 'absolute', top: 44, left: '8.33%', right: '8.33%', height: 2, background: `linear-gradient(to right, ${COLORS.primary}, ${COLORS.accent})`, zIndex: 0 }} />
+            <div style={{ display: vw >= 1024 ? 'block' : 'none', position: 'absolute', top: 44, left: '8.33%', right: '8.33%', height: 2, background: `linear-gradient(to right, ${COLORS.primary}, ${COLORS.accent})`, zIndex: 0 }} />
             {[
               { n: '01', icon: '🔐', title: 'Login & Register',       desc: 'Create your E-PAAS account',                                                        accent: COLORS.primary },
               { n: '02', icon: '📋', title: 'Select Application Type', desc: 'Choose the appropriate approval category for your product.',                         accent: COLORS.primary },
@@ -588,9 +597,9 @@ export default function LandingPage() {
       </div>
 
       {/* ── Circulars & Notifications ───────────────────────────────────── */}
-      <div style={{ background: COLORS.white, padding: '56px 0' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 32px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40 }}>
+      <div style={{ background: COLORS.white, padding: vw >= 640 ? '56px 0' : '36px 0' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: vw >= 768 ? '0 32px' : '0 16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: vw >= 768 ? '1fr 1fr' : '1fr', gap: vw >= 768 ? 40 : 24 }}>
 
             {/* Latest Circulars */}
             <div>
@@ -665,8 +674,8 @@ export default function LandingPage() {
       </div>
 
       {/* ── Key Features (Why E-PAAS) ───────────────────────────────────── */}
-      <div id="lp-why-epaas" style={{ background: COLORS.primary, padding: '56px 0' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 32px' }}>
+      <div id="lp-why-epaas" style={{ background: COLORS.primary, padding: vw >= 640 ? '56px 0' : '36px 0' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: vw >= 640 ? '0 32px' : '0 16px' }}>
           <div style={{ textAlign: 'center', marginBottom: 36 }}>
             <div style={{ display: 'inline-block', background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.85)', fontSize: 16, fontWeight: 700, padding: '4px 12px', borderRadius: 4, marginBottom: 10, letterSpacing: 0.5 }}>
               WHY E-PAAS
@@ -683,7 +692,7 @@ export default function LandingPage() {
               { icon: '💬', title: 'Query Management',        desc: 'Officers raise clarification queries directly to applicants through the portal.'                       },
               { icon: '🔐', title: 'Secure & Compliant',      desc: 'Government-grade security, role-based access control, and digital signature support.'                 },
             ].map((f) => (
-              <div key={f.title} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: '20px 16px', flex: '0 0 calc(25% - 12px)' }}>
+              <div key={f.title} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: '20px 16px', flex: vw >= 900 ? '0 0 calc(25% - 12px)' : vw >= 540 ? '0 0 calc(50% - 8px)' : '0 0 100%' }}>
                 <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, marginBottom: 12 }}>
                   {f.icon}
                 </div>
@@ -696,8 +705,8 @@ export default function LandingPage() {
       </div>
 
       {/* ── Quick Links & Resources ─────────────────────────────────────── */}
-      <div id="lp-resources" style={{ background: COLORS.bg, padding: '48px 0', borderTop: `1px solid ${COLORS.border}`, borderBottom: `1px solid ${COLORS.border}` }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 32px' }}>
+      <div id="lp-resources" style={{ background: COLORS.bg, padding: vw >= 640 ? '48px 0' : '32px 0', borderTop: `1px solid ${COLORS.border}`, borderBottom: `1px solid ${COLORS.border}` }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: vw >= 768 ? '0 32px' : '0 16px' }}>
           <div style={{ textAlign: 'center', marginBottom: 28 }}>
             <h2 style={{ fontSize: 22, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville',Georgia,serif", margin: 0 }}>
               Quick Links &amp; Resources
@@ -706,7 +715,7 @@ export default function LandingPage() {
               All the documents and guides you need to prepare and submit a successful application.
             </p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: vw >= 768 ? 'repeat(4,1fr)' : 'repeat(2,1fr)', gap: 12 }}>
             {[
               { icon: '📘', title: 'Applicant User Manual',   sub: 'PDF · v2.3 · Apr 2026'      },
               { icon: '📋', title: 'Application Categories',  sub: 'NSF / CA / AA / rPET'        },
@@ -724,9 +733,9 @@ export default function LandingPage() {
       </div>
 
       {/* ── Footer ──────────────────────────────────────────────────────── */}
-      <div id="lp-helpdesk" style={{ background: '#000', borderTop: `3px solid ${COLORS.accent}`, padding: '48px 0 0' }}>
-        <div style={{ padding: '0 48px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 32, marginBottom: 40 }}>
+      <div id="lp-helpdesk" style={{ background: '#000', borderTop: `3px solid ${COLORS.accent}`, padding: vw >= 640 ? '48px 0 0' : '32px 0 0' }}>
+        <div style={{ padding: vw >= 900 ? '0 48px' : vw >= 540 ? '0 24px' : '0 16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: vw >= 900 ? '2fr 1fr 1fr 1fr' : vw >= 540 ? '1fr 1fr' : '1fr', gap: vw >= 900 ? 32 : 20, marginBottom: 40 }}>
 
             {/* Col 1: FSSAI info */}
             <div>
@@ -814,8 +823,8 @@ export default function LandingPage() {
         </div>
 
         {/* Bottom strip */}
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', padding: '14px 32px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', padding: vw >= 540 ? '14px 32px' : '14px 16px' }}>
+          <div style={{ display: 'flex', alignItems: vw >= 540 ? 'center' : 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,1)' }}>
               © 2026 Food Safety and Standards Authority of India · Ministry of Health &amp; Family Welfare, Government of India
             </div>
