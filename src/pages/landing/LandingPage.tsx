@@ -856,9 +856,9 @@ export default function LandingPage() {
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 300 }}
           />
           {/* Drawer panel */}
-          <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: 400, background: '#fff', zIndex: 301, display: 'flex', flexDirection: 'column', boxShadow: '-8px 0 40px rgba(0,0,0,0.25)', overflowY: 'auto' }}>
+          <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: vw < 480 ? '100%' : 400, background: '#fff', zIndex: 301, display: 'flex', flexDirection: 'column', boxShadow: '-8px 0 40px rgba(0,0,0,0.25)', overflowY: 'auto' }}>
             {/* Drawer header */}
-            <div style={{ background: COLORS.primary, padding: '20px 24px 18px', flexShrink: 0 }}>
+            <div style={{ background: COLORS.primary, padding: vw < 480 ? '16px 16px 14px' : '20px 24px 18px', flexShrink: 0 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
@@ -884,7 +884,7 @@ export default function LandingPage() {
             </div>
 
             {/* Form body */}
-            <div style={{ padding: '24px 24px 20px', flex: 1 }}>
+            <div style={{ padding: vw < 480 ? '20px 16px 16px' : '24px 24px 20px', flex: 1 }}>
 
               {/* ── Signup form ── */}
               {drawer.type === 'signup' && (
