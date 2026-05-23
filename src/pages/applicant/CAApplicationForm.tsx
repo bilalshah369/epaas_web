@@ -648,7 +648,7 @@ export default function CAApplicationForm() {
         {stepContent[step]}
 
         {/* Navigation bar */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, paddingTop: 12, borderTop: `1px solid ${COLORS.border}` }}>
+        <div style={{ position: 'sticky', bottom: 0, zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, padding: '12px 20px', borderTop: `1px solid ${COLORS.border}`, background: '#fff', boxShadow: '0 -2px 12px rgba(0,0,0,0.06)' }}>
           <button
             onClick={() => { setStepErrors({}); step > 0 ? setStep(step - 1) : navigate('/app/apply'); }}
             style={{ background: 'transparent', color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 8, padding: '9px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}

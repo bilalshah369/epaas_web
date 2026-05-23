@@ -829,7 +829,7 @@ export default function AyurvedaAaharaApplicationForm() {
         <div style={row}>
           <label style={fieldLabel}>Format of Proposed Ayurveda Aahara</label>
           <div>
-            <input style={eb(input, fields.format as string)} value={stringField(fields.format)} onChange={(e) => setField(fields.format, e.target.value)} />
+            <input style={eb(input, fields.format as string)} placeholder="e.g. Powder, Tablet, Capsule, Liquid" value={stringField(fields.format)} onChange={(e) => setField(fields.format, e.target.value)} />
             {errMsg(fields.format as string)}
           </div>
         </div>
@@ -857,16 +857,16 @@ export default function AyurvedaAaharaApplicationForm() {
         </div>
         <div style={{ marginTop: 8, marginBottom: 4, fontWeight: 600, fontSize: 12, color: catColor }}>Bibliographic Details</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-          <div><label style={S.label}>Editor(s)</label><input style={input} value={stringField(fields.editor)} onChange={(e) => setField(fields.editor, e.target.value)} /></div>
-          <div><label style={S.label}>Author(s)</label><input style={input} value={stringField(fields.author)} onChange={(e) => setField(fields.author, e.target.value)} /></div>
-          <div><label style={S.label}>Volume / Part</label><input style={input} value={stringField(fields.volume)} onChange={(e) => setField(fields.volume, e.target.value)} /></div>
-          <div><label style={S.label}>Sthana (Section)</label><input style={input} value={stringField(fields.sthana)} onChange={(e) => setField(fields.sthana, e.target.value)} /></div>
-          <div><label style={S.label}>Chapter (Adhyaya) Name &amp; Number</label><input style={input} value={stringField(fields.chapter)} onChange={(e) => setField(fields.chapter, e.target.value)} /></div>
-          <div><label style={S.label}>Verse (Shloka) Number(s)</label><input style={input} value={stringField(fields.verse)} onChange={(e) => setField(fields.verse, e.target.value)} /></div>
-          <div><label style={S.label}>Page Numbers</label><input style={input} value={stringField(fields.pages)} onChange={(e) => setField(fields.pages, e.target.value)} /></div>
-          <div><label style={S.label}>Publisher</label><input style={input} value={stringField(fields.publisher)} onChange={(e) => setField(fields.publisher, e.target.value)} /></div>
-          <div><label style={S.label}>Publication Year</label><input style={input} value={stringField(fields.year)} onChange={(e) => setField(fields.year, e.target.value)} /></div>
-          <div><label style={S.label}>Publication Place</label><input style={input} value={stringField(fields.place)} onChange={(e) => setField(fields.place, e.target.value)} /></div>
+          <div><label style={S.label}>Editor(s)</label><input style={input} placeholder="e.g. P.V. Sharma" value={stringField(fields.editor)} onChange={(e) => setField(fields.editor, e.target.value)} /></div>
+          <div><label style={S.label}>Author(s)</label><input style={input} placeholder="e.g. Charaka, Sushruta" value={stringField(fields.author)} onChange={(e) => setField(fields.author, e.target.value)} /></div>
+          <div><label style={S.label}>Volume / Part</label><input style={input} placeholder="e.g. Volume I, Part II" value={stringField(fields.volume)} onChange={(e) => setField(fields.volume, e.target.value)} /></div>
+          <div><label style={S.label}>Sthana (Section)</label><input style={input} placeholder="e.g. Sutrasthana" value={stringField(fields.sthana)} onChange={(e) => setField(fields.sthana, e.target.value)} /></div>
+          <div><label style={S.label}>Chapter (Adhyaya) Name &amp; Number</label><input style={input} placeholder="e.g. Ahara Vidhi, Chapter 5" value={stringField(fields.chapter)} onChange={(e) => setField(fields.chapter, e.target.value)} /></div>
+          <div><label style={S.label}>Verse (Shloka) Number(s)</label><input style={input} placeholder="e.g. 10–15" value={stringField(fields.verse)} onChange={(e) => setField(fields.verse, e.target.value)} /></div>
+          <div><label style={S.label}>Page Numbers</label><input style={input} placeholder="e.g. 234–240" value={stringField(fields.pages)} onChange={(e) => setField(fields.pages, e.target.value)} /></div>
+          <div><label style={S.label}>Publisher</label><input style={input} placeholder="e.g. CCRAS, Govt. Publication" value={stringField(fields.publisher)} onChange={(e) => setField(fields.publisher, e.target.value)} /></div>
+          <div><label style={S.label}>Publication Year</label><input style={input} placeholder="e.g. 2015" value={stringField(fields.year)} onChange={(e) => setField(fields.year, e.target.value)} /></div>
+          <div><label style={S.label}>Publication Place</label><input style={input} placeholder="e.g. New Delhi, India" value={stringField(fields.place)} onChange={(e) => setField(fields.place, e.target.value)} /></div>
         </div>
         <div style={{ marginBottom: 10 }}>
           <label style={S.label}>Ayurveda Aahara Recipe</label>
@@ -1234,35 +1234,33 @@ export default function AyurvedaAaharaApplicationForm() {
       <div style={secCard}>
         <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12, color: COLORS.primary }}>Applicant Details</div>
         <div style={row}>
-          <label style={fieldLabel}>Prefix</label>
-          <select style={select} value={d.applicantPrefix} onChange={(e) => setField('applicantPrefix', e.target.value)}>
-            <option value="">Select</option>
-            {['Mr.', 'Mrs.', 'Ms.', 'Dr.', 'Prof.', 'M/s'].map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
-        </div>
-        <div style={row}>
           <label style={fieldLabel}>Name of the Applicant *</label>
           <div>
-            <input style={eb(input, 'applicantName')} value={d.applicantName} onChange={(e) => setField('applicantName', e.target.value)} />
+            <div style={{ display: 'flex', gap: 6 }}>
+              <select style={{ ...select, width: 110, flexShrink: 0 }} value={d.applicantPrefix} onChange={(e) => setField('applicantPrefix', e.target.value)}>
+                <option value="">Prefix</option>
+                {['Mr.', 'Mrs.', 'Ms.', 'Dr.', 'Prof.', 'M/s'].map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+              <input style={{ ...eb(input, 'applicantName'), flex: 1 }} placeholder="Full name" value={d.applicantName} onChange={(e) => setField('applicantName', e.target.value)} />
+            </div>
             {errMsg('applicantName')}
           </div>
         </div>
 
         {/* ii. Authorised Person — immediately after applicant name per PDF */}
         <div style={row}>
-          <label style={fieldLabel}>Prefix (Authorised Person)</label>
-          <select style={select} value={d.authorisedPersonPrefix} onChange={(e) => setField('authorisedPersonPrefix', e.target.value)}>
-            <option value="">Select</option>
-            {['Mr.', 'Mrs.', 'Ms.', 'Dr.', 'Prof.', 'M/s'].map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
-        </div>
-        <div style={row}>
           <label style={fieldLabel}>
             Name of the Authorised Person *
             <span style={{ fontWeight: 400, color: COLORS.textMuted, fontSize: 11, display: 'block', marginTop: 2 }}>All official communications will be sent to the provided email and phone.</span>
           </label>
           <div>
-            <input style={eb(input, 'authorisedPerson')} value={d.authorisedPerson} onChange={(e) => setField('authorisedPerson', e.target.value)} />
+            <div style={{ display: 'flex', gap: 6 }}>
+              <select style={{ ...select, width: 110, flexShrink: 0 }} value={d.authorisedPersonPrefix} onChange={(e) => setField('authorisedPersonPrefix', e.target.value)}>
+                <option value="">Prefix</option>
+                {['Mr.', 'Mrs.', 'Ms.', 'Dr.', 'Prof.', 'M/s'].map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+              <input style={{ ...eb(input, 'authorisedPerson'), flex: 1 }} placeholder="Full name" value={d.authorisedPerson} onChange={(e) => setField('authorisedPerson', e.target.value)} />
+            </div>
             {errMsg('authorisedPerson')}
           </div>
         </div>
@@ -1284,17 +1282,17 @@ export default function AyurvedaAaharaApplicationForm() {
         </div>
         <div style={row}>
           <label style={fieldLabel}>Alternate Email 2</label>
-          <input type="email" style={input} value={d.authorisedEmail2} onChange={(e) => setField('authorisedEmail2', e.target.value)} />
+          <input type="email" style={input} placeholder="alternate@example.com" value={d.authorisedEmail2} onChange={(e) => setField('authorisedEmail2', e.target.value)} />
         </div>
         <div style={row}>
           <label style={fieldLabel}>Alternate Email 3</label>
-          <input type="email" style={input} value={d.authorisedEmail3} onChange={(e) => setField('authorisedEmail3', e.target.value)} />
+          <input type="email" style={input} placeholder="alternate@example.com" value={d.authorisedEmail3} onChange={(e) => setField('authorisedEmail3', e.target.value)} />
         </div>
         {/* v. Name of organisation */}
         <div style={row}>
           <label style={fieldLabel}>Name of the Organisation *</label>
           <div>
-            <input style={eb(input, 'nameOfOrganization')} value={d.nameOfOrganization} onChange={(e) => setField('nameOfOrganization', e.target.value)} />
+            <input style={eb(input, 'nameOfOrganization')} placeholder="Enter organisation name" value={d.nameOfOrganization} onChange={(e) => setField('nameOfOrganization', e.target.value)} />
             {errMsg('nameOfOrganization')}
           </div>
         </div>
@@ -1317,7 +1315,7 @@ export default function AyurvedaAaharaApplicationForm() {
         <div style={row}>
           <label style={fieldLabel}>Manufacturing Premises Contact Details *</label>
           <div>
-            <input style={eb(input, 'manufacturingPremisesContactDetails')} value={d.manufacturingPremisesContactDetails} onChange={(e) => setField('manufacturingPremisesContactDetails', e.target.value)} />
+            <input style={eb(input, 'manufacturingPremisesContactDetails')} placeholder="Phone / email / contact person" value={d.manufacturingPremisesContactDetails} onChange={(e) => setField('manufacturingPremisesContactDetails', e.target.value)} />
             {errMsg('manufacturingPremisesContactDetails')}
           </div>
         </div>
@@ -1339,7 +1337,7 @@ export default function AyurvedaAaharaApplicationForm() {
         <div style={row}>
           <label style={fieldLabel}>Name of the Food Product *</label>
           <div>
-            <input style={eb(input, 'productName')} value={d.productName} onChange={(e) => setField('productName', e.target.value)} />
+            <input style={eb(input, 'productName')} placeholder="Enter product name" value={d.productName} onChange={(e) => setField('productName', e.target.value)} />
             <WordCounter value={d.productName} limit={50} />
             {errMsg('productName')}
           </div>
@@ -1457,16 +1455,16 @@ export default function AyurvedaAaharaApplicationForm() {
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     <div style={{ gridColumn: '1 / -1' }}><label style={S.label}>Name of Authoritative Text *</label><input style={input} value={bot.botanicalNameOfAuthoritativeText} onChange={(e) => updateBotanical(idx, 'botanicalNameOfAuthoritativeText', e.target.value)} placeholder="e.g. Charaka Samhita" /></div>
-                    <div><label style={S.label}>Editor of Authoritative Text</label><input style={input} value={bot.botanicalBookEditor} onChange={(e) => updateBotanical(idx, 'botanicalBookEditor', e.target.value)} /></div>
-                    <div><label style={S.label}>Original Author of Authoritative Text</label><input style={input} value={bot.botanicalBookAuthor} onChange={(e) => updateBotanical(idx, 'botanicalBookAuthor', e.target.value)} /></div>
-                    <div><label style={S.label}>Volume of Authoritative Text</label><input style={input} value={bot.botanicalBookVolume} onChange={(e) => updateBotanical(idx, 'botanicalBookVolume', e.target.value)} /></div>
-                    <div><label style={S.label}>Sthana (Section)</label><input style={input} value={bot.botanicalBookSthana} onChange={(e) => updateBotanical(idx, 'botanicalBookSthana', e.target.value)} /></div>
-                    <div><label style={S.label}>Adhyaya (Chapter) Name &amp; Number</label><input style={input} value={bot.botanicalReferenceChapter} onChange={(e) => updateBotanical(idx, 'botanicalReferenceChapter', e.target.value)} /></div>
-                    <div><label style={S.label}>Verse Number(s)</label><input style={input} value={bot.botanicalReferenceVerse} onChange={(e) => updateBotanical(idx, 'botanicalReferenceVerse', e.target.value)} /></div>
-                    <div><label style={S.label}>Page Number(s)</label><input style={input} value={bot.botanicalBookPageNumbers} onChange={(e) => updateBotanical(idx, 'botanicalBookPageNumbers', e.target.value)} /></div>
-                    <div><label style={S.label}>Publisher</label><input style={input} value={bot.botanicalBookPublisher} onChange={(e) => updateBotanical(idx, 'botanicalBookPublisher', e.target.value)} /></div>
-                    <div><label style={S.label}>Publication Year</label><input style={input} value={bot.botanicalPublicationYear} onChange={(e) => updateBotanical(idx, 'botanicalPublicationYear', e.target.value)} /></div>
-                    <div><label style={S.label}>Publication Place</label><input style={input} value={bot.botanicalPublicationPlace} onChange={(e) => updateBotanical(idx, 'botanicalPublicationPlace', e.target.value)} /></div>
+                    <div><label style={S.label}>Editor of Authoritative Text</label><input style={input} placeholder="e.g. P.V. Sharma" value={bot.botanicalBookEditor} onChange={(e) => updateBotanical(idx, 'botanicalBookEditor', e.target.value)} /></div>
+                    <div><label style={S.label}>Original Author of Authoritative Text</label><input style={input} placeholder="e.g. Charaka" value={bot.botanicalBookAuthor} onChange={(e) => updateBotanical(idx, 'botanicalBookAuthor', e.target.value)} /></div>
+                    <div><label style={S.label}>Volume of Authoritative Text</label><input style={input} placeholder="e.g. Volume I" value={bot.botanicalBookVolume} onChange={(e) => updateBotanical(idx, 'botanicalBookVolume', e.target.value)} /></div>
+                    <div><label style={S.label}>Sthana (Section)</label><input style={input} placeholder="e.g. Sutrasthana" value={bot.botanicalBookSthana} onChange={(e) => updateBotanical(idx, 'botanicalBookSthana', e.target.value)} /></div>
+                    <div><label style={S.label}>Adhyaya (Chapter) Name &amp; Number</label><input style={input} placeholder="e.g. Chapter 5" value={bot.botanicalReferenceChapter} onChange={(e) => updateBotanical(idx, 'botanicalReferenceChapter', e.target.value)} /></div>
+                    <div><label style={S.label}>Verse Number(s)</label><input style={input} placeholder="e.g. 10–15" value={bot.botanicalReferenceVerse} onChange={(e) => updateBotanical(idx, 'botanicalReferenceVerse', e.target.value)} /></div>
+                    <div><label style={S.label}>Page Number(s)</label><input style={input} placeholder="e.g. 234–240" value={bot.botanicalBookPageNumbers} onChange={(e) => updateBotanical(idx, 'botanicalBookPageNumbers', e.target.value)} /></div>
+                    <div><label style={S.label}>Publisher</label><input style={input} placeholder="e.g. CCRAS" value={bot.botanicalBookPublisher} onChange={(e) => updateBotanical(idx, 'botanicalBookPublisher', e.target.value)} /></div>
+                    <div><label style={S.label}>Publication Year</label><input style={input} placeholder="e.g. 2015" value={bot.botanicalPublicationYear} onChange={(e) => updateBotanical(idx, 'botanicalPublicationYear', e.target.value)} /></div>
+                    <div><label style={S.label}>Publication Place</label><input style={input} placeholder="e.g. New Delhi" value={bot.botanicalPublicationPlace} onChange={(e) => updateBotanical(idx, 'botanicalPublicationPlace', e.target.value)} /></div>
                   </div>
                   <div style={{ marginTop: 10 }}>
                     <label style={S.label}>Upload Textual Reference *</label>
@@ -2886,7 +2884,7 @@ export default function AyurvedaAaharaApplicationForm() {
 
         {stepContent[step]}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, paddingTop: 12, borderTop: `1px solid ${COLORS.border}` }}>
+        <div style={{ position: 'sticky', bottom: 0, zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, padding: '12px 20px', borderTop: `1px solid ${COLORS.border}`, background: '#fff', boxShadow: '0 -2px 12px rgba(0,0,0,0.06)' }}>
           <button
             onClick={() => { setStepErrors({}); step > 0 ? setStep(step - 1) : navigate('/app/apply'); }}
             style={{ background: 'transparent', color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 8, padding: '9px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
