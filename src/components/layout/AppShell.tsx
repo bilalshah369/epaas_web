@@ -26,6 +26,8 @@ export default function AppShell({ menu }: Props) {
   const [notifOpen,     setNotifOpen]     = useState(false);
   const [helpOpen,      setHelpOpen]      = useState(false);
   const [readIds,       setReadIds]       = useState<Set<number>>(new Set());
+  const [sidebarOpen,   setSidebarOpen]   = useState(false);
+  const [vw,            setVw]            = useState(() => window.innerWidth);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notifRef    = useRef<HTMLDivElement>(null);
   const helpRef     = useRef<HTMLDivElement>(null);
@@ -39,6 +41,14 @@ export default function AppShell({ menu }: Props) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    const fn = () => setVw(window.innerWidth);
+    window.addEventListener('resize', fn);
+    return () => window.removeEventListener('resize', fn);
+  }, []);
+
+  const isMobile = vw < 768;
 
   const allItems = menu.flatMap((m) => m.children ? [m, ...m.children] : [m]);
   const activeLabel = allItems.find((m) => location.pathname.startsWith(m.path))?.label ?? 'Dashboard';
@@ -65,8 +75,13 @@ export default function AppShell({ menu }: Props) {
       {/* ── App shell ────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
+        {/* ── Sidebar backdrop (mobile) ─────────────────────────────────── */}
+        {isMobile && sidebarOpen && (
+          <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 499 }} />
+        )}
+
         {/* ── Sidebar ──────────────────────────────────────────────────── */}
-        <div style={{ width: 270, background: COLORS.sidebar, display: 'flex', flexDirection: 'column', flexShrink: 0, overflowY: 'hidden' }}>
+        <div style={{ width: 270, background: COLORS.sidebar, display: 'flex', flexDirection: 'column', flexShrink: 0, overflowY: 'hidden', ...(isMobile ? { position: 'fixed', top: 0, left: 0, bottom: 0, zIndex: 500, transform: sidebarOpen ? 'translateX(0)' : 'translateX(-270px)', transition: 'transform 0.25s ease', boxShadow: sidebarOpen ? '4px 0 24px rgba(0,0,0,0.3)' : 'none' } : {}) }}>
 
           {/* Logo — same height as topbar (56px) */}
           <div
@@ -153,9 +168,15 @@ export default function AppShell({ menu }: Props) {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
           {/* Topbar */}
-          <div style={{ background: COLORS.white, borderBottom: `2px solid var(--color-primary-22)`, padding: '0 24px', height: 56, display: 'flex', alignItems: 'center', gap: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', flexShrink: 0 }}>
+          <div style={{ background: COLORS.white, borderBottom: `2px solid var(--color-primary-22)`, padding: isMobile ? '0 12px' : '0 24px', height: 56, display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 16, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', flexShrink: 0 }}>
+            {/* Hamburger (mobile only) */}
+            {isMobile && (
+              <button onClick={() => setSidebarOpen((v) => !v)} style={{ width: 34, height: 34, border: `1.5px solid ${COLORS.border}`, borderRadius: 8, background: COLORS.bg, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0, color: COLORS.text }}>
+                ☰
+              </button>
+            )}
             {/* Breadcrumb */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 180 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: isMobile ? 'auto' : 180 }}>
               <div style={{ fontSize: 9, fontWeight: 700, color: COLORS.primary, textTransform: 'uppercase', letterSpacing: 1 }}>
                 {user?.roleName ?? 'E-PAAS'}
               </div>
@@ -178,7 +199,7 @@ export default function AppShell({ menu }: Props) {
                   ?
                 </div>
                 {helpOpen && (
-                  <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, background: '#fff', border: `1px solid ${COLORS.border}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', width: 280, zIndex: 1000, overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, background: '#fff', border: `1px solid ${COLORS.border}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', width: 280, maxWidth: 'calc(100vw - 16px)', zIndex: 1000, overflow: 'hidden' }}>
                     <div style={{ padding: '12px 16px', background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}` }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.text }}>Help &amp; Support</div>
                       <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>E-PAAS User Documentation</div>
@@ -236,7 +257,7 @@ export default function AppShell({ menu }: Props) {
                       )}
                     </div>
                     {notifOpen && (
-                      <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, background: '#fff', border: `1px solid ${COLORS.border}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', width: 320, zIndex: 1000, overflow: 'hidden' }}>
+                      <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, background: '#fff', border: `1px solid ${COLORS.border}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', width: 320, maxWidth: 'calc(100vw - 16px)', zIndex: 1000, overflow: 'hidden' }}>
                         <div style={{ padding: '12px 16px', background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
                             <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.text }}>Notifications</div>
@@ -292,10 +313,12 @@ export default function AppShell({ menu }: Props) {
                   <div style={{ width: 32, height: 32, borderRadius: 8, background: `linear-gradient(135deg, ${COLORS.primary}, var(--color-primary-dark, #0F2318))`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
                     {initials}
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 12, color: COLORS.text, whiteSpace: 'nowrap' }}>{user?.username}</div>
-                    <div style={{ fontSize: 9, color: COLORS.textMuted, whiteSpace: 'nowrap' }}>{user?.licenseNumber ?? user?.email}</div>
-                  </div>
+                  {vw >= 480 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 12, color: COLORS.text, whiteSpace: 'nowrap' }}>{user?.username}</div>
+                      <div style={{ fontSize: 9, color: COLORS.textMuted, whiteSpace: 'nowrap' }}>{user?.licenseNumber ?? user?.email}</div>
+                    </div>
+                  )}
                   <svg style={{ marginLeft: 4, transform: userMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={COLORS.textMuted} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="6 9 12 15 18 9" />
                   </svg>
@@ -345,19 +368,19 @@ export default function AppShell({ menu }: Props) {
           </div>
 
           {/* Page content */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px 40px' }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '14px 12px 32px' : '20px 24px 40px' }}>
             <Outlet />
           </div>
         </div>
       </div>
 
       {/* Footer */}
-      <div style={{ background: '#1a1a1a', borderTop: '1px solid rgba(255,255,255,0.08)', padding: '8px 24px', display: 'flex', flexShrink: 0 }}>
-        <div style={{ fontSize: 11, color: '#fff' }}>
-          © 2026 Food Safety and Standards Authority of India · Ministry of Health &amp; Family Welfare, Government of India
+      <div style={{ background: '#1a1a1a', borderTop: '1px solid rgba(255,255,255,0.08)', padding: isMobile ? '8px 12px' : '8px 24px', display: 'flex', flexShrink: 0, flexWrap: 'wrap', gap: isMobile ? 4 : 0, alignItems: 'center' }}>
+        <div style={{ fontSize: isMobile ? 10 : 11, color: '#fff' }}>
+          © 2026 Food Safety and Standards Authority of India{!isMobile && ' · Ministry of Health & Family Welfare, Government of India'}
         </div>
-        <div style={{ display: 'flex', gap: 14, marginLeft: 'auto' }}>
-          {['Privacy Policy', 'Terms of Use', 'Accessibility', 'Sitemap'].map((label) => (
+        <div style={{ display: 'flex', gap: isMobile ? 10 : 14, marginLeft: 'auto', flexWrap: 'wrap' }}>
+          {(isMobile ? ['Privacy', 'Terms', 'Accessibility'] : ['Privacy Policy', 'Terms of Use', 'Accessibility', 'Sitemap']).map((label) => (
             <span key={label} style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }}>{label}</span>
           ))}
         </div>

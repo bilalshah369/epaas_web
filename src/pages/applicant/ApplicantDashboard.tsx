@@ -173,6 +173,12 @@ function initBinFilters(): Record<Bin, BinFilters> {
 export default function ApplicantDashboard() {
   const { user }   = useAuthStore();
   const navigate   = useNavigate();
+  const [vw, setVw] = useState(() => window.innerWidth);
+  useEffect(() => {
+    const fn = () => setVw(window.innerWidth);
+    window.addEventListener('resize', fn);
+    return () => window.removeEventListener('resize', fn);
+  }, []);
   const [activeBin, setActiveBin] = useState<Bin>('all');
   const [binFilters, setBinFilters] = useState<Record<Bin, BinFilters>>(initBinFilters);
   const [apps, setApps]             = useState<Application[]>([]);
@@ -317,7 +323,7 @@ export default function ApplicantDashboard() {
       {/* ── Withdrawal Modal ─────────────────────────────────────────── */}
       {withdrawApp && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: '#fff', borderRadius: 12, width: 500, maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.22)' }}>
+          <div style={{ background: '#fff', borderRadius: 12, width: Math.min(500, vw - 32), maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.22)' }}>
             <div style={{ background: COLORS.danger, borderRadius: '12px 12px 0 0', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>Request Withdrawal</div>
               <div onClick={() => setWithdrawApp(null)} style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.7)', fontSize: 20 }}>✕</div>
@@ -353,7 +359,7 @@ export default function ApplicantDashboard() {
       )}
 
       {/* ── Welcome Banner ───────────────────────────────────────────── */}
-      <div style={{ background: `linear-gradient(130deg, ${COLORS.primary} 0%, #0e2419 100%)`, borderRadius: 12, padding: '22px 28px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ background: `linear-gradient(130deg, ${COLORS.primary} 0%, #0e2419 100%)`, borderRadius: 12, padding: vw < 640 ? '16px 16px' : '22px 28px', marginBottom: 20, display: 'flex', alignItems: vw < 640 ? 'flex-start' : 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
             FSSAI E-PAAS · Applicant Portal
@@ -426,7 +432,7 @@ export default function ApplicantDashboard() {
       {/* ── Applications Table Card ───────────────────────────────────── */}
       <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
         {/* Bin cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: vw >= 1024 ? 'repeat(6, 1fr)' : vw >= 640 ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', gap: 10, marginBottom: 16 }}>
           {BINS.map((b) => (
             <BinCard
               key={b.key}
@@ -441,7 +447,7 @@ export default function ApplicantDashboard() {
         </div>
 
         {/* Title + search + export */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 12, marginBottom: 0, borderBottom: `1px solid ${COLORS.border}` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: vw < 640 ? 'flex-start' : 'center', paddingBottom: 12, marginBottom: 0, borderBottom: `1px solid ${COLORS.border}`, flexWrap: 'wrap', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 4, height: 22, borderRadius: 2, background: activeBinDef.color }} />
             <div>
@@ -461,7 +467,7 @@ export default function ApplicantDashboard() {
               value={f.search}
               onChange={(e) => setFilter('search', e.target.value)}
               placeholder="Search by reference number…"
-              style={{ border: `1.5px solid ${COLORS.border}`, borderRadius: 8, padding: '6px 10px', fontSize: 11, outline: 'none', background: COLORS.bg, width: 210 }}
+              style={{ border: `1.5px solid ${COLORS.border}`, borderRadius: 8, padding: '6px 10px', fontSize: 11, outline: 'none', background: COLORS.bg, width: vw < 640 ? '100%' : 210 }}
             />
             <button style={{ background: 'transparent', color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 6, fontSize: 11, padding: '6px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
               ⬇ Export
