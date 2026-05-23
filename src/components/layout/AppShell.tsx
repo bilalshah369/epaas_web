@@ -28,6 +28,7 @@ export default function AppShell({ menu }: Props) {
   const [readIds,       setReadIds]       = useState<Set<number>>(new Set());
   const [sidebarOpen,   setSidebarOpen]   = useState(false);
   const [vw,            setVw]            = useState(() => window.innerWidth);
+  const [refreshKey,    setRefreshKey]    = useState(0);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notifRef    = useRef<HTMLDivElement>(null);
   const helpRef     = useRef<HTMLDivElement>(null);
@@ -86,11 +87,12 @@ export default function AppShell({ menu }: Props) {
           {/* Logo — same height as topbar (56px) */}
           <div
             onClick={() => navigate('/')}
-            style={{ height: 56, borderBottom: '1px solid rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, gap: 0, flexDirection: 'column' }}
+            style={{ height: 56, borderBottom: '1px solid rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, gap: 10, flexDirection: 'row', padding: '0 14px' }}
           >
-            <span style={{ fontSize: 26, fontWeight: 900, color: '#fff', letterSpacing: 3, lineHeight: 1, fontFamily: 'Georgia, serif' }}>E-PAAS</span>
-            <span style={{ fontSize: 7, color: 'rgba(255,255,255,0.55)', letterSpacing: 0.7, textTransform: 'uppercase', textAlign: 'center', lineHeight: 1.4, marginTop: 3 }}>
-              Electronic Product &amp; Claim<br />Approval Application System
+            <span style={{ fontSize: 22, fontWeight: 900, color: '#fff', letterSpacing: 3, lineHeight: 1, fontFamily: 'Georgia, serif', whiteSpace: 'nowrap' }}>E-PAAS</span>
+            <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.2)', flexShrink: 0 }} />
+            <span style={{ fontSize: 7, color: 'rgba(255,255,255,0.55)', letterSpacing: 0.5, textTransform: 'uppercase', lineHeight: 1.5 }}>
+              Electronic Product &amp; Claim Approval Application System
             </span>
           </div>
 
@@ -117,7 +119,12 @@ export default function AppShell({ menu }: Props) {
                 return (
                   <div key={item.path}>
                     <div
-                      onClick={() => hasChildren ? toggleMenu(item.path) : navigate(item.path)}
+                      onClick={() => {
+                        if (hasChildren) { toggleMenu(item.path); }
+                        else if (location.pathname.startsWith(item.path)) { setRefreshKey((k) => k + 1); }
+                        else { navigate(item.path); }
+                        if (isMobile) setSidebarOpen(false);
+                      }}
                       style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', cursor: 'pointer', fontSize: 13, fontWeight: (isActive || childActive) ? 600 : 400, color: (isActive || childActive) ? '#FFFFFF' : 'rgba(255,255,255,0.68)', background: (isActive || childActive) ? 'rgba(255,255,255,0.14)' : 'transparent', borderLeft: (isActive || childActive) ? '3px solid #FFFFFF' : '3px solid transparent', transition: 'all 0.15s' }}
                     >
                       <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>{item.icon}</span>
@@ -129,7 +136,11 @@ export default function AppShell({ menu }: Props) {
                       return (
                         <div
                           key={child.path}
-                          onClick={() => navigate(child.path)}
+                          onClick={() => {
+                            if (location.pathname.startsWith(child.path)) { setRefreshKey((k) => k + 1); }
+                            else { navigate(child.path); }
+                            if (isMobile) setSidebarOpen(false);
+                          }}
                           style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px 8px 30px', cursor: 'pointer', fontSize: 12, fontWeight: childIsActive ? 600 : 400, color: childIsActive ? '#FFFFFF' : 'rgba(255,255,255,0.68)', background: childIsActive ? 'rgba(255,255,255,0.14)' : 'transparent', borderLeft: childIsActive ? '3px solid #FFFFFF' : '3px solid transparent', transition: 'all 0.15s' }}
                         >
                           <span style={{ fontSize: 12, width: 18, textAlign: 'center' }}>{child.icon}</span>
@@ -369,7 +380,7 @@ export default function AppShell({ menu }: Props) {
 
           {/* Page content */}
           <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '14px 12px 32px' : '20px 24px 40px' }}>
-            <Outlet />
+            <Outlet key={refreshKey} />
           </div>
         </div>
       </div>

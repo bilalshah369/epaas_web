@@ -147,11 +147,22 @@ export default function LandingPage() {
   const [trackLoading, setTrackLoading]   = useState(false);
   const [trackError, setTrackError]       = useState<string | null>(null);
   const [portalStats, setPortalStats]     = useState({ approvals: 0, inProgress: 0, withEC: 0, onTimePct: 0 });
+  const [circulars, setCirculars]         = useState<Array<{ id: string; date: string; refNumber: string; title: string; tag: string }>>([]);
+  const [notifications, setNotifications] = useState<Array<{ id: string; date: string; title: string; type: string; body?: string | null }>>([]);
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL ?? '/api'}/public/stats`)
+    const base = import.meta.env.VITE_API_URL ?? '/api';
+    fetch(`${base}/public/stats`)
       .then((r) => r.ok ? r.json() : null)
       .then((d) => d && setPortalStats(d))
+      .catch(() => {});
+    fetch(`${base}/public/circulars`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => d?.circulars && setCirculars(d.circulars))
+      .catch(() => {});
+    fetch(`${base}/public/notifications`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => d?.notifications && setNotifications(d.notifications))
       .catch(() => {});
   }, []);
 
@@ -168,10 +179,13 @@ export default function LandingPage() {
   const { loginApplicant, loginAuthority, isLoading, register } = useAuthStore();
 
   const [vw, setVw] = useState(() => window.innerWidth);
+  const [showBackToTop, setShowBackToTop] = useState(false);
   useEffect(() => {
-    const fn = () => setVw(window.innerWidth);
-    window.addEventListener('resize', fn);
-    return () => window.removeEventListener('resize', fn);
+    const onResize = () => setVw(window.innerWidth);
+    const onScroll = () => setShowBackToTop(window.scrollY > 300);
+    window.addEventListener('resize', onResize);
+    window.addEventListener('scroll', onScroll);
+    return () => { window.removeEventListener('resize', onResize); window.removeEventListener('scroll', onScroll); };
   }, []);
 
   async function doTrack() {
@@ -610,21 +624,17 @@ export default function LandingPage() {
                 </div>
                 <span style={{ fontSize: 11, color: COLORS.primary, cursor: 'pointer', fontWeight: 600 }}>View All →</span>
               </div>
-              {[
-                { date: '10 Apr 2026', ref: 'FSSAI/EPAAS/2026/CIR-14', title: 'Guidelines for NSF dossier submission — Revised format effective 01 May 2026',    tag: 'NSF'     },
-                { date: '28 Mar 2026', ref: 'FSSAI/EPAAS/2026/CIR-11', title: 'Updated fee schedule for Claim Approval applications — FY 2026–27',                 tag: 'CA'      },
-                { date: '15 Mar 2026', ref: 'FSSAI/EPAAS/2026/CIR-09', title: 'Mandatory pre-submission consultation for rPET packaging applications',              tag: 'rPET'    },
-                { date: '02 Mar 2026', ref: 'FSSAI/EPAAS/2026/CIR-07', title: 'Extension of Ayurveda Aahara application window — Q1 2026',                         tag: 'AA'      },
-                { date: '18 Feb 2026', ref: 'FSSAI/EPAAS/2026/CIR-05', title: 'SOP for Expert Committee meeting documentation upload',                              tag: 'General' },
-              ].map((c, i) => (
-                <div key={i} style={{ padding: '12px 0', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', gap: 12, alignItems: 'flex-start', cursor: 'pointer' }}>
+              {circulars.length === 0 ? (
+                <div style={{ padding: '24px 0', textAlign: 'center', color: COLORS.textMuted, fontSize: 12 }}>No circulars available.</div>
+              ) : circulars.map((c, i) => (
+                <div key={c.id ?? i} style={{ padding: '12px 0', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', gap: 12, alignItems: 'flex-start', cursor: 'pointer' }}>
                   <div style={{ minWidth: 46, background: COLORS.primaryLight, borderRadius: 6, padding: '5px 6px', textAlign: 'center', flexShrink: 0 }}>
                     <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.primary, lineHeight: 1 }}>{c.date.split(' ')[0]}</div>
                     <div style={{ fontSize: 9, color: COLORS.primary, lineHeight: 1.3 }}>{c.date.split(' ').slice(1).join(' ')}</div>
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                      <span style={{ fontSize: 9, color: COLORS.textMuted, letterSpacing: 0.3 }}>{c.ref}</span>
+                      <span style={{ fontSize: 9, color: COLORS.textMuted, letterSpacing: 0.3 }}>{c.refNumber}</span>
                       <span style={{ fontSize: 9, background: COLORS.primaryLight, color: COLORS.primary, padding: '1px 6px', borderRadius: 3, fontWeight: 700 }}>{c.tag}</span>
                     </div>
                     <div style={{ fontSize: 13, color: COLORS.text, lineHeight: 1.45, fontWeight: 500 }}>{c.title}</div>
@@ -642,20 +652,16 @@ export default function LandingPage() {
                 </div>
                 <span style={{ fontSize: 11, color: COLORS.primary, cursor: 'pointer', fontWeight: 600 }}>View All →</span>
               </div>
-              <div style={{ background: '#FFF8E7', border: '1px solid #E9C46A', borderLeft: `4px solid ${COLORS.accent}`, borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#92400E', marginBottom: 3 }}>⚠ Maintenance Notice — 20 Apr 2026</div>
-                <div style={{ fontSize: 11, color: '#78350F', lineHeight: 1.55 }}>
-                  Portal maintenance on <strong>Sunday 20 Apr 2026, 02:00–06:00 IST</strong>. Submissions temporarily unavailable during this window.
+              {notifications.filter(n => n.type === 'Alert').slice(0, 1).map((n) => (
+                <div key={n.id} style={{ background: '#FFF8E7', border: '1px solid #E9C46A', borderLeft: `4px solid ${COLORS.accent}`, borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#92400E', marginBottom: 3 }}>⚠ {n.title}</div>
+                  {n.body && <div style={{ fontSize: 11, color: '#78350F', lineHeight: 1.55 }}>{n.body}</div>}
                 </div>
-              </div>
-              {[
-                { date: '12 Apr 2026', title: 'EC Meeting #14 scheduled for 22 Apr 2026 — shortlisted applications notified',     type: 'Meeting'    },
-                { date: '05 Apr 2026', title: 'Form II available for download: NSF-2026-03-0038, NSF-2026-03-0041',               type: 'Approval'   },
-                { date: '01 Apr 2026', title: 'New Applicant self-declaration format mandatory from 01 May 2026',                  type: 'Compliance' },
-                { date: '25 Mar 2026', title: 'Helpdesk hours extended to 09:00–18:00 IST on all weekdays',                       type: 'Support'    },
-                { date: '18 Mar 2026', title: 'Applicant User Manual v2.3 published — available in Quick Links',                  type: 'Update'     },
-              ].map((n, i) => (
-                <div key={i} style={{ padding: '12px 0', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer' }}>
+              ))}
+              {notifications.filter(n => n.type !== 'Alert').length === 0 && notifications.length === 0 ? (
+                <div style={{ padding: '24px 0', textAlign: 'center', color: COLORS.textMuted, fontSize: 12 }}>No notifications available.</div>
+              ) : notifications.filter(n => n.type !== 'Alert').map((n, i) => (
+                <div key={n.id ?? i} style={{ padding: '12px 0', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer' }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS.accent, marginTop: 5, flexShrink: 0 }} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.text, lineHeight: 1.45, marginBottom: 3 }}>{n.title}</div>
@@ -1097,6 +1103,19 @@ export default function LandingPage() {
             </div>
           </div>
         </>
+      )}
+
+      {/* ── Back to Top ─────────────────────────────────────────────────── */}
+      {showBackToTop && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          title="Back to top"
+          style={{ position: 'fixed', bottom: 28, right: 24, zIndex: 200, width: 44, height: 44, borderRadius: '50%', background: COLORS.primary, color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, boxShadow: '0 4px 16px rgba(0,0,0,0.25)', transition: 'background 0.2s ease, transform 0.2s ease' }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = COLORS.accent; e.currentTarget.style.transform = 'translateY(-3px)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = COLORS.primary; e.currentTarget.style.transform = 'translateY(0)'; }}
+        >
+          ↑
+        </button>
       )}
 
       {/* ── Modals ──────────────────────────────────────────────────────── */}

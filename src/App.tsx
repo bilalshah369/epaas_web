@@ -74,6 +74,7 @@ import AdminRoles           from '@/pages/admin/AdminRoles';
 import AdminReports         from '@/pages/admin/AdminReports';
 import AdminAuditTrail      from '@/pages/admin/AdminAuditTrail';
 import AdminSearchConsole   from '@/pages/admin/AdminSearchConsole';
+import AdminContent         from '@/pages/admin/AdminContent';
 
 // ── Expert Committee module ───────────────────────────────────────────────────
 import ECLayout           from '@/layouts/ECLayout';
@@ -262,6 +263,7 @@ export default function App() {
             <Route path="/admin/reports"   element={<AdminReports />}        />
             <Route path="/admin/audit"     element={<AdminAuditTrail />}     />
             <Route path="/admin/search"    element={<AdminSearchConsole />}  />
+            <Route path="/admin/content"   element={<AdminContent />}        />
             <Route path="/admin/*"         element={<DashboardPlaceholder />} />
           </Route>
         </Route>

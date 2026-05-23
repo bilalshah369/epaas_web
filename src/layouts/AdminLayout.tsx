@@ -8,6 +8,7 @@ const MENU: MenuItem[] = [
   { icon: '📊', label: 'Reports',            path: '/admin/reports'      },
   { icon: '📜', label: 'Audit Trail',        path: '/admin/audit'        },
   { icon: '🔍', label: 'Search Console',     path: '/admin/search'       },
+  { icon: '📰', label: 'Content Manager',   path: '/admin/content'      },
 ];
 
 export default function AdminLayout() {
