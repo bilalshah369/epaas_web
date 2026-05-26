@@ -421,6 +421,18 @@ function getCatKey(cat: string): string {
   return '';
 }
 
+function getAAFee(ayurvedaCategory: string, catADiseaseRisk: string, catBDiseaseRisk: string) {
+  const key = getCatKey(ayurvedaCategory);
+  if (key === 'A') {
+    return catADiseaseRisk === 'Yes'
+      ? { base: '₹50,000', gst: '₹9,000', total: '₹59,000' }
+      : { base: '₹7,500',  gst: '₹1,350', total: '₹8,850' };
+  }
+  return catBDiseaseRisk === 'Yes'
+    ? { base: '₹50,000', gst: '₹9,000',  total: '₹59,000' }
+    : { base: '₹10,000', gst: '₹1,800',  total: '₹11,800' };
+}
+
 // ── Inline styles ─────────────────────────────────────────────────────────────
 const input: React.CSSProperties = {
   width: '100%', border: `1px solid ${COLORS.border}`, borderRadius: 6,
@@ -428,7 +440,7 @@ const input: React.CSSProperties = {
   fontFamily: "'Noto Sans','Segoe UI',sans-serif",
 };
 const textarea: React.CSSProperties = { ...input, resize: 'vertical', minHeight: 80 };
-const select: React.CSSProperties   = { ...input, cursor: 'pointer', appearance: 'auto', background: '#fff', color: COLORS.text };
+const select: React.CSSProperties   = { ...S.select };
 const secCard: React.CSSProperties  = {
   background: COLORS.white, border: `1px solid ${COLORS.border}`,
   borderRadius: 10, padding: 16, marginBottom: 12,
@@ -1532,8 +1544,10 @@ export default function AyurvedaAaharaApplicationForm() {
                       </select>
                     </td>
                     <td style={tblTd}>
-                      <input list="ref-books" style={tblInput} value={ing.referenceBook} onChange={(e) => updateIngredient(idx, 'referenceBook', e.target.value)} placeholder="Type or select…" />
-                      <datalist id="ref-books">{REFERENCE_BOOKS.map((b) => <option key={b} value={b} />)}</datalist>
+                      <select style={{ ...tblInput, ...S.select, width: '100%' }} value={ing.referenceBook} onChange={(e) => updateIngredient(idx, 'referenceBook', e.target.value)}>
+                        <option value="">— Select —</option>
+                        {REFERENCE_BOOKS.map((b) => <option key={b} value={b}>{b}</option>)}
+                      </select>
                     </td>
                     <td style={tblTd}>
                       <button onClick={() => removeIngredient(idx)} style={{ background: 'none', border: 'none', color: COLORS.danger, cursor: 'pointer', fontSize: 16, lineHeight: 1 }} title="Remove">×</button>
@@ -1556,8 +1570,10 @@ export default function AyurvedaAaharaApplicationForm() {
               {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
             </select>
             <div>
-              <input list="ref-books-pending" style={tblInput} placeholder="Reference book / pharmacopoeia" value={pendingIng.referenceBook} onChange={(e) => setPendingIng((p) => ({ ...p, referenceBook: e.target.value }))} />
-              <datalist id="ref-books-pending">{REFERENCE_BOOKS.map((b) => <option key={b} value={b} />)}</datalist>
+              <select style={{ ...tblInput, ...S.select, width: '100%' }} value={pendingIng.referenceBook} onChange={(e) => setPendingIng((p) => ({ ...p, referenceBook: e.target.value }))}>
+                <option value="">Reference book / pharmacopoeia</option>
+                {REFERENCE_BOOKS.map((b) => <option key={b} value={b}>{b}</option>)}
+              </select>
             </div>
             <button onClick={addIngredient} style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>+ Add</button>
           </div>
@@ -1710,8 +1726,10 @@ export default function AyurvedaAaharaApplicationForm() {
                         <td style={tblTd}>{idx + 1}</td>
                         <td style={{ ...tblTd, fontWeight: 600 }}>{ing.ingredientName || '—'}</td>
                         <td style={tblTd}>
-                          <input list="ref-books-map" style={tblInput} value={ing.referenceSource} onChange={(e) => updateIngredient(idx, 'referenceSource', e.target.value)} placeholder="Book name…" />
-                          <datalist id="ref-books-map">{REFERENCE_BOOKS.map((b) => <option key={b} value={b} />)}</datalist>
+                          <select style={{ ...tblInput, ...S.select, width: '100%' }} value={ing.referenceSource} onChange={(e) => updateIngredient(idx, 'referenceSource', e.target.value)}>
+                            <option value="">— Select —</option>
+                            {REFERENCE_BOOKS.map((b) => <option key={b} value={b}>{b}</option>)}
+                          </select>
                         </td>
                         <td style={tblTd}>
                           <input style={tblInput} value={ing.classicalReference} onChange={(e) => updateIngredient(idx, 'classicalReference', e.target.value)} placeholder="Chapter/Verse ref…" />
@@ -1751,8 +1769,10 @@ export default function AyurvedaAaharaApplicationForm() {
                   <tr key={idx} style={{ background: idx % 2 === 0 ? '#fff' : COLORS.bg }}>
                     <td style={tblTd}>{idx + 1}</td>
                     <td style={tblTd}>
-                      <input list="additives-list" style={tblInput} value={add.additiveName} onChange={(e) => updateAdditive(idx, 'additiveName', e.target.value)} placeholder="Type or select…" />
-                      <datalist id="additives-list">{COMMON_ADDITIVES.map((a) => <option key={a} value={a} />)}</datalist>
+                      <select style={{ ...tblInput, ...S.select, width: '100%' }} value={add.additiveName} onChange={(e) => updateAdditive(idx, 'additiveName', e.target.value)}>
+                        <option value="">— Select —</option>
+                        {COMMON_ADDITIVES.map((a) => <option key={a} value={a}>{a}</option>)}
+                      </select>
                     </td>
                     <td style={tblTd}><input type="number" min="0" style={tblInput} value={add.quantity} onChange={(e) => updateAdditive(idx, 'quantity', e.target.value)} placeholder="e.g. 0.5" /></td>
                     <td style={tblTd}><input style={tblInput} value={add.purpose} onChange={(e) => updateAdditive(idx, 'purpose', e.target.value)} placeholder="e.g. Preservative" /></td>
@@ -1770,9 +1790,11 @@ export default function AyurvedaAaharaApplicationForm() {
           <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, marginBottom: 6 }}>New Additive</div>
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, alignItems: 'center' }}>
             <div>
-              <input list="additives-list-pending" style={eb(tblInput, 'pendingAdd')} placeholder="Additive name (INS / common) *" value={pendingAdd.additiveName}
-                onChange={(e) => { setPendingAdd((p) => ({ ...p, additiveName: e.target.value })); setStepErrors((q) => { const n = { ...q }; delete n.pendingAdd; return n; }); }} />
-              <datalist id="additives-list-pending">{COMMON_ADDITIVES.map((a) => <option key={a} value={a} />)}</datalist>
+              <select style={{ ...tblInput, ...S.select, width: '100%', ...(stepErrors.pendingAdd ? { borderColor: COLORS.danger } : {}) }} value={pendingAdd.additiveName}
+                onChange={(e) => { setPendingAdd((p) => ({ ...p, additiveName: e.target.value })); setStepErrors((q) => { const n = { ...q }; delete n.pendingAdd; return n; }); }}>
+                <option value="">Additive name (INS / common) *</option>
+                {COMMON_ADDITIVES.map((a) => <option key={a} value={a}>{a}</option>)}
+              </select>
             </div>
             <input type="number" min="0" style={tblInput} placeholder="Quantity / level" value={pendingAdd.quantity} onChange={(e) => setPendingAdd((p) => ({ ...p, quantity: e.target.value }))} />
             <input style={tblInput} placeholder="Purpose / function" value={pendingAdd.purpose} onChange={(e) => setPendingAdd((p) => ({ ...p, purpose: e.target.value }))} />
@@ -2808,21 +2830,31 @@ export default function AyurvedaAaharaApplicationForm() {
     <div key={4} style={secCard}>
       <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 16 }}>Payment &amp; Submission</div>
 
-      <div style={{ background: COLORS.primaryLight, border: `1px solid ${COLORS.primary}33`, borderRadius: 8, padding: 16, marginBottom: 16 }}>
-        <div style={{ fontWeight: 700, color: COLORS.primary, marginBottom: 8 }}>Fee Summary</div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-          <span style={{ fontSize: 13 }}>Ayurveda Aahara Application Fee</span>
-          <span style={{ fontWeight: 700 }}>₹ 3,00,000</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-          <span style={{ fontSize: 13 }}>GST (18%)</span>
-          <span style={{ fontWeight: 700 }}>₹ 54,000</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: `1px solid ${COLORS.primary}33`, paddingTop: 8, marginTop: 4 }}>
-          <span style={{ fontWeight: 700 }}>Total</span>
-          <span style={{ fontWeight: 800, fontSize: 16, color: COLORS.primary }}>₹ 3,54,000</span>
-        </div>
-      </div>
+      {(() => {
+        const fee = getAAFee(d.ayurvedaCategory, d.catADiseaseRiskYesNo, d.catBDiseaseRiskYesNo);
+        return (
+          <div style={{ background: COLORS.primaryLight, border: `1px solid ${COLORS.primary}33`, borderRadius: 8, padding: 16, marginBottom: 16 }}>
+            <div style={{ fontWeight: 700, color: COLORS.primary, marginBottom: 8 }}>Fee Summary</div>
+            {d.ayurvedaCategory && (
+              <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 8 }}>
+                Based on: {d.ayurvedaCategory} {d.catADiseaseRiskYesNo === 'Yes' || d.catBDiseaseRiskYesNo === 'Yes' ? '(with disease risk reduction claim)' : ''}
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ fontSize: 13 }}>Ayurveda Aahara Application Fee</span>
+              <span style={{ fontWeight: 700 }}>{fee.base}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ fontSize: 13 }}>GST (18%)</span>
+              <span style={{ fontWeight: 700 }}>{fee.gst}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: `1px solid ${COLORS.primary}33`, paddingTop: 8, marginTop: 4 }}>
+              <span style={{ fontWeight: 700 }}>Total</span>
+              <span style={{ fontWeight: 800, fontSize: 16, color: COLORS.primary }}>{fee.total}</span>
+            </div>
+          </div>
+        );
+      })()}
 
       {paymentDone ? (
         <div style={{ background: '#D1FAE5', border: '1px solid #6EE7B7', borderRadius: 8, padding: 16, marginBottom: 16 }}>
@@ -2859,7 +2891,7 @@ export default function AyurvedaAaharaApplicationForm() {
             }}
             style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 8, padding: '12px 28px', fontSize: 14, fontWeight: 700, cursor: payPending ? 'not-allowed' : 'pointer', opacity: payPending ? 0.7 : 1 }}
           >
-            {payPending ? 'Opening Payment…' : 'Pay Now'}
+            {payPending ? 'Opening Payment…' : `Pay ${getAAFee(d.ayurvedaCategory, d.catADiseaseRiskYesNo, d.catBDiseaseRiskYesNo).total} Online`}
           </button>
         </div>
       )}

@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { COLORS, S } from "@/utils/colors";
+import { buildForm2Html } from "@/utils/form2Builder";
 import StatusBadge from "@/components/ui/StatusBadge";
 import TabBar from "@/components/ui/TabBar";
 import {
@@ -2487,49 +2488,32 @@ export default function ApplicationView() {
                 function printForm2() {
                   const win = window.open("", "_blank", "width=900,height=700");
                   if (!win) return;
-                  win.document
-                    .write(`<!DOCTYPE html><html><head><title>Form II — ${app!.referenceNumber}</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #111; background: #fff; padding: 32px; }
-  .header { background: #1A3C34; color: #fff; padding: 20px 24px; text-align: center; border-radius: 8px 8px 0 0; margin-bottom: 0; }
-  .header h1 { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.75; margin-bottom: 4px; }
-  .header h2 { font-size: 22px; font-weight: 800; font-family: Georgia, serif; margin-bottom: 4px; }
-  .header h3 { font-size: 13px; opacity: 0.85; }
-  .body { border: 1px solid #ccc; border-top: none; border-radius: 0 0 8px 8px; padding: 24px; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; margin-bottom: 20px; }
-  .field label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #666; display: block; margin-bottom: 2px; }
-  .field span { font-size: 12px; font-weight: 600; color: #111; }
-  .decision { padding: 12px 16px; border-radius: 6px; font-size: 14px; font-weight: 800; margin-bottom: 16px; }
-  .approved { background: #F0FDF4; color: #166534; border: 1px solid #BBF7D0; }
-  .rejected { background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA; }
-  .section label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #555; display: block; margin-bottom: 4px; }
-  .section p { font-size: 12px; color: #111; line-height: 1.6; white-space: pre-wrap; background: #f9f9f9; padding: 8px 10px; border-radius: 4px; }
-  @media print { body { padding: 0; } }
-</style></head><body>
-<div class="header">
-  <h1>Food Safety and Standards Authority of India</h1>
-  <h2>FORM - II</h2>
-  <h3>${app!.applicationType === "RPET" ? "Authorization/Rejection of FCM-rPET" : "(Approval/Rejection)"}</h3>
-</div>
-<div class="body">
-  <div class="grid">
-    <div class="field"><label>Application No.</label><span>${f2?.applicationNo ?? app!.referenceNumber}</span></div>
-    ${app!.approvalNumber ? `<div class="field"><label>${isApproved ? 'Approval No.' : 'Rejection No.'}</label><span style="font-weight:800">${app!.approvalNumber}</span></div>` : ''}
-    <div class="field"><label>Date of Application</label><span>${f2?.dateOfApplication ?? "—"}</span></div>
-    <div class="field"><label>Name of Organisation</label><span>${f2?.orgName ?? app!.companyName}</span></div>
-    <div class="field"><label>Name of Applicant</label><span>${f2?.applicantName ?? "—"}</span></div>
-    <div class="field"><label>Registered Address</label><span>${f2?.address ?? "—"}</span></div>
-    <div class="field"><label>Authorised Person</label><span>${f2?.authorizedPerson ?? "—"}</span></div>
-    ${f2?.productName ? `<div class="field"><label>Name of Food Product</label><span>${f2.productName}</span></div>` : ""}
-    ${f2?.productCategory ? `<div class="field"><label>Product Category</label><span>${f2.productCategory}</span></div>` : ""}
-  </div>
-  <div class="decision ${isApproved ? "approved" : "rejected"}">${isApproved ? "✓ APPROVED" : "✗ REJECTED"}</div>
-  ${td?.conditions ? `<div class="section" style="margin-bottom:14px"><label>Conditions for Approval</label><p>${td.conditions}</p></div>` : ""}
-  ${td?.reasons ? `<div class="section" style="margin-bottom:14px"><label>Reasons for Rejection</label><p>${td.reasons}</p></div>` : ""}
-  <div style="margin-top:32px;font-size:10px;color:#888;text-align:right">Issued on: ${td?.recordedAt ? new Date(td.recordedAt as string).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" }) : "—"}</div>
-</div>
-</body></html>`);
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const fd = app!.formData as any;
+                  const issuedOn = td?.recordedAt
+                    ? new Date(td.recordedAt as string).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })
+                    : new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+                  win.document.write(buildForm2Html({
+                    applicationType: app!.applicationType,
+                    appNo: String(f2?.applicationNo ?? app!.referenceNumber),
+                    approvalNumber: app!.approvalNumber,
+                    dateOfApplication: issuedOn,
+                    mfgName: (fd?.manufacturerName ?? fd?.fboName ?? String(f2?.orgName ?? '')) || app!.companyName || '—',
+                    applicantName: String(f2?.applicantName ?? '') || app!.companyName || '—',
+                    address: (fd?.addressOfPremise ?? fd?.fboAddress ?? String(f2?.address ?? '')) || app!.address || '—',
+                    authorizedPerson: (fd?.authorizedPersonnel ?? fd?.authorisedPerson ?? String(f2?.authorizedPerson ?? '')) || '—',
+                    productName: String(f2?.productName ?? '') || app!.productName || '—',
+                    foodCategory: String(f2?.productCategory ?? '') || app!.foodCategory || '—',
+                    materialType: String(f2?.materialType ?? fd?.recyclingTechnologyDetails ?? ''),
+                    techDetails: String(f2?.techDetails ?? fd?.recyclingTechnologyDetails ?? ''),
+                    licenseNo: String(fd?.licenseNo ?? '—'),
+                    contactDetails: [fd?.authorisedContact, fd?.authorisedEmail].filter(Boolean).join(' | ') || '—',
+                    composition: String(fd?.ingredients ?? '—'),
+                    decision: isApproved ? 'Approved' : 'Rejected',
+                    conditions: String(td?.conditions ?? ''),
+                    reasons: String(td?.reasons ?? ''),
+                    issuedOn,
+                  }));
                   win.document.close();
                   win.focus();
                   win.print();
@@ -2571,7 +2555,7 @@ export default function ApplicationView() {
                             cursor: "pointer",
                           }}
                         >
-                          🖨 Download / Print Form II
+                          🖨 {app!.applicationType === 'Vegan' ? 'Download / Print Form B' : 'Download / Print Form II'}
                         </button>
                         {isApproved && (
                           <button
@@ -2618,155 +2602,92 @@ export default function ApplicationView() {
                       }}
                     >
                       {/* Header */}
-                      <div
-                        style={{
-                          background: "#1A3C34",
-                          padding: "16px 24px",
-                          textAlign: "center",
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: 9,
-                            color: "rgba(255,255,255,0.7)",
-                            letterSpacing: 1.5,
-                            textTransform: "uppercase",
-                            marginBottom: 4,
-                          }}
-                        >
+                      <div style={{ background: "#1A3C34", padding: "16px 24px", textAlign: "center" }}>
+                        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.7)", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 4 }}>
                           Food Safety and Standards Authority of India
                         </div>
-                        <div
-                          style={{
-                            fontSize: 18,
-                            fontWeight: 800,
-                            color: "#fff",
-                            fontFamily: "'Libre Baskerville',Georgia,serif",
-                            marginBottom: 2,
-                          }}
-                        >
-                          FORM - II
+                        <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", fontFamily: "'Libre Baskerville',Georgia,serif", marginBottom: 2 }}>
+                          {app!.applicationType === 'Vegan' ? 'FORM B' : 'FORM - II'}
                         </div>
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: "rgba(255,255,255,0.85)",
-                          }}
-                        >
-                          {app.applicationType === "RPET"
-                            ? "Authorization/Rejection of FCM-rPET"
-                            : "(Approval/Rejection)"}
+                        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.85)" }}>
+                          {app!.applicationType === 'RPET'  ? 'Authorization/Rejection of FCM-rPET'
+                          : app!.applicationType === 'Vegan' ? 'Annexure-C — Approval/Rejection for endorsement of vegan logo'
+                          : '(Approval/Rejection)'}
                         </div>
                       </div>
                       <div style={{ padding: "20px 24px" }}>
-                        {/* Pre-filled fields */}
-                        <div
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "repeat(3,1fr)",
-                            gap: "12px 20px",
-                            marginBottom: 20,
-                          }}
-                        >
-                          {(
-                            [
-                              [
-                                "Application No.",
-                                String(
-                                  f2?.applicationNo ?? app!.referenceNumber,
-                                ),
-                              ],
-                              ...(app!.approvalNumber ? [[isApproved ? "Approval No." : "Rejection No.", app!.approvalNumber]] : []),
-                              [
-                                "Date of Application",
-                                String(f2?.dateOfApplication ?? "—"),
-                              ],
-                              [
-                                "Organisation",
-                                String(f2?.orgName ?? app!.companyName),
-                              ],
-                              [
-                                "Applicant Name",
-                                String(f2?.applicantName ?? "—"),
-                              ],
-                              ["Address", String(f2?.address ?? "—")],
-                              [
-                                "Authorised Person",
-                                String(f2?.authorizedPerson ?? "—"),
-                              ],
-                              ...(f2?.productName
-                                ? [["Product Name", String(f2.productName)]]
-                                : []),
-                              ...(f2?.productCategory
-                                ? [
-                                    [
-                                      "Product Category",
-                                      String(f2.productCategory),
-                                    ],
-                                  ]
-                                : []),
-                            ] as [string, string][]
-                          ).map(([label, val]) => (
-                            <div
-                              key={label}
-                              style={{
-                                background: COLORS.bg,
-                                border: `1px solid ${COLORS.border}`,
-                                borderRadius: 6,
-                                padding: "8px 12px",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  fontSize: 9,
-                                  color: COLORS.primary,
-                                  fontWeight: 700,
-                                  textTransform: "uppercase",
-                                  letterSpacing: 0.4,
-                                  marginBottom: 2,
-                                }}
-                              >
-                                {label}
-                              </div>
-                              <div
-                                style={{
-                                  fontSize: 12,
-                                  fontWeight: 600,
-                                  color: COLORS.text,
-                                }}
-                              >
-                                {val || "—"}
-                              </div>
+                        {/* Fields — source of truth: f2 (form2Data saved by TO) */}
+                        {(() => {
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          const afd = app!.formData as any;
+                          const appType = app!.applicationType;
+                          let rows: [string, string][] = [];
+
+                          if (appType === 'RPET') {
+                            rows = [
+                              ['Application No.', String(f2?.applicationNo ?? app!.referenceNumber)],
+                              ...(app!.approvalNumber ? [[isApproved ? 'Approval No.' : 'Rejection No.', app!.approvalNumber] as [string,string]] : []),
+                              ['Date of Application', String(f2?.dateOfApplication ?? '—')],
+                              ['Name of Manufacturer', String(f2?.manufacturerName ?? f2?.orgName ?? app!.companyName ?? '—')],
+                              ['Name of Applicant', String(f2?.applicantName ?? '—')],
+                              ['Registered Address', String(f2?.address ?? '—')],
+                              ['Authorized Person', String(f2?.authorizedPerson ?? '—')],
+                              ['Type of Material Being Recycled', String(f2?.materialType ?? '—')],
+                              ['Approval/NOC/Details of Technology', String(f2?.techDetails ?? '—')],
+                            ];
+                          } else if (appType === 'Vegan') {
+                            rows = [
+                              ['Application No.', String(f2?.applicationNo ?? app!.referenceNumber)],
+                              ...(app!.approvalNumber ? [[isApproved ? 'Approval No.' : 'Rejection No.', app!.approvalNumber] as [string,string]] : []),
+                              ['Date of Application', String(f2?.dateOfApplication ?? '—')],
+                              ['Name of FBO', String(afd?.fboName ?? f2?.orgName ?? app!.companyName ?? '—')],
+                              ['FBO Address', String(afd?.fboAddress ?? f2?.address ?? app!.address ?? '—')],
+                              ['License No.', String(afd?.licenseNo ?? '—')],
+                              ['Authorized Person', String(f2?.authorizedPerson ?? afd?.authorisedPerson ?? '—')],
+                              ['Contact Details', [afd?.authorisedContact, afd?.authorisedEmail].filter(Boolean).join(' | ') || '—'],
+                              ['Name of Product', String(f2?.productName ?? app!.productName ?? '—')],
+                              ['Food Category (FSSR)', String(f2?.productCategory ?? app!.foodCategory ?? '—')],
+                              ['Composition', String(afd?.ingredients ?? '—')],
+                            ];
+                          } else {
+                            rows = [
+                              ['Application No.', String(f2?.applicationNo ?? app!.referenceNumber)],
+                              ...(app!.approvalNumber ? [[isApproved ? 'Approval No.' : 'Rejection No.', app!.approvalNumber] as [string,string]] : []),
+                              ['Date of Application', String(f2?.dateOfApplication ?? '—')],
+                              ['Organisation', String(f2?.orgName ?? app!.companyName ?? '—')],
+                              ['Applicant Name', String(f2?.applicantName ?? '—')],
+                              ['Address', String(f2?.address ?? '—')],
+                              ['Authorised Person', String(f2?.authorizedPerson ?? '—')],
+                              ...(f2?.productName ? [['Product Name', String(f2.productName)] as [string,string]] : []),
+                              ...(f2?.productCategory ? [['Product Category', String(f2.productCategory)] as [string,string]] : []),
+                            ];
+                          }
+
+                          return (
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "12px 20px", marginBottom: 20 }}>
+                              {rows.map(([label, val]) => (
+                                <div key={label} style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "8px 12px" }}>
+                                  <div style={{ fontSize: 9, color: COLORS.primary, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 2 }}>{label}</div>
+                                  <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.text }}>{val || '—'}</div>
+                                </div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
+                          );
+                        })()}
                         {/* Decision badge */}
-                        <div
-                          style={{
-                            background: isApproved ? "#F0FDF4" : "#FEF2F2",
-                            border: `1px solid ${isApproved ? "#BBF7D0" : "#FECACA"}`,
-                            borderRadius: 8,
-                            padding: "12px 16px",
-                            marginBottom: 16,
-                            fontSize: 14,
-                            fontWeight: 800,
-                            color: isApproved ? "#166534" : "#991B1B",
-                          }}
-                        >
-                          {isApproved ? "✓ APPROVED" : "✗ REJECTED"}
-                        </div>
+                        {app!.applicationType === 'Vegan' ? (
+                          <div style={{ marginBottom: 16, fontSize: 13, fontWeight: 700, color: isApproved ? '#166534' : '#991B1B', background: isApproved ? '#F0FDF4' : '#FEF2F2', border: `1px solid ${isApproved ? '#BBF7D0' : '#FECACA'}`, borderRadius: 8, padding: '10px 14px' }}>
+                            {isApproved ? '☑ Product approved for displaying vegan logo' : '☑ Product not approved for displaying vegan logo'}
+                          </div>
+                        ) : (
+                          <div style={{ background: isApproved ? "#F0FDF4" : "#FEF2F2", border: `1px solid ${isApproved ? "#BBF7D0" : "#FECACA"}`, borderRadius: 8, padding: "12px 16px", marginBottom: 16, fontSize: 14, fontWeight: 800, color: isApproved ? "#166534" : "#991B1B" }}>
+                            {isApproved ? "✓ APPROVED" : "✗ REJECTED"}
+                          </div>
+                        )}
                         {!!td?.conditions && (
                           <div style={{ marginBottom: 14 }}>
-                            <div
-                              style={{
-                                fontSize: 10,
-                                fontWeight: 700,
-                                color: COLORS.textMuted,
-                                textTransform: "uppercase",
-                                marginBottom: 4,
-                              }}
-                            >
-                              Conditions for Approval
+                            <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: "uppercase", marginBottom: 4 }}>
+                              {app!.applicationType === 'RPET' ? 'Conditions for Authorization' : 'Conditions for Approval'}
                             </div>
                             <div
                               style={{

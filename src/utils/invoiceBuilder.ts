@@ -2,11 +2,11 @@ import type { Application } from '@/services/application.service';
 import type { PaymentRecord } from '@/services/payment.service';
 
 const FEE: Record<string, { base: number; gst: number; total: number }> = {
-  NSF:            { base: 50000, gst: 9000,  total: 59000  },
-  ClaimApproval:  { base: 50000, gst: 9000,  total: 59000  },
-  AyurvedaAahara: { base: 50000, gst: 9000,  total: 59000  },
-  RPET:           { base: 15000, gst: 2700,  total: 17700  },
-  AnyOther:       { base: 10000, gst: 1800,  total: 11800  },
+  NSF:            { base: 50000, gst: 9000,  total: 59000 },
+  ClaimApproval:  { base: 50000, gst: 9000,  total: 59000 },
+  AyurvedaAahara: { base: 50000, gst: 9000,  total: 59000 },
+  RPET:           { base: 2000,  gst: 360,   total: 2360  },
+  Vegan:          { base: 10000, gst: 1800,  total: 11800 },
 };
 
 function fmtAmt(n: number) {
@@ -45,8 +45,11 @@ function getInvoiceNumber(app: Application): string {
   return `GST/ePAAS/FY${fyStr}/${seq}`;
 }
 
-export function buildInvoiceHtml(app: Application, _payment: PaymentRecord | null): string {
-  const fee = FEE[app.applicationType] ?? FEE['NSF'];
+export function buildInvoiceHtml(app: Application, payment: PaymentRecord | null): string {
+  const fallbackFee = FEE[app.applicationType] ?? FEE['NSF'];
+  const fee = payment?.amount
+    ? { total: Math.round(payment.amount / 100), gst: Math.round(payment.amount / 100 * 18 / 118), base: Math.round(payment.amount / 100 * 100 / 118) }
+    : fallbackFee;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const fd  = app.formData as any;
 

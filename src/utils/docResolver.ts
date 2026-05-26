@@ -165,8 +165,8 @@ export function getDocRows(app: Application | null): DocRow[] {
     { label: 'Claim Support — File 1',           val: step3?.claimFile1             ?? '' },
     { label: 'Claim Support — File 2',           val: step3?.claimFile2             ?? '' },
     { label: 'Prototype Label',                  val: step3?.prototypeLabel         ?? '' },
-    { label: 'Post-Marketing Declaration',       val: step3?.postMarketingDecl      ?? '' },
-    { label: 'Confidentiality Declaration',      val: step3?.confidentialityDecl    ?? '' },
+    { label: 'Post-Marketing Declaration',       val: typeof step3?.postMarketingDecl  === 'boolean' ? (step3.postMarketingDecl  ? 'Accepted' : '') : (step3?.postMarketingDecl  ?? '') },
+    { label: 'Confidentiality Declaration',      val: typeof step3?.confidentialityDecl === 'boolean' ? (step3.confidentialityDecl ? 'Accepted' : '') : (step3?.confidentialityDecl ?? '') },
   ].filter(d => d.val);
 }
 

@@ -23,6 +23,7 @@ const LANDING_APP_TYPES = [
   { key: 'aa',    code: 'AA',        label: 'Ayurveda Aahara (AA)',                                   desc: 'For approval of Ayurveda Aahara as per the Food Safety and Standards (Ayurveda Aahara) Regulations, 2022.',                                                                                                                                                                                                                                                                                                                  color: '#6A1E55', lightColor: '#F3E5F5' },
   { key: 'other', code: 'Any Other', label: 'Any Other',                                              desc: 'For approval of FSMP, notification of esters/derivatives/salts of vitamins, salts/chelates of minerals, and esters/derivatives/isomers/salts of amino acids and approval of any other food, product, process, or system for which prior approval is required by the Food Authority under the provisions of the FSS Act, 2006, and regulations made thereunder, or as notified from time to time.',                         color: '#546E7A', lightColor: '#ECEFF1' },
   { key: 'rpet',  code: 'rPET',      label: 'Recycled PET Packaging (rPET)',                          desc: 'For authorization of recycle plastic manufacturers as per the Food Safety and Standards (Packaging) Regulation, 2018',                                                                                                                                                                                                                                                                                                          color: '#E65100', lightColor: '#FFF3E0' },
+  { key: 'vegan', code: 'Vegan',     label: 'Vegan',                                                  desc: 'For the endorsement of Vegan logo as per the Food Safety and Standards (Vegan Foods) Regulations, 2022',                                                                                                                                                                                                                                                                                                                          color: '#388E3C', lightColor: '#E8F5E9' },
 ];
 
 const PAGE_CONTENT: Record<string, { title: string; lastUpdated: string; sections: { heading: string; body: string }[] }> = {
@@ -496,7 +497,7 @@ export default function LandingPage() {
       <style>{`
         .lp-cat-section { padding: 72px 0; }
         .lp-cat-inner   { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
-        .lp-cat-grid    { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+        .lp-cat-grid    { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
         .lp-cat-card    { background: #fff; border-radius: 16px; overflow: hidden;
                           box-shadow: 0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
                           display: flex; flex-direction: column; cursor: pointer;
@@ -724,7 +725,7 @@ export default function LandingPage() {
           <div style={{ display: 'grid', gridTemplateColumns: vw >= 768 ? 'repeat(4,1fr)' : 'repeat(2,1fr)', gap: 12 }}>
             {[
               { icon: '📘', title: 'Applicant User Manual',   sub: 'PDF · v2.3 · Apr 2026'      },
-              { icon: '📋', title: 'Application Categories',  sub: 'NSF / CA / AA / rPET'        },
+              { icon: '📋', title: 'Application Categories',  sub: 'NSF / CA / AA / rPET / Vegan' },
               { icon: '❓', title: 'FAQs',                   sub: '40 Q&As covered'             },
               { icon: '📞', title: 'Contact Helpdesk',        sub: 'Mon–Fri 09:00–18:00 IST'    },
             ].map((q) => (

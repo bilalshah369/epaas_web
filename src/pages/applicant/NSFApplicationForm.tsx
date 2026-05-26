@@ -15,6 +15,9 @@ import {
   type AppFormData,
 } from '@/services/application.service';
 import { openRazorpayCheckout, getPayment } from '@/services/payment.service';
+import annexureAUrl from '@/utils/soft_copy_annexureA.docx?url';
+import claimSupportUrl from '@/utils/claim_support_doc.docx?url';
+import articlesOfFoodUrl from '@/utils/Articles of Food template.docx?url';
 
 // ── Static options ────────────────────────────────────────────────────────────
 const STEPS = ['Application Type', 'General Info', 'Documents', 'Additional Info', 'Payment'];
@@ -79,7 +82,7 @@ const textarea: React.CSSProperties = {
   ...input, resize: 'vertical', minHeight: 72,
 };
 const select: React.CSSProperties = {
-  ...input, cursor: 'pointer', appearance: 'auto', background: '#fff', color: COLORS.text,
+  ...S.select,
 };
 const secCard: React.CSSProperties = {
   background: COLORS.white, border: `1px solid ${COLORS.border}`,
@@ -232,10 +235,8 @@ export default function NSFApplicationForm() {
       if (phoneErr) errs.mobileNo = phoneErr;
       const emailErr = validateEmail(step2.email);
       if (emailErr) errs.email = emailErr;
-      if (!step2.authorisedPerson || step2.authorisedPerson === 'Select')
-        errs.authorisedPerson = 'Please select an authorised person';
-      if (step2.authorisedPerson === 'Other' && !step2.authorisedPersonOther.trim())
-        errs.authorisedPersonOther = 'Please enter the name of the authorised person';
+      if (!step2.authorisedPerson.trim())
+        errs.authorisedPerson = 'Name of the authorised person is required';
       if (!step2.productCategory)
         errs.productCategory = 'Please select a product category';
       if (!step2.endUseDeclaration)
@@ -253,9 +254,8 @@ export default function NSFApplicationForm() {
       if (!step3.claimFile1)              errs.claimFile1            = 'Required document';
       if (!step3.claimFile2)              errs.claimFile2            = 'Required document';
       if (!step3.prototypeLabel)          errs.prototypeLabel        = 'Required document';
-      if (!step3.postMarketingDecl)       errs.postMarketingDecl     = 'Required document';
-      if (!step3.confidentialityDecl)     errs.confidentialityDecl   = 'Required document';
-      if (!step3.gstNo.trim())            errs.gstNo                 = 'GST number is required';
+      if (step3.postMarketingDecl !== true)   errs.postMarketingDecl   = 'You must accept this declaration';
+      if (step3.confidentialityDecl !== true) errs.confidentialityDecl = 'You must accept this declaration';
     }
 
     if (stepIndex === 3) {
@@ -337,8 +337,7 @@ export default function NSFApplicationForm() {
     <div key={1} style={secCard}>
       {([
         ['applicantName',         'Name of applicant *',                                                                                                              'input',    ''],
-        ['authorisedPerson',      'Name of the authorised person *',                                                                                                  'select',   ['Select', 'Other']],
-        ['authorisedPersonOther', 'Name of the person (if "Other" selected)',                                                                                         'input',    ''],
+        ['authorisedPerson',      'Name of the authorised person *',                                                                                                  'input',    ''],
         ['mobileNo',              'Mobile No. / Phone No. *',                                                                                                         'input',    '(+91) or (0)/(STD Code)'],
         ['email',                 'Email (All communications will only be made through the above email and phone number) *',                                           'input',    'contact@company.com'],
         ['orgName',               'Name of the organisation *',                                                                                                       'input',    ''],
@@ -445,7 +444,7 @@ export default function NSFApplicationForm() {
       <div style={secCard}>
         <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12 }}>Safety Information (Documentation on risk assessment or toxicity studies) *</div>
         <div style={{ marginBottom: 8 }}>
-          <button style={{ background: 'transparent', color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 6, padding: '6px 14px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>⬇️ Download Soft Copy Annexure A</button>
+          <a href={annexureAUrl} download="Soft_Copy_Annexure_A.docx" style={{ background: 'transparent', color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 6, padding: '6px 14px', fontSize: 12, cursor: 'pointer', fontWeight: 600, textDecoration: 'none', display: 'inline-block' }}>⬇️ Download Soft Copy Annexure A</a>
         </div>
         <div style={row}>
           <label style={fieldLabel}>Safety Information — File 1 *</label>
@@ -460,7 +459,7 @@ export default function NSFApplicationForm() {
       <div style={secCard}>
         <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12 }}>Claim Support Documentation *</div>
         <div style={{ marginBottom: 8 }}>
-          <button style={{ background: 'transparent', color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 6, padding: '6px 14px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>⬇️ Download Template</button>
+          <a href={claimSupportUrl} download="Claim_Support_Document.docx" style={{ background: 'transparent', color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 6, padding: '6px 14px', fontSize: 12, cursor: 'pointer', fontWeight: 600, textDecoration: 'none', display: 'inline-block' }}>⬇️ Download Template</a>
         </div>
         <div style={row}>
           <label style={fieldLabel}>Claim Support — File 1 *</label>
@@ -478,16 +477,33 @@ export default function NSFApplicationForm() {
           <label style={fieldLabel}>Copy of Proposed Product Prototype Label (as per relevant FSS Regulations) *</label>
           <UB value={step3.prototypeLabel} stepKey="step3" field="prototypeLabel" />
         </div>
-        <div style={row}>
-          <label style={fieldLabel}>Declaration to conduct and provide post marketing surveillance data *</label>
-          <UB value={step3.postMarketingDecl} stepKey="step3" field="postMarketingDecl" />
+        <div style={{ ...row, alignItems: 'flex-start' }}>
+          <label style={fieldLabel}>Declarations *</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', fontSize: 13, color: COLORS.text, lineHeight: 1.5 }}>
+              <input
+                type="checkbox"
+                checked={step3.postMarketingDecl === true}
+                onChange={(e) => { set('step3', 'postMarketingDecl', e.target.checked); setStepErrors((p) => { const n = { ...p }; delete n.postMarketingDecl; return n; }); }}
+                style={{ marginTop: 2, accentColor: COLORS.primary, width: 16, height: 16, flexShrink: 0, cursor: 'pointer' }}
+              />
+              I/We agree to conduct Post Market Surveillance (PMS) within one year of placing the product in the market (or as directed by FSSAI) under Form II requirements, and undertake to comply with all FSSAI stipulations for the approved product. <span style={{ color: COLORS.danger }}>*</span>
+            </label>
+            {errMsg('postMarketingDecl')}
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', fontSize: 13, color: COLORS.text, lineHeight: 1.5 }}>
+              <input
+                type="checkbox"
+                checked={step3.confidentialityDecl === true}
+                onChange={(e) => { set('step3', 'confidentialityDecl', e.target.checked); setStepErrors((p) => { const n = { ...p }; delete n.confidentialityDecl; return n; }); }}
+                style={{ marginTop: 2, accentColor: COLORS.primary, width: 16, height: 16, flexShrink: 0, cursor: 'pointer' }}
+              />
+              I/We request strict confidentiality for this application and all submitted data. It must not be shared with any third parties or disclosed under the RTI Act, except where mandated by applicable law or a competent authority. <span style={{ color: COLORS.danger }}>*</span>
+            </label>
+            {errMsg('confidentialityDecl')}
+          </div>
         </div>
         <div style={row}>
-          <label style={fieldLabel}>Declaration to keep information shared by the firm as confidential *</label>
-          <UB value={step3.confidentialityDecl} stepKey="step3" field="confidentialityDecl" />
-        </div>
-        <div style={row}>
-          <label style={fieldLabel}>GST No. *</label>
+          <label style={fieldLabel}>GST No.</label>
           <div>
             <input style={eb(input, 'gstNo')} placeholder="Enter GST number" value={step3.gstNo} onChange={(e) => { set('step3', 'gstNo', e.target.value); setStepErrors((p) => { const n = { ...p }; delete n.gstNo; return n; }); }} />
             {errMsg('gstNo')}
@@ -603,7 +619,7 @@ export default function NSFApplicationForm() {
         <div style={secCard}>
           <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12, color: COLORS.primary }}>d) Articles of Food / Ingredients from Microorganisms / Bacteria / Yeast / Fungi / Algae</div>
           <div style={{ marginBottom: 8 }}>
-            <button style={{ background: 'transparent', color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 6, padding: '6px 14px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>⬇️ Download Template</button>
+            <a href={articlesOfFoodUrl} download="Articles_of_Food_Template.docx" style={{ background: 'transparent', color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 6, padding: '6px 14px', fontSize: 12, cursor: 'pointer', fontWeight: 600, textDecoration: 'none', display: 'inline-block' }}>⬇️ Download Template</a>
           </div>
           <div style={row}>
             <label style={fieldLabel}>Upload completed template *</label>

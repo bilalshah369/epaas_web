@@ -14,10 +14,9 @@ import {
   fetchMyApplications, saveDraftApplication, submitDraftApplication,
   type AppFormData,
 } from '@/services/application.service';
-import { openRazorpayCheckout, getPayment } from '@/services/payment.service';
 
 // ── Static options ────────────────────────────────────────────────────────────
-const STEPS = ['Application Type', 'General Info', 'Documents', 'Additional Info', 'Payment'];
+const STEPS = ['Application Type', 'General Info', 'Documents', 'Additional Info', 'Submit'];
 
 const APPLICATION_FOR_OPTIONS = [
   'Novel food or novel food ingredients or processed with the use of novel technology',
@@ -36,12 +35,6 @@ const FOOD_CATEGORIES = [
 ];
 
 
-const TYPE_FEE: Record<string, { fee: string; gst: string; total: string }> = {
-  NSF:            { fee: '₹50,000', gst: '₹9,000',  total: '₹59,000' },
-  ClaimApproval:  { fee: '₹50,000', gst: '₹9,000',  total: '₹59,000' },
-  AyurvedaAahara: { fee: '₹50,000', gst: '₹9,000',  total: '₹59,000' },
-  AnyOther:       { fee: '₹10,000', gst: '₹1,800',  total: '₹11,800' },
-};
 
 // ── Shared inline styles ──────────────────────────────────────────────────────
 const input: React.CSSProperties = {
@@ -53,7 +46,7 @@ const textarea: React.CSSProperties = {
   ...input, resize: 'vertical', minHeight: 72,
 };
 const select: React.CSSProperties = {
-  ...input, cursor: 'pointer', appearance: 'auto', background: '#fff', color: COLORS.text,
+  ...S.select,
 };
 const secCard: React.CSSProperties = {
   background: COLORS.white, border: `1px solid ${COLORS.border}`,
@@ -83,23 +76,14 @@ export default function ApplicationForm() {
   const [saving, setSaving]   = useState(false);
   const [dialog, setDialog]   = useState<{ msg: string; action: () => void } | null>(null);
   const [formData, setFormData] = useState<AppFormData>(emptyFormData);
-  const [paymentDone, setPaymentDone] = useState(false);
-  const [invoiceNo, setInvoiceNo]     = useState<string | null>(null);
-  const [payPending, setPayPending]   = useState(false);
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
 
   // Load existing draft or create a new one
   useEffect(() => {
-    const loadPayment = (id: string) =>
-      getPayment(id).then((p) => {
-        if (p?.status === 'Completed') { setPaymentDone(true); setInvoiceNo(p.invoiceNo); }
-      }).catch(() => {});
-
     if (idParam) {
       fetchApplication(idParam).then((app) => {
         setAppId(app.id);
         if (app.formData) setFormData(app.formData as AppFormData);
-        loadPayment(app.id);
       }).catch(() => toast.error('Could not load draft'));
     } else {
       // Reuse an existing draft of the same type rather than creating a duplicate
@@ -111,7 +95,6 @@ export default function ApplicationForm() {
           if (existing) {
             setAppId(existing.id);
             if (existing.formData) setFormData(existing.formData as AppFormData);
-            loadPayment(existing.id);
           } else {
             return createDraftApplication(typeParam, user?.username || 'Draft')
               .then((app) => setAppId(app.id));
@@ -201,8 +184,8 @@ export default function ApplicationForm() {
       if (phoneErr) errs.mobileNo = phoneErr;
       const emailErr = validateEmail(step2.email);
       if (emailErr) errs.email = emailErr;
-      if (!step2.authorisedPerson || step2.authorisedPerson === 'Select')
-        errs.authorisedPerson = 'Please select an authorised person';
+      if (!step2.authorisedPerson.trim())
+        errs.authorisedPerson = 'This field is required';
       if (!step2.productCategory)
         errs.productCategory = 'Please select a product category';
       if (!step2.endUseDeclaration)
@@ -217,10 +200,9 @@ export default function ApplicationForm() {
       if (!step3.agreementDoc)            errs.agreementDoc          = 'Required document';
       if (!step3.safetyFile1)             errs.safetyFile1           = 'Required document';
       if (!step3.claimFile1)              errs.claimFile1            = 'Required document';
-      if (!step3.prototypeLabel)          errs.prototypeLabel        = 'Required document';
-      if (!step3.postMarketingDecl)       errs.postMarketingDecl     = 'Required document';
-      if (!step3.confidentialityDecl)     errs.confidentialityDecl   = 'Required document';
-      if (!step3.gstNo.trim())            errs.gstNo                 = 'GST number is required';
+      if (!step3.prototypeLabel)              errs.prototypeLabel       = 'Required document';
+      if (step3.postMarketingDecl !== true)   errs.postMarketingDecl    = 'Please accept this declaration';
+      if (step3.confidentialityDecl !== true) errs.confidentialityDecl  = 'Please accept this declaration';
     }
 
     if (stepIndex === 3) {
@@ -250,10 +232,6 @@ export default function ApplicationForm() {
       }
     }
 
-    if (stepIndex === 4) {
-      if (!paymentDone) errs.payment = 'Please complete the payment before submitting';
-    }
-
     return errs;
   }
 
@@ -264,7 +242,6 @@ export default function ApplicationForm() {
     setStep(step + 1);
   }
 
-  const fee = TYPE_FEE[typeParam] ?? TYPE_FEE.NSF;
   const { step1, step2, step3, step4 } = formData;
 
   // ── Step content ───────────────────────────────────────────────────────────
@@ -299,8 +276,7 @@ export default function ApplicationForm() {
     <div key={1} style={secCard}>
       {([
         ['applicantName',         'Name of applicant *',                                                                                                              'input',    ''],
-        ['authorisedPerson',      'Name of the authorised person *',                                                                                                  'select',   ['Select', 'Other']],
-        ['authorisedPersonOther', 'Name of the person (if "Other" selected)',                                                                                         'input',    ''],
+        ['authorisedPerson',      'Name of the authorised person *',                                                                                                  'input',    ''],
         ['mobileNo',              'Mobile No. / Phone No. *',                                                                                                         'input',    '(+91) or (0)/(STD Code)'],
         ['email',                 'Email (All communications will only be made through the above email and phone number) *',                                           'input',    'contact@company.com'],
         ['orgName',               'Name of the organisation *',                                                                                                       'input',    ''],
@@ -440,19 +416,35 @@ export default function ApplicationForm() {
           <label style={fieldLabel}>Copy of Proposed Product Prototype Label (as per relevant FSS Regulations) *</label>
           <UB value={step3.prototypeLabel} stepKey="step3" field="prototypeLabel" />
         </div>
-        <div style={row}>
-          <label style={fieldLabel}>Declaration to conduct and provide post marketing surveillance data *</label>
-          <UB value={step3.postMarketingDecl} stepKey="step3" field="postMarketingDecl" />
+        <div style={{ ...row, alignItems: 'flex-start' }}>
+          <label style={fieldLabel}>Declarations *</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', fontSize: 13, color: COLORS.text, lineHeight: 1.55 }}>
+              <input
+                type="checkbox"
+                checked={step3.postMarketingDecl === true}
+                onChange={(e) => { set('step3', 'postMarketingDecl', e.target.checked); setStepErrors((p) => { const n = { ...p }; delete n.postMarketingDecl; return n; }); }}
+                style={{ marginTop: 2, accentColor: COLORS.primary, width: 16, height: 16, flexShrink: 0, cursor: 'pointer' }}
+              />
+              I/We agree to conduct Post Market Surveillance (PMS) within one year of placing the product in the market (or as directed by FSSAI) under Form II requirements, and undertake to comply with all FSSAI stipulations for the approved product. <span style={{ color: COLORS.danger }}>*</span>
+            </label>
+            {errMsg('postMarketingDecl')}
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', fontSize: 13, color: COLORS.text, lineHeight: 1.55 }}>
+              <input
+                type="checkbox"
+                checked={step3.confidentialityDecl === true}
+                onChange={(e) => { set('step3', 'confidentialityDecl', e.target.checked); setStepErrors((p) => { const n = { ...p }; delete n.confidentialityDecl; return n; }); }}
+                style={{ marginTop: 2, accentColor: COLORS.primary, width: 16, height: 16, flexShrink: 0, cursor: 'pointer' }}
+              />
+              I/We request strict confidentiality for this application and all submitted data. It must not be shared with any third parties or disclosed under the RTI Act, except where mandated by applicable law or a competent authority. <span style={{ color: COLORS.danger }}>*</span>
+            </label>
+            {errMsg('confidentialityDecl')}
+          </div>
         </div>
         <div style={row}>
-          <label style={fieldLabel}>Declaration to keep information shared by the firm as confidential *</label>
-          <UB value={step3.confidentialityDecl} stepKey="step3" field="confidentialityDecl" />
-        </div>
-        <div style={row}>
-          <label style={fieldLabel}>GST No. *</label>
+          <label style={fieldLabel}>GST No.</label>
           <div>
-            <input style={eb(input, 'gstNo')} placeholder="Enter GST number" value={step3.gstNo} onChange={(e) => { set('step3', 'gstNo', e.target.value); setStepErrors((p) => { const n = { ...p }; delete n.gstNo; return n; }); }} />
-            {errMsg('gstNo')}
+            <input style={input} placeholder="Enter GST number (optional)" value={step3.gstNo} onChange={(e) => set('step3', 'gstNo', e.target.value)} />
           </div>
         </div>
       </div>
@@ -586,66 +578,16 @@ export default function ApplicationForm() {
       )}
     </div>,
 
-    // ── Step 4: Payment & Submit ────────────────────────────────────────────
+    // ── Step 4: Review & Submit ─────────────────────────────────────────────
     <div key={4} style={secCard}>
-      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 16 }}>Payment &amp; Submission</div>
+      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 16 }}>Review &amp; Submission</div>
 
-      {/* Fee summary */}
-      <div style={{ background: COLORS.primaryLight, border: `1px solid var(--color-primary-22)`, borderRadius: 8, padding: 16, marginBottom: 16 }}>
-        <div style={{ fontWeight: 700, color: COLORS.primary, marginBottom: 8 }}>Fee Summary</div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-          <span style={{ fontSize: 13 }}>{typeParam} Application Fee</span>
-          <span style={{ fontWeight: 700 }}>{fee.fee}</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-          <span style={{ fontSize: 13 }}>GST (18%)</span>
-          <span style={{ fontWeight: 700 }}>{fee.gst}</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: `1px solid var(--color-primary-22)`, paddingTop: 8, marginTop: 4 }}>
-          <span style={{ fontWeight: 700 }}>Total</span>
-          <span style={{ fontWeight: 800, fontSize: 16, color: COLORS.primary }}>{fee.total}</span>
+      <div style={{ background: COLORS.primaryLight, border: `1px solid ${COLORS.primary}33`, borderRadius: 8, padding: 16, marginBottom: 16 }}>
+        <div style={{ fontWeight: 700, color: COLORS.primary, marginBottom: 6 }}>Application Fee</div>
+        <div style={{ fontSize: 13, color: COLORS.text }}>
+          This application type has <strong>no fee</strong>. You may submit directly.
         </div>
       </div>
-
-      {paymentDone ? (
-        <div style={{ background: '#D1FAE5', border: '1px solid #6EE7B7', borderRadius: 8, padding: 16, marginBottom: 16 }}>
-          <div style={{ fontWeight: 700, color: '#065F46', fontSize: 14, marginBottom: 4 }}>✓ Payment Successful</div>
-          <div style={{ fontSize: 12, color: '#065F46' }}>Invoice No: <strong>{invoiceNo}</strong></div>
-          <div style={{ fontSize: 11, color: '#047857', marginTop: 4 }}>You may now submit your application.</div>
-        </div>
-      ) : (
-        <div style={{ marginBottom: 16 }}>
-          {stepErrors.payment && <div style={{ fontSize: 11, color: COLORS.danger, marginBottom: 8 }}>{stepErrors.payment}</div>}
-          <button
-            type="button"
-            disabled={payPending}
-            onClick={async () => {
-              if (!appId) return;
-              setPayPending(true);
-              try {
-                const inv = await openRazorpayCheckout({
-                  applicationId:   appId,
-                  referenceNumber: appId,
-                  companyName:     user?.username || '',
-                  email:           user?.email || '',
-                  contact:         user?.mobile,
-                });
-                setPaymentDone(true);
-                setInvoiceNo(inv);
-                toast.success('Payment successful! Submitting your application…');
-                await handleSubmit();
-              } catch (err: any) {
-                if (err?.message !== 'Payment cancelled') toast.error(err?.message || 'Payment failed');
-              } finally {
-                setPayPending(false);
-              }
-            }}
-            style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 8, padding: '12px 28px', fontSize: 14, fontWeight: 700, cursor: payPending ? 'not-allowed' : 'pointer', opacity: payPending ? 0.7 : 1 }}
-          >
-            {payPending ? 'Opening Payment…' : 'Pay Now'}
-          </button>
-        </div>
-      )}
 
       <div style={{ background: '#FFF8E1', border: '1px solid #FFE082', borderRadius: 6, padding: 12, fontSize: 12, lineHeight: 1.6 }}>
         ℹ️ By submitting this application, I declare that the information provided is true and accurate. I understand that false information may lead to rejection or cancellation of approval.
@@ -653,7 +595,7 @@ export default function ApplicationForm() {
     </div>,
   ];
 
-  const sectionTitles = ['Application Type', 'General Information', 'Documents & Regulatory', 'Additional Specific Information', 'Payment & Submit'];
+  const sectionTitles = ['Application Type', 'General Information', 'Documents & Regulatory', 'Additional Specific Information', 'Review & Submit'];
 
   return (
     <div>

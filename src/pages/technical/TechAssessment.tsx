@@ -5,6 +5,7 @@ import type React from 'react';
 import { COLORS, S } from '@/utils/colors';
 import { fetchApplication, fetchQueries, type Application, type AppFormData, type Query } from '@/services/application.service';
 import { getDocRows, getComplianceItems, getProfileDisplay } from '@/utils/docResolver';
+import { buildForm2Html } from '@/utils/form2Builder';
 import {
   technicalForwardToEC,
   technicalRequestClarification,
@@ -112,19 +113,32 @@ export default function TechAssessment() {
   const form2Ref = useRef<HTMLDivElement>(null);
 
   function printForm2() {
-    const el = form2Ref.current;
-    if (!el) return;
+    if (!app) return;
     const win = window.open('', '_blank', 'width=900,height=700');
     if (!win) return;
-    win.document.write(`<!DOCTYPE html><html><head><title>Form II — ${app?.referenceNumber ?? ''}</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #111; background: #fff; padding: 24px; }
-  table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
-  th { background: #f0f0f0; font-weight: 700; }
-  @media print { body { padding: 0; } }
-</style></head><body>${el.innerHTML}</body></html>`);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fd = app.formData as any;
+    win.document.write(buildForm2Html({
+      applicationType:   app.applicationType,
+      appNo:             app.referenceNumber,
+      approvalNumber:    app.approvalNumber,
+      dateOfApplication: fmtDate(app.submittedAt),
+      mfgName:           fd?.manufacturerName ?? fd?.fboName ?? app.companyName ?? '—',
+      applicantName:     profile.applicantName || app.companyName || '—',
+      address:           app.address || profile.orgName || '—',
+      authorizedPerson:  fd?.authorizedPersonnel ?? fd?.authorisedPerson ?? profile.applicantName ?? '—',
+      productName:       app.productName || '—',
+      foodCategory:      app.foodCategory || '—',
+      materialType:      f2Material,
+      techDetails:       f2TechDetails,
+      licenseNo:         fd?.licenseNo ?? '—',
+      contactDetails:    [fd?.authorisedContact, fd?.authorisedEmail].filter(Boolean).join(' | ') || '—',
+      composition:       fd?.ingredients ?? '—',
+      decision:          f2Decision,
+      conditions:        f2Conditions,
+      reasons:           f2Reasons,
+      issuedOn:          fmtDate(new Date().toISOString()),
+    }));
     win.document.close();
     win.focus();
     win.print();
@@ -553,132 +567,194 @@ export default function TechAssessment() {
             {/* Document card */}
             <div ref={form2Ref} style={{ background: '#fff', borderRadius: 12, border: `1px solid ${COLORS.border}`, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
 
-              {/* Document header */}
-              <div style={{ background: COLORS.primary, padding: '18px 24px', position: 'relative' }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>Food Safety and Standards Authority of India</div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: '#fff', fontFamily: "'Libre Baskerville',Georgia,serif", marginBottom: 2 }}>FORM - II</div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)' }}>
-                    {appType === 'RPET' ? 'Authorization/Rejection of FCM-rPET' : '(Approval/Rejection)'}
-                  </div>
-                </div>
-                <div style={{ position: 'absolute', left: 20, top: '50%', transform: 'translateY(-50%)', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.9)', letterSpacing: 0.5, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 6, padding: '4px 10px' }}>
-                  {appType || 'NSF'}
-                </div>
-                <button onClick={printForm2} style={{ position: 'absolute', right: 20, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: 6, padding: '7px 14px', fontSize: 12, fontWeight: 600, color: '#fff', cursor: 'pointer' }}>
-                  🖨 Print
-                </button>
+              {/* Toolbar */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px', borderBottom: `1px solid ${COLORS.border}`, background: COLORS.bg }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: COLORS.primary, background: COLORS.primaryLight, borderRadius: 6, padding: '3px 10px', letterSpacing: 0.4 }}>{appType}</span>
+                <button onClick={printForm2} style={{ background: COLORS.primary, border: 'none', borderRadius: 6, padding: '6px 16px', fontSize: 12, fontWeight: 600, color: '#fff', cursor: 'pointer' }}>🖨 Print / Download</button>
               </div>
 
+              {/* ── RPET ──────────────────────────────────────────────── */}
+              {appType === 'RPET' && (
               <div style={{ padding: '24px 28px' }}>
-
-                {/* Pre-filled details grid */}
-                <div style={{ background: COLORS.bg, borderRadius: 8, border: `1px solid ${COLORS.border}`, padding: '16px 20px', marginBottom: 24 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.primary, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 14 }}>Application Details (Pre-filled)</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px 24px' }}>
+                <div style={{ background: COLORS.bg, borderRadius: 8, border: `1px solid ${COLORS.border}`, padding: '14px 18px', marginBottom: 24 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.primary, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 }}>Application Details (Pre-filled)</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px 24px' }}>
                     {readField('Application No.', app.referenceNumber)}
-                    {app.approvalNumber && readField(
-                      f2Decision === 'Approved' ? 'Approval No.' : 'Rejection No.',
-                      app.approvalNumber,
-                    )}
+                    {app.approvalNumber && readField(f2Decision === 'Approved' ? 'Approval No.' : 'Rejection No.', app.approvalNumber)}
                     {readField('Date of Application', fmtDate(app.submittedAt))}
-                    {readField(appType === 'RPET' ? 'Name of Manufacturer' : 'Name of Organisation', app.companyName)}
-                    {readField('Name of Applicant', profile.applicantName || '—')}
+                    {readField('Name of Manufacturer', (fd as Record<string,unknown>)?.manufacturerName as string || app.companyName || '—')}
+                    {readField('Name of Applicant', profile.applicantName || app.companyName || '—')}
                     {readField('Registered Address', app.address || profile.orgName || '—')}
-                    {readField('Authorised Person', profile.applicantName || '—')}
-                    {appType !== 'RPET' && readField('Name of Food Product', app.productName || '—')}
-                    {appType !== 'RPET' && readField('Product Category', app.foodCategory || '—')}
+                    {readField('Authorized Person', (fd as Record<string,unknown>)?.authorizedPersonnel as string || profile.applicantName || '—')}
                   </div>
                 </div>
 
-                {/* Type-specific editable fields */}
-                {appType === 'RPET' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-                    <div>
-                      {sectionLabel('Type of Material Being Recycled', true)}
-                      <input value={f2Material} onChange={(e) => setF2Material(e.target.value)}
-                        placeholder="e.g. Food-grade PET resin"
-                        style={fieldInput} />
-                    </div>
-                    <div>
-                      {sectionLabel('Approval / NOC / Details of Technology')}
-                      <textarea rows={3} value={f2TechDetails} onChange={(e) => setF2TechDetails(e.target.value)}
-                        placeholder="Enter approval/NOC and technology description…"
-                        style={{ ...textarea, minHeight: 70 }} />
-                    </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+                  <div>
+                    {sectionLabel('Type of Material Being Recycled', true)}
+                    <input value={f2Material} onChange={(e) => setF2Material(e.target.value)} placeholder="e.g. Polyethylene Terephthalate (PET)" style={fieldInput} />
                   </div>
-                )}
-
-                {appType === 'CA' && (
-                  <div style={{ marginBottom: 24 }}>
-                    <div style={{ marginBottom: 16 }}>
-                      {sectionLabel('Claim Statement')}
-                      <textarea rows={2} value={f2Claim} onChange={(e) => setF2Claim(e.target.value)}
-                        placeholder="Enter the claim statement being evaluated…"
-                        style={{ ...textarea, minHeight: 60 }} />
-                    </div>
-                    <div>
-                      {sectionLabel('If Approved — Food Composition / Ingredient for which Claim is Approved')}
-                      <textarea rows={3} value={f2ClaimComp} onChange={(e) => setF2ClaimComp(e.target.value)}
-                        placeholder={f2Decision === 'Approved' ? 'Specify food composition/ingredient…' : 'N/A — Application rejected'}
-                        style={{ ...textarea, minHeight: 70 }} />
-                    </div>
+                  <div>
+                    {sectionLabel('Approval / NOC / Details of Technology')}
+                    <textarea rows={3} value={f2TechDetails} onChange={(e) => setF2TechDetails(e.target.value)} placeholder="Enter approval/NOC and technology description…" style={{ ...textarea, minHeight: 70 }} />
                   </div>
-                )}
+                </div>
 
-                {(appType === 'NSF' || appType === 'AA' || appType === 'AnyOther') && (
-                  <div style={{ marginBottom: 24 }}>
-                    {sectionLabel('Composition (Ingredients & Food Additives)')}
-                    <textarea rows={4} value={f2Composition} onChange={(e) => setF2Composition(e.target.value)}
-                      placeholder="List ingredients and food additives with INS No. and limits (GMP or mg/Kg)…"
-                      style={{ ...textarea, minHeight: 90 }} />
-                  </div>
-                )}
-
-                {/* Decision toggle */}
                 <div style={{ marginBottom: 24 }}>
-                  {sectionLabel('Application Status / Decision', true)}
+                  {sectionLabel('Status of Application', true)}
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <div style={{
-                      padding: '10px 28px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-                      border: `2px solid ${f2Decision === 'Approved' ? COLORS.success : COLORS.danger}`,
-                      background: f2Decision === 'Approved' ? '#F0FDF4' : '#FFF1F2',
-                      color: f2Decision === 'Approved' ? '#166534' : '#9F1239',
-                    }}>
+                    <div style={{ padding: '10px 28px', borderRadius: 8, fontSize: 13, fontWeight: 700, border: `2px solid ${f2Decision === 'Approved' ? COLORS.success : COLORS.danger}`, background: f2Decision === 'Approved' ? '#F0FDF4' : '#FFF1F2', color: f2Decision === 'Approved' ? '#166534' : '#9F1239' }}>
                       {f2Decision === 'Approved' ? '✓ Approved' : '✗ Rejected'}
                     </div>
                     {f2Decision === 'Approved' && (
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '8px 16px', borderRadius: 8, border: `2px solid ${f2WithPms ? COLORS.warning : COLORS.border}`, background: f2WithPms ? '#FEF3DC' : '#fff', fontSize: 12, fontWeight: 600, color: f2WithPms ? COLORS.warning : COLORS.textMuted, transition: 'all 0.15s' }}>
-                        <input type="checkbox" checked={f2WithPms} onChange={(e) => setF2WithPms(e.target.checked)} style={{ width: 15, height: 15, cursor: 'pointer', accentColor: COLORS.warning }} />
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '8px 16px', borderRadius: 8, border: `2px solid ${f2WithPms ? COLORS.warning : COLORS.border}`, background: f2WithPms ? '#FEF3DC' : '#fff', fontSize: 12, fontWeight: 600, color: f2WithPms ? COLORS.warning : COLORS.textMuted }}>
+                        <input type="checkbox" checked={f2WithPms} onChange={(e) => setF2WithPms(e.target.checked)} style={{ width: 15, height: 15, accentColor: COLORS.warning }} />
                         Approval with PMS
                       </label>
                     )}
                   </div>
-                  {f2WithPms && f2Decision === 'Approved' && (
-                    <div style={{ marginTop: 10, background: '#FEF3DC', border: '1px solid #FCD34D', borderRadius: 6, padding: '8px 12px', fontSize: 11, color: '#92400E' }}>
-                      Post Market Surveillance (PMS) condition will be attached. The applicant will be required to submit periodic monitoring reports after approval.
-                    </div>
-                  )}
                 </div>
 
-                {/* Conditions & Reasons */}
+                <div style={{ marginBottom: 16 }}>
+                  {sectionLabel('Conditions for Authorization (Standard)')}
+                  <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '12px 16px', fontSize: 12, color: COLORS.text, lineHeight: 1.7 }}>
+                    <ol style={{ paddingLeft: 20, margin: 0 }} type="i">
+                      <li style={{ marginBottom: 6 }}>The Food Authority reserves the right to inspect the records, premises and/or manufacturing &amp; other related facilities of the applicant or manufacturing facility of exporting country prior/post authorization.</li>
+                      <li style={{ marginBottom: 6 }}>The recycled PET intended to be used as food contact material shall comply to all the criteria specified by FSSAI &amp; rules and regulations made under the Food Safety and Standards Act, 2006 &amp; as amended from time to time.</li>
+                      <li>The applicant shall maintain all documents/records/details/certificates/audit &amp; test reports as specified in the 'Guidelines for acceptance of recycled Polyethylene terephthalate (PET) as Food Contact Material (FCM-rPET)'.</li>
+                    </ol>
+                  </div>
+                </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
                   <div>
-                    {sectionLabel(`1. Conditions for ${appType === 'RPET' ? 'Authorization' : 'Approval'}`, f2Decision === 'Approved')}
-                    <textarea rows={5} value={f2Conditions} onChange={(e) => setF2Conditions(e.target.value)}
-                      placeholder={f2Decision === 'Approved' ? 'State conditions under which approval is granted…' : 'N/A — Application rejected'}
-                      style={{ ...textarea, minHeight: 110, borderColor: f2Decision === 'Approved' && !f2Conditions.trim() ? COLORS.danger + '80' : COLORS.border }} />
+                    {sectionLabel('Additional Condition for Authorization (iv)')}
+                    <textarea rows={5} value={f2Conditions} onChange={(e) => setF2Conditions(e.target.value)} placeholder="Additional condition, if any…" style={{ ...textarea, minHeight: 110 }} />
                   </div>
                   <div>
-                    {sectionLabel(`${appType === 'CA' ? '3' : '2'}. Reasons for Rejection, if any`, f2Decision === 'Rejected')}
-                    <textarea rows={5} value={f2Reasons} onChange={(e) => setF2Reasons(e.target.value)}
-                      placeholder={f2Decision === 'Rejected' ? 'State reasons for rejection…' : 'N/A — Application approved'}
-                      style={{ ...textarea, minHeight: 110, borderColor: f2Decision === 'Rejected' && !f2Reasons.trim() ? COLORS.danger + '80' : COLORS.border }} />
+                    {sectionLabel('Reasons for Rejection, if any', f2Decision === 'Rejected')}
+                    <textarea rows={5} value={f2Reasons} onChange={(e) => setF2Reasons(e.target.value)} placeholder={f2Decision === 'Rejected' ? 'State reasons for rejection…' : 'N/A — Application approved'} style={{ ...textarea, minHeight: 110, borderColor: f2Decision === 'Rejected' && !f2Reasons.trim() ? COLORS.danger + '80' : COLORS.border }} />
+                  </div>
+                </div>
+              </div>
+              )}
+
+              {/* ── Vegan ─────────────────────────────────────────────── */}
+              {appType === 'Vegan' && (
+              <div style={{ padding: '24px 28px' }}>
+                <div style={{ background: COLORS.bg, borderRadius: 8, border: `1px solid ${COLORS.border}`, padding: '14px 18px', marginBottom: 24 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.primary, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 }}>Application Details (Pre-filled)</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px 24px' }}>
+                    {readField('Application No.', app.referenceNumber)}
+                    {app.approvalNumber && readField(f2Decision === 'Approved' ? 'Approval No.' : 'Rejection No.', app.approvalNumber)}
+                    {readField('Date of Application', fmtDate(app.submittedAt))}
+                    {readField('Name of FBO', (fd as Record<string,unknown>)?.fboName as string || app.companyName || '—')}
+                    {readField('FBO Address', (fd as Record<string,unknown>)?.fboAddress as string || app.address || '—')}
+                    {readField('License No.', (fd as Record<string,unknown>)?.licenseNo as string || '—')}
+                    {readField('Authorized Person', (fd as Record<string,unknown>)?.authorisedPerson as string || profile.applicantName || '—')}
+                    {readField('Contact Details', [(fd as Record<string,unknown>)?.authorisedContact, (fd as Record<string,unknown>)?.authorisedEmail].filter(Boolean).join(' | ') || '—')}
+                    {readField('Name of Product', app.productName || '—')}
+                    {readField('Food Category (FSSR)', app.foodCategory || '—')}
+                    {readField('Composition', (fd as Record<string,unknown>)?.ingredients as string || '—')}
                   </div>
                 </div>
 
-                {/* Submit bar */}
-                <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ marginBottom: 24 }}>
+                  {sectionLabel('Application Status', true)}
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ padding: '10px 20px', borderRadius: 8, fontSize: 13, fontWeight: 700, border: `2px solid ${f2Decision === 'Approved' ? COLORS.success : COLORS.border}`, background: f2Decision === 'Approved' ? '#F0FDF4' : '#fff', color: f2Decision === 'Approved' ? '#166534' : COLORS.textMuted }}>
+                      {f2Decision === 'Approved' ? '☑' : '☐'} Product approved for vegan logo
+                    </div>
+                    <div style={{ padding: '10px 20px', borderRadius: 8, fontSize: 13, fontWeight: 700, border: `2px solid ${f2Decision !== 'Approved' ? COLORS.danger : COLORS.border}`, background: f2Decision !== 'Approved' ? '#FFF1F2' : '#fff', color: f2Decision !== 'Approved' ? '#9F1239' : COLORS.textMuted }}>
+                      {f2Decision !== 'Approved' ? '☑' : '☐'} Product not approved for vegan logo
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 8, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.5 }}>
+                    Note: Status is locked to EC recommendation. If approved, the FBO can submit this to the Licensing Authority for vegan logo endorsement.
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+                  <div>
+                    {sectionLabel('1. Conditions for Approval', f2Decision === 'Approved')}
+                    <textarea rows={5} value={f2Conditions} onChange={(e) => setF2Conditions(e.target.value)} placeholder={f2Decision === 'Approved' ? 'State conditions for approval…' : 'N/A — Application not approved'} style={{ ...textarea, minHeight: 110, borderColor: f2Decision === 'Approved' && !f2Conditions.trim() ? COLORS.danger + '80' : COLORS.border }} />
+                  </div>
+                  <div>
+                    {sectionLabel('2. Reasons for Rejection, if any', f2Decision === 'Rejected')}
+                    <textarea rows={5} value={f2Reasons} onChange={(e) => setF2Reasons(e.target.value)} placeholder={f2Decision === 'Rejected' ? 'State reasons for rejection…' : 'N/A — Application approved'} style={{ ...textarea, minHeight: 110, borderColor: f2Decision === 'Rejected' && !f2Reasons.trim() ? COLORS.danger + '80' : COLORS.border }} />
+                  </div>
+                </div>
+              </div>
+              )}
+
+              {/* ── Generic form for NSF / CA / AnyOther / AA ─────────── */}
+              {appType !== 'RPET' && appType !== 'Vegan' && (
+              <div style={{ padding: '24px 28px' }}>
+                {/* Pre-filled details */}
+                <div style={{ background: COLORS.bg, borderRadius: 8, border: `1px solid ${COLORS.border}`, padding: '14px 18px', marginBottom: 24 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.primary, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 }}>Application Details (Pre-filled)</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px 24px' }}>
+                    {readField('Application No.', app.referenceNumber)}
+                    {app.approvalNumber && readField(f2Decision === 'Approved' ? 'Approval No.' : 'Rejection No.', app.approvalNumber)}
+                    {readField('Date of Application', fmtDate(app.submittedAt))}
+                    {readField('Name of Organisation', app.companyName)}
+                    {readField('Name of Applicant', profile.applicantName || '—')}
+                    {readField('Registered Address', app.address || profile.orgName || '—')}
+                    {readField('Authorised Person', profile.applicantName || '—')}
+                    {readField('Name of Food Product', app.productName || '—')}
+                    {readField('Product Category', app.foodCategory || '—')}
+                  </div>
+                </div>
+
+                {appType === 'ClaimApproval' && (
+                  <div style={{ marginBottom: 24 }}>
+                    <div style={{ marginBottom: 14 }}>
+                      {sectionLabel('Claim Statement')}
+                      <textarea rows={2} value={f2Claim} onChange={(e) => setF2Claim(e.target.value)} placeholder="Enter the claim statement being evaluated…" style={{ ...textarea, minHeight: 60 }} />
+                    </div>
+                    <div>
+                      {sectionLabel('If Approved — Food Composition / Ingredient for which Claim is Approved')}
+                      <textarea rows={3} value={f2ClaimComp} onChange={(e) => setF2ClaimComp(e.target.value)} placeholder={f2Decision === 'Approved' ? 'Specify food composition/ingredient…' : 'N/A — Application rejected'} style={{ ...textarea, minHeight: 70 }} />
+                    </div>
+                  </div>
+                )}
+                {(appType === 'NSF' || appType === 'AyurvedaAahara' || appType === 'AnyOther') && (
+                  <div style={{ marginBottom: 24 }}>
+                    {sectionLabel('Composition (Ingredients & Food Additives)')}
+                    <textarea rows={4} value={f2Composition} onChange={(e) => setF2Composition(e.target.value)} placeholder="List ingredients and food additives with INS No. and limits (GMP or mg/Kg)…" style={{ ...textarea, minHeight: 90 }} />
+                  </div>
+                )}
+
+                {/* Decision */}
+                <div style={{ marginBottom: 24 }}>
+                  {sectionLabel('Application Status / Decision', true)}
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ padding: '10px 28px', borderRadius: 8, fontSize: 13, fontWeight: 700, border: `2px solid ${f2Decision === 'Approved' ? COLORS.success : COLORS.danger}`, background: f2Decision === 'Approved' ? '#F0FDF4' : '#FFF1F2', color: f2Decision === 'Approved' ? '#166534' : '#9F1239' }}>
+                      {f2Decision === 'Approved' ? '✓ Approved' : '✗ Rejected'}
+                    </div>
+                    {f2Decision === 'Approved' && (
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '8px 16px', borderRadius: 8, border: `2px solid ${f2WithPms ? COLORS.warning : COLORS.border}`, background: f2WithPms ? '#FEF3DC' : '#fff', fontSize: 12, fontWeight: 600, color: f2WithPms ? COLORS.warning : COLORS.textMuted }}>
+                        <input type="checkbox" checked={f2WithPms} onChange={(e) => setF2WithPms(e.target.checked)} style={{ width: 15, height: 15, accentColor: COLORS.warning }} />
+                        Approval with PMS
+                      </label>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+                  <div>
+                    {sectionLabel('1. Conditions for Approval', f2Decision === 'Approved')}
+                    <textarea rows={5} value={f2Conditions} onChange={(e) => setF2Conditions(e.target.value)} placeholder={f2Decision === 'Approved' ? 'State conditions…' : 'N/A'} style={{ ...textarea, minHeight: 110, borderColor: f2Decision === 'Approved' && !f2Conditions.trim() ? COLORS.danger + '80' : COLORS.border }} />
+                  </div>
+                  <div>
+                    {sectionLabel(`${appType === 'ClaimApproval' ? '3' : '2'}. Reasons for Rejection, if any`, f2Decision === 'Rejected')}
+                    <textarea rows={5} value={f2Reasons} onChange={(e) => setF2Reasons(e.target.value)} placeholder={f2Decision === 'Rejected' ? 'State reasons…' : 'N/A'} style={{ ...textarea, minHeight: 110, borderColor: f2Decision === 'Rejected' && !f2Reasons.trim() ? COLORS.danger + '80' : COLORS.border }} />
+                  </div>
+                </div>
+              </div>
+              )}
+
+              {/* Submit bar — all types */}
+              <div style={{ borderTop: `1px solid ${COLORS.border}`, padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: COLORS.bg }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{ width: 10, height: 10, borderRadius: '50%', background: f2Decision === 'Approved' ? COLORS.success : COLORS.danger }} />
                     <span style={{ fontSize: 12, color: COLORS.textMuted }}>
@@ -693,7 +769,6 @@ export default function TechAssessment() {
                   </button>
                 </div>
 
-              </div>
             </div>
           </div>
         );

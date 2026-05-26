@@ -8,15 +8,15 @@ import { openInvoiceWindow } from '@/utils/invoiceBuilder';
 
 // ── Fee table ──────────────────────────────────────────────────────────────────
 const FEE: Record<string, { desc: string; base: number; gst: number; total: number }> = {
-  NSF:            { desc: 'Novel & Special Foods (NSF)',  base: 50000, gst: 9000,  total: 59000  },
-  ClaimApproval:  { desc: 'Claim Approval',               base: 50000, gst: 9000,  total: 59000  },
-  AyurvedaAahara: { desc: 'Ayurveda Aahara',              base: 50000, gst: 9000,  total: 59000  },
-  RPET:           { desc: 'Recycled PET (rPET)',          base: 15000, gst: 2700,  total: 17700  },
-  AnyOther:       { desc: 'Any Other Non-Specified Food', base: 10000, gst: 1800,  total: 11800  },
+  NSF:            { desc: 'Novel & Special Foods (NSF)',    base: 50000, gst: 9000, total: 59000 },
+  ClaimApproval:  { desc: 'Claim Approval',                 base: 50000, gst: 9000, total: 59000 },
+  AyurvedaAahara: { desc: 'Ayurveda Aahara',                base: 50000, gst: 9000, total: 59000 },
+  RPET:           { desc: 'Recycled PET (rPET)',            base: 2000,  gst: 360,  total: 2360  },
+  Vegan:          { desc: 'Vegan Logo Certification',       base: 10000, gst: 1800, total: 11800 },
 };
 
 const TYPE_LABELS: Record<string, string> = {
-  NSF: 'NSF', ClaimApproval: 'Claim Approval', AyurvedaAahara: 'Ayurveda Aahara', RPET: 'rPET', AnyOther: 'Any Other',
+  NSF: 'NSF', ClaimApproval: 'Claim Approval', AyurvedaAahara: 'Ayurveda Aahara', RPET: 'rPET', Vegan: 'Vegan',
 };
 
 function inr(n: number) {
@@ -37,7 +37,7 @@ export default function TaxInvoice() {
   useEffect(() => {
     fetchMyApplications()
       .then((all) => {
-        const submitted = all.filter((a) => a.stage !== 'Draft');
+        const submitted = all.filter((a) => a.stage !== 'Draft' && !['AnyOther'].includes(a.applicationType));
         setApps(submitted);
         // Load payment record for each submitted application
         Promise.all(
@@ -76,8 +76,11 @@ export default function TaxInvoice() {
             </thead>
             <tbody>
               {rows.map((app, i) => {
-                const fee     = FEE[app.applicationType] ?? FEE['NSF'];
-                const payment = payments[app.id] ?? null;
+                const payment     = payments[app.id] ?? null;
+                const fallbackFee = FEE[app.applicationType] ?? FEE['NSF'];
+                const fee = payment?.amount
+                  ? { total: Math.round(payment.amount / 100), base: Math.round(payment.amount / 100 * 100 / 118), gst: Math.round(payment.amount / 100 * 18 / 118) }
+                  : fallbackFee;
                 const paid    = payment?.status === 'Completed';
                 const invoiceNo = payment?.invoiceNo ?? '';
                 return (

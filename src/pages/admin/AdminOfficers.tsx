@@ -311,7 +311,7 @@ export default function AdminOfficers() {
                               value={pendingRole}
                               onChange={(e) => setPendingRoles((prev) => ({ ...prev, [o.id]: e.target.value }))}
                               disabled={isSaving}
-                              style={{ padding: '4px 8px', border: `1px solid ${changed ? COLORS.warning : COLORS.border}`, borderRadius: 5, fontSize: 11, background: changed ? COLORS.warningLight : COLORS.bg, cursor: 'pointer', minWidth: 140 }}>
+                              style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 6, padding: '8px 34px 8px 10px', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const, fontFamily: "'Noto Sans', 'Segoe UI', sans-serif", backgroundColor: '#f7f8fc', backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23555' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")", backgroundRepeat: 'no-repeat' as const, backgroundPosition: 'right 10px center', backgroundSize: '12px', color: 'var(--color-text)', cursor: 'pointer', appearance: 'none' as const, transition: 'border-color 0.15s, box-shadow 0.15s', minWidth: 140 }}>
                               {addRoles.map((r) => <option key={r.roleCode} value={r.roleCode}>{r.roleName}</option>)}
                             </select>
                             {changed && (

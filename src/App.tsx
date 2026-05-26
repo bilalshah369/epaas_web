@@ -21,6 +21,7 @@ import NSFApplicationForm              from '@/pages/applicant/NSFApplicationFor
 import CAApplicationForm               from '@/pages/applicant/CAApplicationForm';
 import AyurvedaAaharaApplicationForm   from '@/pages/applicant/AyurvedaAaharaApplicationForm';
 import RPETApplicationForm             from '@/pages/applicant/RPETApplicationForm';
+import VeganApplicationForm            from '@/pages/applicant/VeganApplicationForm';
 import ApplicationView            from '@/pages/applicant/ApplicationView';
 import TaxInvoice                 from '@/pages/applicant/TaxInvoice';
 import ApplicantProfile           from '@/pages/applicant/ApplicantProfile';
@@ -143,7 +144,8 @@ export default function App() {
             <Route path="/app/apply/nsf-form"   element={<NSFApplicationForm />}             />
             <Route path="/app/apply/ca-form"    element={<CAApplicationForm />}              />
             <Route path="/app/apply/aa-form"    element={<AyurvedaAaharaApplicationForm />}  />
-            <Route path="/app/apply/rpet-form"  element={<RPETApplicationForm />}            />
+            <Route path="/app/apply/rpet-form"   element={<RPETApplicationForm />}           />
+            <Route path="/app/apply/vegan-form"  element={<VeganApplicationForm />}          />
             <Route path="/app/applications/:id" element={<ApplicationView />}     />
             <Route path="/app/tax-invoice"      element={<TaxInvoice />}          />
             <Route path="/app/profile"          element={<ApplicantProfile />}    />

@@ -18,7 +18,7 @@ import { openRazorpayCheckout, getPayment } from '@/services/payment.service';
 // ── Constants ─────────────────────────────────────────────────────────────────
 const STEPS = ['Manufacturer & Licenses', 'Recycling Technology', 'Validation & Declarations', 'Payment'];
 
-const RPET_FEE = { fee: '₹50,000', gst: '₹9,000', total: '₹59,000' };
+const RPET_FEE = { fee: '₹2,000', gst: '₹360', total: '₹2,360' };
 
 // ── rPET-specific flat form data ──────────────────────────────────────────────
 interface RPETFormData {
@@ -73,7 +73,7 @@ const input: React.CSSProperties = {
   fontFamily: "'Noto Sans','Segoe UI',sans-serif",
 };
 const textarea: React.CSSProperties = { ...input, resize: 'vertical', minHeight: 80 };
-const select: React.CSSProperties   = { ...input, cursor: 'pointer', appearance: 'auto', background: '#fff', color: COLORS.text };
+const select: React.CSSProperties   = { ...S.select };
 const secCard: React.CSSProperties  = {
   background: COLORS.white, border: `1px solid ${COLORS.border}`,
   borderRadius: 10, padding: 16, marginBottom: 12,
@@ -582,7 +582,7 @@ export default function RPETApplicationForm() {
         {stepContent[step]}
 
         {/* Navigation bar */}
-        <div style={{ position: 'sticky', bottom: 0, zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, padding: '12px 20px', borderTop: `1px solid ${COLORS.border}`, background: '#fff', boxShadow: '0 -2px 12px rgba(0,0,0,0.06)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, padding: '12px 0', borderTop: `1px solid ${COLORS.border}` }}>
           <button
             onClick={() => { setStepErrors({}); step > 0 ? setStep(step - 1) : navigate('/app/apply'); }}
             style={{ background: 'transparent', color: COLORS.primary, border: `1.5px solid ${COLORS.primary}`, borderRadius: 8, padding: '9px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}

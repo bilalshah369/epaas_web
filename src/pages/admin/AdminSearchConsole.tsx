@@ -138,7 +138,7 @@ export default function AdminSearchConsole() {
           <div><label style={lStyle}>Company / Organization</label><input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Search company…" style={iStyle} /></div>
           <div>
             <label style={lStyle}>Application Status</label>
-            <select value={stageKey} onChange={(e) => setStageKey(e.target.value)} style={{ ...iStyle, cursor: 'pointer' }}>
+            <select value={stageKey} onChange={(e) => setStageKey(e.target.value)} style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 6, padding: '8px 34px 8px 10px', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const, fontFamily: "'Noto Sans', 'Segoe UI', sans-serif", backgroundColor: '#f7f8fc', backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23555' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")", backgroundRepeat: 'no-repeat' as const, backgroundPosition: 'right 10px center', backgroundSize: '12px', color: 'var(--color-text)', cursor: 'pointer', appearance: 'none' as const, transition: 'border-color 0.15s, box-shadow 0.15s' }}>
               {Object.keys(STAGE_OPTIONS).map((k) => <option key={k}>{k}</option>)}
             </select>
           </div>

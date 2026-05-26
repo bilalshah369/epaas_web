@@ -5,6 +5,7 @@ import { COLORS, S } from '@/utils/colors';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { fetchApplication, fetchQueries, nodalForwardQueryToApplicant, nodalForwardResponseToTech, type Application, type AppFormData, type Query } from '@/services/application.service';
 import { getDocRows, getProfileDisplay } from '@/utils/docResolver';
+import { buildForm2Html } from '@/utils/form2Builder';
 import FormDataTable from '@/components/ui/FormDataTable';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { nodalAForward, nodalAReturnWithQuery, nodalASendDecision, nodalADispatchReviewDecision, nodalAForwardReviewToChairperson, fetchEligibleTO, type EligibleOfficer } from '@/services/officer.service';
@@ -444,33 +445,31 @@ export default function ApplicationScrutiny() {
                     </div>
                     <button
                       onClick={() => {
-                        const el = form2Ref.current;
-                        if (!el) return;
                         const win = window.open('', '_blank', 'width=900,height=700');
                         if (!win) return;
-                        win.document.write(`<!DOCTYPE html><html><head><title>Form II</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#111;background:#fff;padding:32px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;margin-bottom:16px}.field label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#666;display:block;margin-bottom:2px}.field span{font-size:12px;font-weight:600;color:#111}.decision{padding:10px 14px;border-radius:6px;font-size:13px;font-weight:800;margin-bottom:14px}.approved{background:#F0FDF4;color:#166534;border:1px solid #BBF7D0}.rejected{background:#FEF2F2;color:#991B1B;border:1px solid #FECACA}.section label{font-size:10px;font-weight:700;text-transform:uppercase;color:#555;display:block;margin-bottom:4px}.section p{font-size:12px;color:#111;line-height:1.6;white-space:pre-wrap;background:#f9f9f9;padding:8px 10px;border-radius:4px}@media print{body{padding:0}}</style></head><body>
-                          <div style="background:#1A3C34;color:#fff;padding:16px 24px;text-align:center;border-radius:8px 8px 0 0;margin-bottom:0">
-                            <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;opacity:.7;margin-bottom:4px">Food Safety and Standards Authority of India</div>
-                            <div style="font-size:20px;font-weight:800;font-family:Georgia,serif;margin-bottom:2px">FORM - II</div>
-                            <div style="font-size:11px;opacity:.85">${app.applicationType === 'RPET' ? 'Authorization/Rejection of FCM-rPET' : '(Approval/Rejection)'}</div>
-                          </div>
-                          <div style="border:1px solid #ccc;border-top:none;border-radius:0 0 8px 8px;padding:20px">
-                            <div class="grid">
-                              <div class="field"><label>Application No.</label><span>${app.referenceNumber}</span></div>
-                              ${app.approvalNumber ? `<div class="field"><label>${f2Decision === 'Approved' ? 'Approval No.' : 'Rejection No.'}</label><span style="font-weight:800">${app.approvalNumber}</span></div>` : ''}
-                              <div class="field"><label>Date of Application</label><span>${String(form2['dateOfApplication'] ?? '—')}</span></div>
-                              <div class="field"><label>Organisation</label><span>${String(form2['orgName'] ?? app.companyName)}</span></div>
-                              <div class="field"><label>Applicant Name</label><span>${String(form2['applicantName'] ?? '—')}</span></div>
-                              <div class="field"><label>Registered Address</label><span>${String(form2['address'] ?? '—')}</span></div>
-                              <div class="field"><label>Authorised Person</label><span>${String(form2['authorizedPerson'] ?? '—')}</span></div>
-                              ${form2['productName'] ? `<div class="field"><label>Name of Food Product</label><span>${String(form2['productName'])}</span></div>` : ''}
-                              ${form2['productCategory'] ? `<div class="field"><label>Product Category</label><span>${String(form2['productCategory'])}</span></div>` : ''}
-                            </div>
-                            <div class="decision ${f2Decision === 'Approved' ? 'approved' : 'rejected'}">${f2Decision === 'Approved' ? '✓ APPROVED' : '✗ REJECTED'}</div>
-                            ${toDecision?.['conditions'] ? `<div class="section" style="margin-bottom:12px"><label>Conditions for Approval</label><p>${toDecision['conditions']}</p></div>` : ''}
-                            ${toDecision?.['reasons'] ? `<div class="section" style="margin-bottom:12px"><label>Reasons for Rejection</label><p>${toDecision['reasons']}</p></div>` : ''}
-                          </div>
-                        </body></html>`);
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const fd = app.formData as any;
+                        win.document.write(buildForm2Html({
+                          applicationType:   app.applicationType,
+                          appNo:             app.referenceNumber,
+                          approvalNumber:    app.approvalNumber,
+                          dateOfApplication: String(form2?.['dateOfApplication'] ?? fmtDate(app.submittedAt)),
+                          mfgName:           String(form2?.['orgName'] ?? fd?.manufacturerName ?? fd?.fboName ?? app.companyName ?? '—'),
+                          applicantName:     String(form2?.['applicantName'] ?? app.companyName ?? '—'),
+                          address:           String(form2?.['address'] ?? app.address ?? '—'),
+                          authorizedPerson:  String(form2?.['authorizedPerson'] ?? fd?.authorizedPersonnel ?? fd?.authorisedPerson ?? '—'),
+                          productName:       String(form2?.['productName'] ?? app.productName ?? '—'),
+                          foodCategory:      String(form2?.['productCategory'] ?? app.foodCategory ?? '—'),
+                          materialType:      String(form2?.['materialType'] ?? ''),
+                          techDetails:       String(form2?.['techDetails'] ?? ''),
+                          licenseNo:         String(fd?.licenseNo ?? '—'),
+                          contactDetails:    [fd?.authorisedContact, fd?.authorisedEmail].filter(Boolean).join(' | ') || '—',
+                          composition:       String(fd?.ingredients ?? '—'),
+                          decision:          (f2Decision === 'Approved' ? 'Approved' : 'Rejected') as 'Approved' | 'Rejected',
+                          conditions:        String(toDecision?.['conditions'] ?? ''),
+                          reasons:           String(toDecision?.['reasons'] ?? ''),
+                          issuedOn:          fmtDate(app.updatedAt ?? app.submittedAt),
+                        }));
                         win.document.close(); win.focus(); win.print(); win.close();
                       }}
                       style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: 6, padding: '5px 12px', fontSize: 11, fontWeight: 600, color: '#fff', cursor: 'pointer' }}

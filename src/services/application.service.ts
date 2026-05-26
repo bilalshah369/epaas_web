@@ -74,8 +74,8 @@ export interface Step3Data {
   claimFile1:           string;
   claimFile2:           string;
   prototypeLabel:       string;
-  postMarketingDecl:    string;
-  confidentialityDecl:  string;
+  postMarketingDecl:    string | boolean;
+  confidentialityDecl:  string | boolean;
   gstNo:                string;
 }
 export interface Step4Data {

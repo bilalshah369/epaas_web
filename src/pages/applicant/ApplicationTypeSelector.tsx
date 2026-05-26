@@ -8,7 +8,6 @@ interface AppType {
   label:      string;
   desc:       string;
   fee:        string;
-  duration:   string;
   color:      string;
   lightColor: string;
 }
@@ -20,7 +19,6 @@ const APP_TYPES: AppType[] = [
     label:      'Non-Specified/Novel Food & Food Ingredients (NSF & FI)',
     desc:       'For approval of food products or ingredients covered under the Food Safety and Standards (Approval for Non-Specific Food and Food Ingredients) Regulation, 2017. Requires full dossier, safety and efficacy data and Expert Committee evaluation.',
     fee:        '₹50,000 + GST',
-    duration:   '90–120 days',
     color:      '#1565C0',
     lightColor: '#E3F2FD',
   },
@@ -30,7 +28,6 @@ const APP_TYPES: AppType[] = [
     label:      'Claim Approval (CA)',
     desc:       'For approval of claims under the Food Safety and Standards (Advertising and Claims) Regulation, 2018. Requires scientific substantiation and evidence mapping.',
     fee:        '₹50,000 + GST',
-    duration:   '60–90 days',
     color:      '#7EC8E8',
     lightColor: '#EDF8FD',
   },
@@ -39,8 +36,7 @@ const APP_TYPES: AppType[] = [
     code:       'AA',
     label:      'Ayurveda Aahara (AA)',
     desc:       'For approval of Ayurveda Aahara as per the Food Safety and Standards (Ayurveda Aahara) Regulations, 2022.',
-    fee:        '₹50,000 + GST',
-    duration:   '60–90 days',
+    fee:        '₹7,500–₹50,000 + GST',
     color:      '#6A1B5D',
     lightColor: '#F8EEF5',
   },
@@ -50,7 +46,6 @@ const APP_TYPES: AppType[] = [
     label:      'Any Other',
     desc:       'For approval of FSMP, notification of esters/derivatives/salts of vitamins, salts/chelates of minerals, and esters/derivatives/isomers/salts of amino acids and approval of any other food, product, process, or system for which prior approval is required by the Food Authority under the provisions of the FSS Act, 2006, and regulations made thereunder, or as notified from time to time.',
     fee:        'No Fee',
-    duration:   '30–45 days',
     color:      '#607D8B',
     lightColor: '#EFF4F6',
   },
@@ -60,9 +55,17 @@ const APP_TYPES: AppType[] = [
     label:      'Recycled PET Packaging (rPET)',
     desc:       'For authorization of recycle plastic manufacturers as per the Food Safety and Standards (Packaging) Regulation, 2018',
     fee:        '₹2,000 + GST',
-    duration:   '60–90 days',
     color:      '#EF6C00',
     lightColor: '#FFF4E8',
+  },
+  {
+    key:        'vegan',
+    code:       'Vegan',
+    label:      'Vegan',
+    desc:       'For the endorsement of Vegan logo as per the Food Safety and Standards (Vegan Foods) Regulations, 2022',
+    fee:        '₹10,000 + GST',
+    color:      '#2E7D32',
+    lightColor: '#E8F5E9',
   },
 ];
 
@@ -70,7 +73,8 @@ function getFormPath(code: string): string {
   if (code === 'NSF')  return `/app/apply/nsf-form?type=NSF`;
   if (code === 'CA')   return `/app/apply/ca-form?type=CA`;
   if (code === 'AA')   return `/app/apply/aa-form?type=AA`;
-  if (code === 'RPET') return `/app/apply/rpet-form?type=RPET`;
+  if (code === 'RPET')  return `/app/apply/rpet-form?type=RPET`;
+  if (code === 'Vegan') return `/app/apply/vegan-form?type=Vegan`;
   return `/app/apply/form?type=${code}`;
 }
 
@@ -96,7 +100,7 @@ export default function ApplicationTypeSelector() {
       </div>
 
       {/* Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
         {APP_TYPES.map((t) => {
           const isSelected = selected === t.key;
           return (
@@ -152,14 +156,12 @@ export default function ApplicationTypeSelector() {
                 </div>
               </div>
 
-              {/* Fee / duration */}
+              {/* Fee */}
               <div style={{
                 borderTop: `1px solid ${COLORS.border}`, paddingTop: 10,
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                fontSize: 12, color: COLORS.textMuted, marginTop: 'auto',
+                marginTop: 'auto',
               }}>
                 <span style={{ fontWeight: 700, color: COLORS.text, fontSize: 13 }}>{t.fee}</span>
-                <span>{t.duration}</span>
               </div>
 
               {/* Continue button */}
@@ -203,8 +205,6 @@ export default function ApplicationTypeSelector() {
                 <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.text }}>{selectedType.label}</div>
                 <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>
                   Fee: <strong style={{ color: COLORS.text }}>{selectedType.fee}</strong>
-                  &nbsp;·&nbsp;
-                  Timeline: <strong style={{ color: COLORS.text }}>{selectedType.duration}</strong>
                 </div>
               </div>
             </div>
