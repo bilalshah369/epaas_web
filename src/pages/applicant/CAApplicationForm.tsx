@@ -14,6 +14,7 @@ import {
   fetchMyApplications, saveDraftApplication, submitDraftApplication,
   type AppFormData,
 } from '@/services/application.service';
+import { openRazorpayCheckout, getPayment } from '@/services/payment.service';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const STEPS = ['Applicant & Product', 'Claim & IPR', 'Scientific & Safety', 'Payment'];
@@ -124,12 +125,21 @@ export default function CAApplicationForm() {
   const [dialog, setDialog]     = useState<{ msg: string; action: () => void } | null>(null);
   const [formData, setFormData] = useState<CAFormData>(emptyCAFormData);
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
+  const [paymentDone, setPaymentDone] = useState(false);
+  const [invoiceNo, setInvoiceNo]     = useState<string | null>(null);
+  const [payPending, setPayPending]   = useState(false);
 
   useEffect(() => {
+    const loadPayment = (id: string) =>
+      getPayment(id).then((p) => {
+        if (p?.status === 'Completed') { setPaymentDone(true); setInvoiceNo(p.invoiceNo); }
+      }).catch(() => {});
+
     if (idParam) {
       fetchApplication(idParam).then((app) => {
         setAppId(app.id);
         if (app.formData) setFormData(app.formData as unknown as CAFormData);
+        loadPayment(app.id);
       }).catch(() => toast.error('Could not load draft'));
     } else {
       fetchMyApplications()
@@ -138,6 +148,7 @@ export default function CAApplicationForm() {
           if (existing) {
             setAppId(existing.id);
             if (existing.formData) setFormData(existing.formData as unknown as CAFormData);
+            loadPayment(existing.id);
           } else {
             return createDraftApplication('CA', user?.username || 'Draft').then((app) => setAppId(app.id));
           }
@@ -276,7 +287,7 @@ export default function CAApplicationForm() {
     }
 
     if (stepIndex === 3) {
-      if (!d.paymentReference.trim())             errs.paymentReference             = 'Please enter a transaction reference number';
+      if (!paymentDone) errs.payment = 'Please complete the payment before submitting';
     }
 
     return errs;
@@ -586,26 +597,45 @@ export default function CAApplicationForm() {
         </div>
       </div>
 
-      <div style={{ marginBottom: 12 }}>
-        <label style={S.label}>Payment Method</label>
-        <select style={select} value={d.paymentMethod} onChange={(e) => setField('paymentMethod', e.target.value)}>
-          <option>Online Payment (NEFT/RTGS/UPI)</option>
-          <option>Demand Draft</option>
-        </select>
-      </div>
-
-      <div style={{ marginBottom: 16 }}>
-        <label style={S.label}>Transaction Reference Number *</label>
-        <div>
-          <input
-            style={eb(input, 'paymentReference')}
-            placeholder="Enter payment transaction reference"
-            value={d.paymentReference}
-            onChange={(e) => setField('paymentReference', e.target.value)}
-          />
-          {errMsg('paymentReference')}
+      {paymentDone ? (
+        <div style={{ background: '#D1FAE5', border: '1px solid #6EE7B7', borderRadius: 8, padding: 16, marginBottom: 16 }}>
+          <div style={{ fontWeight: 700, color: '#065F46', fontSize: 14, marginBottom: 4 }}>✓ Payment Successful</div>
+          <div style={{ fontSize: 12, color: '#065F46' }}>Invoice No: <strong>{invoiceNo}</strong></div>
+          <div style={{ fontSize: 11, color: '#047857', marginTop: 4 }}>You may now submit your application.</div>
         </div>
-      </div>
+      ) : (
+        <div style={{ marginBottom: 16 }}>
+          {stepErrors.payment && <div style={{ fontSize: 11, color: COLORS.danger, marginBottom: 8 }}>{stepErrors.payment}</div>}
+          <button
+            type="button"
+            disabled={payPending}
+            onClick={async () => {
+              if (!appId) return;
+              setPayPending(true);
+              try {
+                const inv = await openRazorpayCheckout({
+                  applicationId:   appId,
+                  referenceNumber: d.productName || appId,
+                  companyName:     d.applicantName || user?.username || '',
+                  email:           d.authorisedEmail || user?.email || '',
+                  contact:         user?.mobile,
+                });
+                setPaymentDone(true);
+                setInvoiceNo(inv);
+                toast.success('Payment successful! Submitting your application…');
+                await handleSubmit();
+              } catch (err: any) {
+                if (err?.message !== 'Payment cancelled') toast.error(err?.message || 'Payment failed');
+              } finally {
+                setPayPending(false);
+              }
+            }}
+            style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 8, padding: '12px 28px', fontSize: 14, fontWeight: 700, cursor: payPending ? 'not-allowed' : 'pointer', opacity: payPending ? 0.7 : 1 }}
+          >
+            {payPending ? 'Opening Payment…' : 'Pay Now'}
+          </button>
+        </div>
+      )}
 
       <div style={{ background: '#FFF8E1', border: '1px solid #FFE082', borderRadius: 6, padding: 12, fontSize: 12, lineHeight: 1.6 }}>
         ℹ️ By submitting this application, I declare that the information provided is true and accurate. I understand that false information may lead to rejection or cancellation of approval.

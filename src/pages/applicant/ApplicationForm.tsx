@@ -14,6 +14,7 @@ import {
   fetchMyApplications, saveDraftApplication, submitDraftApplication,
   type AppFormData,
 } from '@/services/application.service';
+import { openRazorpayCheckout, getPayment } from '@/services/payment.service';
 
 // ── Static options ────────────────────────────────────────────────────────────
 const STEPS = ['Application Type', 'General Info', 'Documents', 'Additional Info', 'Payment'];
@@ -34,37 +35,6 @@ const FOOD_CATEGORIES = [
   'Infant Foods', 'Food Additives & Processing Aids', 'Packaging Materials',
 ];
 
-const INGREDIENTS = [
-  'Wheat Flour', 'Rice Flour', 'Maize Starch', 'Soybean Protein Isolate', 'Whey Protein Concentrate',
-  'Casein', 'Gelatin', 'Soya Lecithin', 'Sunflower Oil', 'Palm Oil', 'Coconut Oil', 'Butter',
-  'Cream', 'Skimmed Milk Powder', 'Sucrose', 'Glucose Syrup', 'Fructose', 'Lactose', 'Honey',
-  'Cocoa Butter', 'Cocoa Powder', 'Turmeric', 'Cumin', 'Coriander Powder', 'Black Pepper',
-  'Cardamom', 'Cinnamon', 'Cloves', 'Fennel Seeds', 'Salt (Sodium Chloride)', 'Yeast',
-  'Malt Extract', 'Vinegar', 'Tomato Paste', 'Onion Powder', 'Garlic Powder',
-  'Stevia Extract', 'Inulin', 'Psyllium Husk', 'Flaxseed', 'Chia Seeds',
-  'Spirulina', 'Moringa Powder', 'Ashwagandha Extract', 'Amla Extract',
-];
-
-const ADDITIVES = [
-  'INS 100 — Curcumin', 'INS 101 — Riboflavins', 'INS 102 — Tartrazine',
-  'INS 110 — Sunset Yellow FCF', 'INS 120 — Carmines', 'INS 122 — Azorubine / Carmoisine',
-  'INS 124 — Ponceau 4R', 'INS 129 — Allura Red AC', 'INS 133 — Brilliant Blue FCF',
-  'INS 150a — Caramel (plain)', 'INS 160a — Beta-carotene', 'INS 171 — Titanium Dioxide',
-  'INS 200 — Sorbic Acid', 'INS 202 — Potassium Sorbate', 'INS 210 — Benzoic Acid',
-  'INS 211 — Sodium Benzoate', 'INS 220 — Sulphur Dioxide', 'INS 223 — Sodium Metabisulphite',
-  'INS 270 — Lactic Acid', 'INS 296 — Malic Acid',
-  'INS 300 — Ascorbic Acid', 'INS 301 — Sodium Ascorbate', 'INS 306 — Mixed Tocopherols',
-  'INS 322 — Lecithins', 'INS 330 — Citric Acid', 'INS 331 — Sodium Citrates',
-  'INS 334 — Tartaric Acid', 'INS 338 — Phosphoric Acid',
-  'INS 401 — Sodium Alginate', 'INS 407 — Carrageenan', 'INS 410 — Locust Bean Gum',
-  'INS 412 — Guar Gum', 'INS 415 — Xanthan Gum', 'INS 420 — Sorbitol', 'INS 422 — Glycerol',
-  'INS 440 — Pectins', 'INS 460 — Cellulose', 'INS 471 — Mono- & Diglycerides of Fatty Acids',
-  'INS 500 — Sodium Carbonates', 'INS 503 — Ammonium Carbonates', 'INS 516 — Calcium Sulphate',
-  'INS 551 — Silicon Dioxide', 'INS 621 — Monosodium Glutamate',
-  'INS 900 — Polydimethylsiloxane', 'INS 941 — Nitrogen',
-  'INS 951 — Aspartame', 'INS 952 — Cyclamates', 'INS 954 — Saccharin',
-  'INS 955 — Sucralose', 'INS 960 — Steviol Glycosides', 'INS 965 — Maltitol',
-];
 
 const TYPE_FEE: Record<string, { fee: string; gst: string; total: string }> = {
   NSF:            { fee: '₹50,000', gst: '₹9,000',  total: '₹59,000' },
@@ -113,18 +83,23 @@ export default function ApplicationForm() {
   const [saving, setSaving]   = useState(false);
   const [dialog, setDialog]   = useState<{ msg: string; action: () => void } | null>(null);
   const [formData, setFormData] = useState<AppFormData>(emptyFormData);
+  const [paymentDone, setPaymentDone] = useState(false);
+  const [invoiceNo, setInvoiceNo]     = useState<string | null>(null);
+  const [payPending, setPayPending]   = useState(false);
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
-
-  // Pending row state for ingredient / additive pickers
-  const [pendingIng, setPendingIng] = useState({ name: '', quantity: '', standardize: '' });
-  const [pendingAdd, setPendingAdd] = useState({ name: '', quantity: '', standardize: '' });
 
   // Load existing draft or create a new one
   useEffect(() => {
+    const loadPayment = (id: string) =>
+      getPayment(id).then((p) => {
+        if (p?.status === 'Completed') { setPaymentDone(true); setInvoiceNo(p.invoiceNo); }
+      }).catch(() => {});
+
     if (idParam) {
       fetchApplication(idParam).then((app) => {
         setAppId(app.id);
         if (app.formData) setFormData(app.formData as AppFormData);
+        loadPayment(app.id);
       }).catch(() => toast.error('Could not load draft'));
     } else {
       // Reuse an existing draft of the same type rather than creating a duplicate
@@ -136,6 +111,7 @@ export default function ApplicationForm() {
           if (existing) {
             setAppId(existing.id);
             if (existing.formData) setFormData(existing.formData as AppFormData);
+            loadPayment(existing.id);
           } else {
             return createDraftApplication(typeParam, user?.username || 'Draft')
               .then((app) => setAppId(app.id));
@@ -205,7 +181,7 @@ export default function ApplicationForm() {
 
   function validateStep(stepIndex: number): Record<string, string> {
     const errs: Record<string, string> = {};
-    const { step1, step2, step3, step5 } = formData;
+    const { step1, step2, step3 } = formData;
 
     if (stepIndex === 0) {
       if (!step1.applicationFor) errs.applicationFor = 'Please select an application type';
@@ -275,7 +251,7 @@ export default function ApplicationForm() {
     }
 
     if (stepIndex === 4) {
-      if (!step5.paymentReference.trim()) errs.paymentReference = 'Please enter a transaction reference number';
+      if (!paymentDone) errs.payment = 'Please complete the payment before submitting';
     }
 
     return errs;
@@ -289,7 +265,7 @@ export default function ApplicationForm() {
   }
 
   const fee = TYPE_FEE[typeParam] ?? TYPE_FEE.NSF;
-  const { step1, step2, step3, step4, step5 } = formData;
+  const { step1, step2, step3, step4 } = formData;
 
   // ── Step content ───────────────────────────────────────────────────────────
   const stepContent = [
@@ -631,21 +607,45 @@ export default function ApplicationForm() {
         </div>
       </div>
 
-      <div style={{ marginBottom: 12 }}>
-        <label style={S.label}>Payment Method</label>
-        <select style={select} value={step5.paymentMethod} onChange={(e) => set('step5', 'paymentMethod', e.target.value)}>
-          <option>Online Payment (NEFT/RTGS/UPI)</option>
-          <option>Demand Draft</option>
-        </select>
-      </div>
-
-      <div style={{ marginBottom: 16 }}>
-        <label style={S.label}>Transaction Reference Number</label>
-        <div>
-          <input style={eb(input, 'paymentReference')} placeholder="Enter payment transaction reference" value={step5.paymentReference} onChange={(e) => { set('step5', 'paymentReference', e.target.value); setStepErrors((p) => { const n = { ...p }; delete n.paymentReference; return n; }); }} />
-          {errMsg('paymentReference')}
+      {paymentDone ? (
+        <div style={{ background: '#D1FAE5', border: '1px solid #6EE7B7', borderRadius: 8, padding: 16, marginBottom: 16 }}>
+          <div style={{ fontWeight: 700, color: '#065F46', fontSize: 14, marginBottom: 4 }}>✓ Payment Successful</div>
+          <div style={{ fontSize: 12, color: '#065F46' }}>Invoice No: <strong>{invoiceNo}</strong></div>
+          <div style={{ fontSize: 11, color: '#047857', marginTop: 4 }}>You may now submit your application.</div>
         </div>
-      </div>
+      ) : (
+        <div style={{ marginBottom: 16 }}>
+          {stepErrors.payment && <div style={{ fontSize: 11, color: COLORS.danger, marginBottom: 8 }}>{stepErrors.payment}</div>}
+          <button
+            type="button"
+            disabled={payPending}
+            onClick={async () => {
+              if (!appId) return;
+              setPayPending(true);
+              try {
+                const inv = await openRazorpayCheckout({
+                  applicationId:   appId,
+                  referenceNumber: appId,
+                  companyName:     user?.username || '',
+                  email:           user?.email || '',
+                  contact:         user?.mobile,
+                });
+                setPaymentDone(true);
+                setInvoiceNo(inv);
+                toast.success('Payment successful! Submitting your application…');
+                await handleSubmit();
+              } catch (err: any) {
+                if (err?.message !== 'Payment cancelled') toast.error(err?.message || 'Payment failed');
+              } finally {
+                setPayPending(false);
+              }
+            }}
+            style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 8, padding: '12px 28px', fontSize: 14, fontWeight: 700, cursor: payPending ? 'not-allowed' : 'pointer', opacity: payPending ? 0.7 : 1 }}
+          >
+            {payPending ? 'Opening Payment…' : 'Pay Now'}
+          </button>
+        </div>
+      )}
 
       <div style={{ background: '#FFF8E1', border: '1px solid #FFE082', borderRadius: 6, padding: 12, fontSize: 12, lineHeight: 1.6 }}>
         ℹ️ By submitting this application, I declare that the information provided is true and accurate. I understand that false information may lead to rejection or cancellation of approval.

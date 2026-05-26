@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react';
 import { COLORS, S } from '@/utils/colors';
 import StatusBadge from '@/components/ui/StatusBadge';
-import { fetchMyApplications, type Application, type AppFormData } from '@/services/application.service';
+import { fetchMyApplications, type Application } from '@/services/application.service';
+import { getPayment, type PaymentRecord } from '@/services/payment.service';
 
 // ── Fee table ──────────────────────────────────────────────────────────────────
 const FEE: Record<string, { desc: string; base: number; gst: number; total: number }> = {
@@ -27,13 +28,13 @@ function fmtDate(iso: string | null) {
 }
 
 // ── Invoice HTML generator (opens in new window for printing) ─────────────────
-function buildInvoiceHtml(app: Application) {
+function buildInvoiceHtml(app: Application, payment: PaymentRecord | null) {
   const fee  = FEE[app.applicationType] ?? FEE['NSF'];
-  const fd   = app.formData as AppFormData | null;
-  const payMethod = fd?.step5?.paymentMethod  ?? '—';
-  const payRef    = fd?.step5?.paymentReference ?? '—';
-  const address   = fd?.step2?.orgAddress ?? app.address ?? '—';
-  const license   = fd?.step2?.licenseNumber ?? '—';
+  const payMethod = payment?.status === 'Completed' ? 'Online Payment (Razorpay)' : '—';
+  const payRef    = payment?.razorpayPaymentId ?? '—';
+  const address   = app.address ?? '—';
+  const fd        = app.formData as Record<string, any> | null;
+  const license   = fd?.step2?.licenseNumber ?? fd?.licenseNumber ?? '—';
   const invoiceNo = `INV-${app.referenceNumber}`;
   const invoiceDate = fmtDate(app.submittedAt ?? app.updatedAt);
 
@@ -189,17 +190,29 @@ function buildInvoiceHtml(app: Application) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function TaxInvoice() {
-  const [apps, setApps]     = useState<Application[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [apps, setApps]         = useState<Application[]>([]);
+  const [payments, setPayments] = useState<Record<string, PaymentRecord | null>>({});
+  const [loading, setLoading]   = useState(true);
 
   useEffect(() => {
     fetchMyApplications()
-      .then((all) => setApps(all.filter((a) => a.stage !== 'Draft')))
+      .then((all) => {
+        const submitted = all.filter((a) => a.stage !== 'Draft');
+        setApps(submitted);
+        // Load payment record for each submitted application
+        Promise.all(
+          submitted.map((a) => getPayment(a.id).then((p) => ({ id: a.id, p })).catch(() => ({ id: a.id, p: null })))
+        ).then((results) => {
+          const map: Record<string, PaymentRecord | null> = {};
+          results.forEach(({ id, p }) => { map[id] = p; });
+          setPayments(map);
+        });
+      })
       .finally(() => setLoading(false));
   }, []);
 
   function openInvoice(app: Application) {
-    const html = buildInvoiceHtml(app);
+    const html = buildInvoiceHtml(app, payments[app.id] ?? null);
     const win  = window.open('', '_blank', 'width=860,height=700,scrollbars=yes');
     if (!win) { alert('Please allow popups for this site to view the invoice.'); return; }
     win.document.write(html);
@@ -227,9 +240,10 @@ export default function TaxInvoice() {
             </thead>
             <tbody>
               {rows.map((app, i) => {
-                const fee = FEE[app.applicationType] ?? FEE['NSF'];
-                const fd  = app.formData as AppFormData | null;
-                const payRef = fd?.step5?.paymentReference ?? '';
+                const fee     = FEE[app.applicationType] ?? FEE['NSF'];
+                const payment = payments[app.id] ?? null;
+                const paid    = payment?.status === 'Completed';
+                const invoiceNo = payment?.invoiceNo ?? '';
                 return (
                   <tr key={app.id} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg }}>
                     <td style={S.td}>{i + 1}</td>
@@ -241,9 +255,9 @@ export default function TaxInvoice() {
                       <div style={{ fontSize: 10, color: COLORS.textMuted }}>{inr(fee.base)} + {inr(fee.gst)} GST</div>
                     </td>
                     <td style={S.td}>
-                      {payRef
-                        ? <span style={{ color: '#065F46', fontWeight: 600 }}>✓ {payRef}</span>
-                        : <span style={{ color: COLORS.textMuted, fontStyle: 'italic' }}>Not provided</span>}
+                      {paid
+                        ? <span style={{ color: '#065F46', fontWeight: 600 }}>✓ {invoiceNo}</span>
+                        : <span style={{ color: COLORS.textMuted, fontStyle: 'italic' }}>Pending</span>}
                     </td>
                     <td style={S.td}><StatusBadge status={app.stage} /></td>
                     <td style={S.td}>
