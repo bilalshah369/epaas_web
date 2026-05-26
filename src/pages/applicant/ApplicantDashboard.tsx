@@ -8,6 +8,8 @@ import { COLORS } from '@/utils/colors';
 import BinCard from '@/components/ui/BinCard';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { fetchMyApplications, deleteDraftApplication, requestWithdrawal, getBin, type Application, type Bin } from '@/services/application.service';
+import { openInvoiceWindow } from '@/utils/invoiceBuilder';
+import { getPayment } from '@/services/payment.service';
 
 // ── Helpers: extract address/food-category from formData for any app type ─────
 function getAddress(r: Application): string {
@@ -299,7 +301,7 @@ export default function ApplicantDashboard() {
               <ActionBtn label="Review"       variant="danger"  onClick={() => navigate('/app/requests/review')} />
             </>}
             {bin === 'approved'   && <>
-              <ActionBtn label="View Receipt"  variant="outline" onClick={() => navigate(`/app/applications/${r.id}`)} />
+              <ActionBtn label="View Receipt"  variant="outline" onClick={() => getPayment(r.id).then((p) => openInvoiceWindow(r, p)).catch(() => openInvoiceWindow(r, null))} />
               <ActionBtn label="View History"  variant="outline" onClick={() => navigate(`/app/applications/${r.id}`)} />
               <ActionBtn label="Tax Invoice"   variant="info"    onClick={() => navigate('/app/tax-invoice')} />
             </>}

@@ -70,6 +70,7 @@ import AdminLayout          from '@/layouts/AdminLayout';
 import AdminDashboard       from '@/pages/admin/AdminDashboard';
 import AdminAppMonitor      from '@/pages/admin/AdminAppMonitor';
 import AdminOfficers        from '@/pages/admin/AdminOfficers';
+import AdminAddOfficer      from '@/pages/admin/AdminAddOfficer';
 import AdminRoles           from '@/pages/admin/AdminRoles';
 import AdminReports         from '@/pages/admin/AdminReports';
 import AdminAuditTrail      from '@/pages/admin/AdminAuditTrail';
@@ -258,7 +259,8 @@ export default function App() {
           <Route element={<AdminLayout />}>
             <Route path="/admin/dashboard" element={<AdminDashboard />}      />
             <Route path="/admin/monitor"   element={<AdminAppMonitor />}     />
-            <Route path="/admin/officers"  element={<AdminOfficers />}       />
+            <Route path="/admin/officers"      element={<AdminOfficers />}   />
+            <Route path="/admin/officers/add" element={<AdminAddOfficer />}  />
             <Route path="/admin/roles"     element={<AdminRoles />}          />
             <Route path="/admin/reports"   element={<AdminReports />}        />
             <Route path="/admin/audit"     element={<AdminAuditTrail />}     />
