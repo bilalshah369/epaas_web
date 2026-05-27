@@ -116,6 +116,7 @@ function getEditPath(r: Application): string {
   if (r.applicationType === 'CA' || r.applicationType === 'ClaimApproval')     return `/app/apply/ca-form?id=${r.id}`;
   if (r.applicationType === 'AA' || r.applicationType === 'AyurvedaAahara')    return `/app/apply/aa-form?id=${r.id}`;
   if (r.applicationType === 'RPET')                                             return `/app/apply/rpet-form?id=${r.id}`;
+  if (r.applicationType === 'Vegan')                                            return `/app/apply/vegan-form?id=${r.id}`;
   return `/app/apply/form?id=${r.id}&type=${r.applicationType}`;
 }
 

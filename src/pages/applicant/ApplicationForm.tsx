@@ -1,5 +1,5 @@
 // Mirrors ApplicationForm from mock (App.jsx L11047). 5-step form wired to real API.
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
@@ -73,6 +73,7 @@ export default function ApplicationForm() {
 
   const [appId, setAppId]     = useState<string | null>(idParam);
   const [step, setStep]       = useState(0);
+  const hasLoaded = useRef(false);
   const [saving, setSaving]   = useState(false);
   const [dialog, setDialog]   = useState<{ msg: string; action: () => void } | null>(null);
   const [formData, setFormData] = useState<AppFormData>(emptyFormData);
@@ -84,6 +85,9 @@ export default function ApplicationForm() {
       fetchApplication(idParam).then((app) => {
         setAppId(app.id);
         if (app.formData) setFormData(app.formData as AppFormData);
+        const savedStep = sessionStorage.getItem(`_step_${app.id}`);
+        if (savedStep !== null) setStep(Number(savedStep));
+        hasLoaded.current = true;
       }).catch(() => toast.error('Could not load draft'));
     } else {
       // Reuse an existing draft of the same type rather than creating a duplicate
@@ -95,15 +99,22 @@ export default function ApplicationForm() {
           if (existing) {
             setAppId(existing.id);
             if (existing.formData) setFormData(existing.formData as AppFormData);
+            const savedStep = sessionStorage.getItem(`_step_${existing.id}`);
+            if (savedStep !== null) setStep(Number(savedStep));
           } else {
             return createDraftApplication(typeParam, user?.username || 'Draft')
               .then((app) => setAppId(app.id));
           }
+          hasLoaded.current = true;
         })
         .catch(() => toast.error('Could not start application'));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (appId && hasLoaded.current) sessionStorage.setItem(`_step_${appId}`, String(step));
+  }, [step, appId]);
 
   // Generic field updater
   function set<K extends keyof AppFormData>(stepKey: K, field: keyof AppFormData[K], value: unknown) {

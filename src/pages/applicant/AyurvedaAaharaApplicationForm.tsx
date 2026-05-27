@@ -1,5 +1,5 @@
 // Ayurveda Aahara (AA) application form. Separate from NSF/CA flows.
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
@@ -475,6 +475,26 @@ const CAT_COLORS: Record<string, string> = {
   A: '#1565C0', B: '#2E7D32', B1: '#6A1E55', B2: '#546E7A',
 };
 
+// ── Module-level pure components (stable identity, no closures over parent state) ──
+function WordCounter({ value, limit = WORD_LIMIT }: { value: string; limit?: number }) {
+  const wc = countWords(value);
+  const over = wc > limit;
+  return (
+    <div style={{ fontSize: 10, color: over ? COLORS.danger : COLORS.textMuted, marginTop: 2, textAlign: 'right' }}>
+      {wc} / {limit} words{over ? ' — exceeds limit' : ''}
+    </div>
+  );
+}
+
+function CatBadge({ cat }: { cat: string }) {
+  const color = CAT_COLORS[cat] ?? COLORS.primary;
+  return (
+    <span style={{ background: color + '15', color, border: `1px solid ${color}33`, borderRadius: 4, fontSize: 10, fontWeight: 700, padding: '2px 7px', marginLeft: 8, verticalAlign: 'middle' }}>
+      Category {cat}
+    </span>
+  );
+}
+
 // ── Ayurveda Aahara Application Form ──────────────────────────────────────────
 export default function AyurvedaAaharaApplicationForm() {
   const [params]  = useSearchParams();
@@ -485,6 +505,7 @@ export default function AyurvedaAaharaApplicationForm() {
 
   const [appId, setAppId]           = useState<string | null>(idParam);
   const [step, setStep]             = useState(0);
+  const hasLoaded = useRef(false);
   const [saving, setSaving]         = useState(false);
   const [dialog, setDialog]         = useState<{ msg: string; action: () => void } | null>(null);
   const [formData, setFormData]     = useState<AAFormData>(emptyAAFormData);
@@ -522,6 +543,9 @@ export default function AyurvedaAaharaApplicationForm() {
         setAppId(app.id);
         if (app.formData) setFormData({ ...emptyAAFormData(), ...(app.formData as unknown as AAFormData) });
         loadPayment(app.id);
+        const savedStep = sessionStorage.getItem(`_step_${app.id}`);
+        if (savedStep !== null) setStep(Number(savedStep));
+        hasLoaded.current = true;
       }).catch(() => toast.error('Could not load draft'));
     } else {
       fetchMyApplications()
@@ -531,14 +555,21 @@ export default function AyurvedaAaharaApplicationForm() {
             setAppId(existing.id);
             if (existing.formData) setFormData({ ...emptyAAFormData(), ...(existing.formData as unknown as AAFormData) });
             loadPayment(existing.id);
+            const savedStep = sessionStorage.getItem(`_step_${existing.id}`);
+            if (savedStep !== null) setStep(Number(savedStep));
           } else {
             return createDraftApplication('AyurvedaAahara', user?.username || 'Draft').then((app) => setAppId(app.id));
           }
+          hasLoaded.current = true;
         })
         .catch(() => toast.error('Could not start application'));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (appId && hasLoaded.current) sessionStorage.setItem(`_step_${appId}`, String(step));
+  }, [step, appId]);
 
   function setField(field: keyof AAFormData, value: string) {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -590,16 +621,6 @@ export default function AyurvedaAaharaApplicationForm() {
     );
   }
 
-  function WordCounter({ value, limit = WORD_LIMIT }: { value: string; limit?: number }) {
-    const wc = countWords(value);
-    const over = wc > limit;
-    return (
-      <div style={{ fontSize: 10, color: over ? COLORS.danger : COLORS.textMuted, marginTop: 2, textAlign: 'right' }}>
-        {wc} / {limit} words{over ? ' — exceeds limit' : ''}
-      </div>
-    );
-  }
-
   // Inline textarea+upload block (avoids nesting components)
   function TaUB({ titleField, titleLabel, titleRequired, fileField, fileLabel, placeholder, wordLimit }: {
     titleField: keyof AAFormData; titleLabel: string; titleRequired?: boolean;
@@ -623,20 +644,10 @@ export default function AyurvedaAaharaApplicationForm() {
         {fileLabel && (
           <div style={{ marginBottom: 10 }}>
             <label style={S.label}>{fileLabel}{titleRequired ? ' *' : ''}</label>
-            <UB value={formData[fileField] as string} field={fileField} />
+            {UB({ value: formData[fileField] as string, field: fileField })}
           </div>
         )}
       </>
-    );
-  }
-
-  // Category label chip
-  function CatBadge({ cat }: { cat: string }) {
-    const color = CAT_COLORS[cat] ?? COLORS.primary;
-    return (
-      <span style={{ background: color + '15', color, border: `1px solid ${color}33`, borderRadius: 4, fontSize: 10, fontWeight: 700, padding: '2px 7px', marginLeft: 8, verticalAlign: 'middle' }}>
-        Category {cat}
-      </span>
     );
   }
 
@@ -859,18 +870,20 @@ export default function AyurvedaAaharaApplicationForm() {
         <div style={row}>
           <label style={fieldLabel}>Authoritative Books (select all applicable) *</label>
           <div>
-            <select
-              multiple
-              style={{ ...select, minHeight: 120 }}
-              value={selectedBooks ? selectedBooks.split('||') : []}
-              onChange={(e) => {
-                const sel = Array.from(e.target.selectedOptions).map((o) => o.value);
-                setField(fields.books, sel.join('||'));
-              }}
-            >
-              {REFERENCE_BOOKS.map((b) => <option key={b} value={b}>{b}</option>)}
-            </select>
-            <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 2 }}>Hold Ctrl / Cmd to select multiple</div>
+            <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 6, maxHeight: 200, overflowY: 'auto', background: '#fff' }}>
+              {REFERENCE_BOOKS.map((b) => {
+                const sel = selectedBooks ? selectedBooks.split('||') : [];
+                return (
+                  <label key={b} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 12, borderBottom: `1px solid ${COLORS.border}` }}>
+                    <input type="checkbox" checked={sel.includes(b)} onChange={(e) => {
+                      const next = e.target.checked ? [...sel, b] : sel.filter((x) => x !== b);
+                      setField(fields.books, next.join('||'));
+                    }} />
+                    {b}
+                  </label>
+                );
+              })}
+            </div>
             {errMsg(fields.books as string)}
           </div>
         </div>
@@ -901,7 +914,7 @@ export default function AyurvedaAaharaApplicationForm() {
         </div>
         <div>
           <label style={S.label}>Upload Scanned Pages of Authoritative Book *</label>
-          <UB value={stringField(fields.scan)} field={fields.scan} />
+          {UB({ value: stringField(fields.scan), field: fields.scan })}
           {errMsg(fields.scan as string)}
         </div>
       </div>
@@ -923,11 +936,11 @@ export default function AyurvedaAaharaApplicationForm() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
           <div>
             <label style={S.label}>Supporting Document for Format Rationale</label>
-            <UB value={d.differentFormatRationaleFile} field="differentFormatRationaleFile" />
+            {UB({ value: d.differentFormatRationaleFile, field: "differentFormatRationaleFile" })}
           </div>
           <div>
             <label style={S.label}>Efficacy Data Upload *</label>
-            <UB value={d.efficacyDataFile} field="efficacyDataFile" />
+            {UB({ value: d.efficacyDataFile, field: "efficacyDataFile" })}
             {errMsg('efficacyDataFile')}
           </div>
         </div>
@@ -938,7 +951,7 @@ export default function AyurvedaAaharaApplicationForm() {
           {errMsg('efficacyDataAbstract')}
         </div>
         <div style={{ marginTop: 12, marginBottom: 4, fontWeight: 600, fontSize: 12, color: catColor }}>Efficacy Evidence</div>
-        <EvidenceDosageTable field="catB1EfficacyEvidenceRows" rows={d.catB1EfficacyEvidenceRows} pending={pendingCatB1EfficacyEvidence} setPending={setPendingCatB1EfficacyEvidence} />
+        {EvidenceDosageTable({ field: "catB1EfficacyEvidenceRows", rows: d.catB1EfficacyEvidenceRows, pending: pendingCatB1EfficacyEvidence, setPending: setPendingCatB1EfficacyEvidence })}
         {errMsg('catB1EfficacyEvidenceRows')}
       </div>
     );
@@ -992,7 +1005,7 @@ export default function AyurvedaAaharaApplicationForm() {
       if (!d.nameOfOrganization.trim())             errs.nameOfOrganization    = 'This field is required';
       if (!d.registeredOfficeAddress.trim())       errs.registeredOfficeAddress = 'This field is required';
       if (!d.manufacturingAddress.trim())         errs.manufacturingAddress  = 'This field is required';
-      if (!d.manufacturingPremisesContactDetails.trim()) errs.manufacturingPremisesContactDetails = 'This field is required';
+      if (!/^\d{10}$/.test(d.manufacturingPremisesContactDetails)) errs.manufacturingPremisesContactDetails = 'Must be a 10-digit phone number';
       if (!d.authorisedPerson.trim())             errs.authorisedPerson      = 'This field is required';
       const emailErr = validateEmail(d.authorisedEmail);
       if (emailErr) errs.authorisedEmail = emailErr;
@@ -1338,7 +1351,7 @@ export default function AyurvedaAaharaApplicationForm() {
         <div style={row}>
           <label style={fieldLabel}>Manufacturing Premises Contact Details *</label>
           <div>
-            <input style={eb(input, 'manufacturingPremisesContactDetails')} placeholder="Phone / email / contact person" value={d.manufacturingPremisesContactDetails} onChange={(e) => setField('manufacturingPremisesContactDetails', e.target.value)} />
+            <input style={eb(input, 'manufacturingPremisesContactDetails')} placeholder="10-digit phone number" inputMode="numeric" maxLength={10} value={d.manufacturingPremisesContactDetails} onChange={(e) => setField('manufacturingPremisesContactDetails', e.target.value.replace(/\D/g, '').slice(0, 10))} />
             {errMsg('manufacturingPremisesContactDetails')}
           </div>
         </div>
@@ -1388,7 +1401,7 @@ export default function AyurvedaAaharaApplicationForm() {
         </div>
         <div style={row}>
           <label style={fieldLabel}>Functional Use Supporting Document</label>
-          <UB value={d.functionalUseFile} field="functionalUseFile" />
+          {UB({ value: d.functionalUseFile, field: "functionalUseFile" })}
         </div>
         <div style={row}>
           <label style={fieldLabel}>Intended Use *
@@ -1402,19 +1415,19 @@ export default function AyurvedaAaharaApplicationForm() {
         </div>
         <div style={row}>
           <label style={fieldLabel}>Certificate of Analysis *</label>
-          <UB value={d.certificateOfAnalysis} field="certificateOfAnalysis" />
+          {UB({ value: d.certificateOfAnalysis, field: "certificateOfAnalysis" })}
         </div>
         <div style={row}>
           <label style={fieldLabel}>Manufacturing Process Flow Chart / Brief</label>
-          <UB value={d.manufacturingProcessFile} field="manufacturingProcessFile" />
+          {UB({ value: d.manufacturingProcessFile, field: "manufacturingProcessFile" })}
         </div>
       </div>
     </div>,
 
     // ── Step 1: Ingredients / Additives / Composition ─────────────────────
     <div key={1} style={{ display: 'flex', flexDirection: 'column' }}>
-      {(cat === 'B' || cat === 'B1' || cat === 'B2') && <CategoryReferenceBlock target={cat} />}
-      {cat === 'B1' && <B1FormatRationaleBlock />}
+      {(cat === 'B' || cat === 'B1' || cat === 'B2') && CategoryReferenceBlock({ target: cat })}
+      {cat === 'B1' && B1FormatRationaleBlock({})}
 
       {/* Category B — Other Botanicals (repeatable) — PDF Part II item i.d */}
       {cat === 'B' && (
@@ -1509,7 +1522,7 @@ export default function AyurvedaAaharaApplicationForm() {
           </div>
           <div style={{ marginTop: 10 }}>
             <label style={S.label}>Supporting Document for Other Botanicals</label>
-            <UB value={d.otherBotanicalsRationaleFile} field="otherBotanicalsRationaleFile" />
+            {UB({ value: d.otherBotanicalsRationaleFile, field: "otherBotanicalsRationaleFile" })}
           </div>
         </div>
       )}
@@ -1635,18 +1648,20 @@ export default function AyurvedaAaharaApplicationForm() {
           <div style={row}>
             <label style={fieldLabel}>Authoritative Books (select all applicable) *</label>
             <div>
-              <select
-                multiple
-                style={{ ...select, minHeight: 120 }}
-                value={d.ayurvedaBookMultiSelect ? d.ayurvedaBookMultiSelect.split('||') : []}
-                onChange={(e) => {
-                  const selected = Array.from(e.target.selectedOptions).map((o) => o.value);
-                  setField('ayurvedaBookMultiSelect', selected.join('||'));
-                }}
-              >
-                {REFERENCE_BOOKS.map((b) => <option key={b} value={b}>{b}</option>)}
-              </select>
-              <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 2 }}>Hold Ctrl / Cmd to select multiple</div>
+              <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 6, maxHeight: 200, overflowY: 'auto', background: '#fff' }}>
+                {REFERENCE_BOOKS.map((b) => {
+                  const sel = d.ayurvedaBookMultiSelect ? d.ayurvedaBookMultiSelect.split('||') : [];
+                  return (
+                    <label key={b} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 12, borderBottom: `1px solid ${COLORS.border}` }}>
+                      <input type="checkbox" checked={sel.includes(b)} onChange={(e) => {
+                        const next = e.target.checked ? [...sel, b] : sel.filter((x) => x !== b);
+                        setField('ayurvedaBookMultiSelect', next.join('||'));
+                      }} />
+                      {b}
+                    </label>
+                  );
+                })}
+              </div>
               {errMsg('ayurvedaBookMultiSelect')}
             </div>
           </div>
@@ -1700,7 +1715,7 @@ export default function AyurvedaAaharaApplicationForm() {
           </div>
           <div style={{ marginBottom: 10 }}>
             <label style={S.label}>Upload Scanned Pages of Authoritative Book *</label>
-            <UB value={d.authoritativeBookScanFile} field="authoritativeBookScanFile" />
+            {UB({ value: d.authoritativeBookScanFile, field: "authoritativeBookScanFile" })}
             {errMsg('authoritativeBookScanFile')}
           </div>
 
@@ -1811,12 +1826,12 @@ export default function AyurvedaAaharaApplicationForm() {
         
         <div style={{ marginTop: 10 }}>
           <label style={S.label}>Upload: Composition of Proposed Ayurveda Aahara</label>
-          <UB value={d.compositionFile} field="compositionFile" />
+          {UB({ value: d.compositionFile, field: "compositionFile" })}
         </div>
         <div style={{ marginBottom: 12 }}>
           <label style={S.label}>Ingredient List PDF Upload *</label>
           <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 6 }}>Upload a complete ingredient list as a PDF document.</div>
-          <UB value={d.ingredientListFile} field="ingredientListFile" />
+          {UB({ value: d.ingredientListFile, field: "ingredientListFile" })}
           {errMsg('ingredientListFile')}
         </div>
         <div style={{ marginBottom: 4 }}>
@@ -1828,7 +1843,7 @@ export default function AyurvedaAaharaApplicationForm() {
 
           <div style={{ marginTop: 10 }}>
             <label style={S.label}>Upload Specifications Document *</label>
-            <UB value={d.specificationsFile} field="specificationsFile" />
+            {UB({ value: d.specificationsFile, field: "specificationsFile" })}
             {errMsg('specificationsFile')}
           </div>
 
@@ -1886,7 +1901,7 @@ export default function AyurvedaAaharaApplicationForm() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                 <div>
                   <label style={S.label}>Supporting Document</label>
-                  <UB value={d.catAHealthBenefitFile} field="catAHealthBenefitFile" />
+                  {UB({ value: d.catAHealthBenefitFile, field: "catAHealthBenefitFile" })}
                 </div>
                 <div>
                   <label style={S.label}>Abstract / Summary</label>
@@ -1952,7 +1967,7 @@ export default function AyurvedaAaharaApplicationForm() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <label style={S.label}>Supporting Document (Claim B)</label>
-                  <UB value={d.catADiseaseRiskFile} field="catADiseaseRiskFile" />
+                  {UB({ value: d.catADiseaseRiskFile, field: "catADiseaseRiskFile" })}
                 </div>
                 <div>
                   <label style={S.label}>Abstract / Summary (Claim B)</label>
@@ -1962,7 +1977,7 @@ export default function AyurvedaAaharaApplicationForm() {
               </div>
               {/* Evidence rows table (Cat A, with dosage/duration per PDF) */}
               <div style={{ marginTop: 12, marginBottom: 4, fontWeight: 600, fontSize: 12, color: catColor }}>Scientific Evidence</div>
-              <EvidenceDosageTable field="catADiseaseRiskEvidenceRows" rows={d.catADiseaseRiskEvidenceRows} pending={pendingCatAEvidence} setPending={setPendingCatAEvidence} />
+              {EvidenceDosageTable({ field: "catADiseaseRiskEvidenceRows", rows: d.catADiseaseRiskEvidenceRows, pending: pendingCatAEvidence, setPending: setPendingCatAEvidence })}
               {errMsg('catADiseaseRiskEvidenceRows')}
             </>
           )}
@@ -1998,18 +2013,20 @@ export default function AyurvedaAaharaApplicationForm() {
           <div style={row}>
             <label style={fieldLabel}>Authoritative Books (select all applicable) *</label>
             <div>
-              <select
-                multiple
-                style={{ ...select, minHeight: 120 }}
-                value={d.catBAyurvedaBookMultiSelect ? d.catBAyurvedaBookMultiSelect.split('||') : []}
-                onChange={(e) => {
-                  const sel = Array.from(e.target.selectedOptions).map((o) => o.value);
-                  setField('catBAyurvedaBookMultiSelect', sel.join('||'));
-                }}
-              >
-                {REFERENCE_BOOKS.map((b) => <option key={b} value={b}>{b}</option>)}
-              </select>
-              <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 2 }}>Hold Ctrl / Cmd to select multiple</div>
+              <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 6, maxHeight: 200, overflowY: 'auto', background: '#fff' }}>
+                {REFERENCE_BOOKS.map((b) => {
+                  const sel = d.catBAyurvedaBookMultiSelect ? d.catBAyurvedaBookMultiSelect.split('||') : [];
+                  return (
+                    <label key={b} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 12, borderBottom: `1px solid ${COLORS.border}` }}>
+                      <input type="checkbox" checked={sel.includes(b)} onChange={(e) => {
+                        const next = e.target.checked ? [...sel, b] : sel.filter((x) => x !== b);
+                        setField('catBAyurvedaBookMultiSelect', next.join('||'));
+                      }} />
+                      {b}
+                    </label>
+                  );
+                })}
+              </div>
               {errMsg('catBAyurvedaBookMultiSelect')}
             </div>
           </div>
@@ -2039,7 +2056,7 @@ export default function AyurvedaAaharaApplicationForm() {
           </div>
           <div>
             <label style={S.label}>Upload Scanned Pages of Authoritative Book *</label>
-            <UB value={d.catBAuthoritativeBookScanFile} field="catBAuthoritativeBookScanFile" />
+            {UB({ value: d.catBAuthoritativeBookScanFile, field: "catBAuthoritativeBookScanFile" })}
             {errMsg('catBAuthoritativeBookScanFile')}
           </div>
         </div>
@@ -2074,18 +2091,20 @@ export default function AyurvedaAaharaApplicationForm() {
           <div style={row}>
             <label style={fieldLabel}>Authoritative Books (select all applicable) *</label>
             <div>
-              <select
-                multiple
-                style={{ ...select, minHeight: 120 }}
-                value={d.catB1AyurvedaBookMultiSelect ? d.catB1AyurvedaBookMultiSelect.split('||') : []}
-                onChange={(e) => {
-                  const sel = Array.from(e.target.selectedOptions).map((o) => o.value);
-                  setField('catB1AyurvedaBookMultiSelect', sel.join('||'));
-                }}
-              >
-                {REFERENCE_BOOKS.map((b) => <option key={b} value={b}>{b}</option>)}
-              </select>
-              <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 2 }}>Hold Ctrl / Cmd to select multiple</div>
+              <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 6, maxHeight: 200, overflowY: 'auto', background: '#fff' }}>
+                {REFERENCE_BOOKS.map((b) => {
+                  const sel = d.catB1AyurvedaBookMultiSelect ? d.catB1AyurvedaBookMultiSelect.split('||') : [];
+                  return (
+                    <label key={b} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 12, borderBottom: `1px solid ${COLORS.border}` }}>
+                      <input type="checkbox" checked={sel.includes(b)} onChange={(e) => {
+                        const next = e.target.checked ? [...sel, b] : sel.filter((x) => x !== b);
+                        setField('catB1AyurvedaBookMultiSelect', next.join('||'));
+                      }} />
+                      {b}
+                    </label>
+                  );
+                })}
+              </div>
               {errMsg('catB1AyurvedaBookMultiSelect')}
             </div>
           </div>
@@ -2115,7 +2134,7 @@ export default function AyurvedaAaharaApplicationForm() {
           </div>
           <div>
             <label style={S.label}>Upload Scanned Pages of Authoritative Book *</label>
-            <UB value={d.catB1AuthoritativeBookScanFile} field="catB1AuthoritativeBookScanFile" />
+            {UB({ value: d.catB1AuthoritativeBookScanFile, field: "catB1AuthoritativeBookScanFile" })}
             {errMsg('catB1AuthoritativeBookScanFile')}
           </div>
         </div>
@@ -2150,18 +2169,20 @@ export default function AyurvedaAaharaApplicationForm() {
           <div style={row}>
             <label style={fieldLabel}>Authoritative Books (select all applicable) *</label>
             <div>
-              <select
-                multiple
-                style={{ ...select, minHeight: 120 }}
-                value={d.catB2AyurvedaBookMultiSelect ? d.catB2AyurvedaBookMultiSelect.split('||') : []}
-                onChange={(e) => {
-                  const sel = Array.from(e.target.selectedOptions).map((o) => o.value);
-                  setField('catB2AyurvedaBookMultiSelect', sel.join('||'));
-                }}
-              >
-                {REFERENCE_BOOKS.map((b) => <option key={b} value={b}>{b}</option>)}
-              </select>
-              <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 2 }}>Hold Ctrl / Cmd to select multiple</div>
+              <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 6, maxHeight: 200, overflowY: 'auto', background: '#fff' }}>
+                {REFERENCE_BOOKS.map((b) => {
+                  const sel = d.catB2AyurvedaBookMultiSelect ? d.catB2AyurvedaBookMultiSelect.split('||') : [];
+                  return (
+                    <label key={b} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 12, borderBottom: `1px solid ${COLORS.border}` }}>
+                      <input type="checkbox" checked={sel.includes(b)} onChange={(e) => {
+                        const next = e.target.checked ? [...sel, b] : sel.filter((x) => x !== b);
+                        setField('catB2AyurvedaBookMultiSelect', next.join('||'));
+                      }} />
+                      {b}
+                    </label>
+                  );
+                })}
+              </div>
               {errMsg('catB2AyurvedaBookMultiSelect')}
             </div>
           </div>
@@ -2191,7 +2212,7 @@ export default function AyurvedaAaharaApplicationForm() {
           </div>
           <div>
             <label style={S.label}>Upload Scanned Pages of Authoritative Book *</label>
-            <UB value={d.catB2AuthoritativeBookScanFile} field="catB2AuthoritativeBookScanFile" />
+            {UB({ value: d.catB2AuthoritativeBookScanFile, field: "catB2AuthoritativeBookScanFile" })}
             {errMsg('catB2AuthoritativeBookScanFile')}
           </div>
         </div>
@@ -2217,7 +2238,7 @@ export default function AyurvedaAaharaApplicationForm() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                 <div>
                   <label style={S.label}>Supporting Document</label>
-                  <UB value={d.catBHealthBenefitFile} field="catBHealthBenefitFile" />
+                  {UB({ value: d.catBHealthBenefitFile, field: "catBHealthBenefitFile" })}
                 </div>
                 <div>
                   <label style={S.label}>Abstract / Summary</label>
@@ -2279,7 +2300,7 @@ export default function AyurvedaAaharaApplicationForm() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <label style={S.label}>Supporting Document</label>
-                  <UB value={d.catBDiseaseRiskFile} field="catBDiseaseRiskFile" />
+                  {UB({ value: d.catBDiseaseRiskFile, field: "catBDiseaseRiskFile" })}
                 </div>
                 <div>
                   <label style={S.label}>Abstract / Summary</label>
@@ -2333,7 +2354,7 @@ export default function AyurvedaAaharaApplicationForm() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
             <div>
               <label style={S.label}>Safety Data Document</label>
-              <UB value={d.catBSafetyDataFile} field="catBSafetyDataFile" />
+              {UB({ value: d.catBSafetyDataFile, field: "catBSafetyDataFile" })}
             </div>
             <div>
               <label style={S.label}>Safety Data Abstract / Summary</label>
@@ -2389,7 +2410,7 @@ export default function AyurvedaAaharaApplicationForm() {
         </div>
         <div style={{ marginBottom: 10 }}>
           <label style={S.label}>Serving Size Document</label>
-          <UB value={d.servingSizeFile} field="servingSizeFile" />
+          {UB({ value: d.servingSizeFile, field: "servingSizeFile" })}
         </div>
         {/* vii.2 Target Population */}
         <div style={row}>
@@ -2401,7 +2422,7 @@ export default function AyurvedaAaharaApplicationForm() {
         </div>
         <div style={{ marginBottom: 10 }}>
           <label style={S.label}>Target Population Document</label>
-          <UB value={d.targetPopulationFile} field="targetPopulationFile" />
+          {UB({ value: d.targetPopulationFile, field: "targetPopulationFile" })}
         </div>
         {/* vii.3 Directions for Use */}
         <div style={row}>
@@ -2413,7 +2434,7 @@ export default function AyurvedaAaharaApplicationForm() {
         </div>
         <div style={{ marginBottom: 10 }}>
           <label style={S.label}>Directions for Use Document</label>
-          <UB value={d.directionsForUseFile} field="directionsForUseFile" />
+          {UB({ value: d.directionsForUseFile, field: "directionsForUseFile" })}
         </div>
         {/* vii.4 Duration for Use */}
         <div style={row}>
@@ -2422,7 +2443,7 @@ export default function AyurvedaAaharaApplicationForm() {
         </div>
         <div style={{ marginBottom: 4 }}>
           <label style={S.label}>Duration of Use Document</label>
-          <UB value={d.durationOfUseFile} field="durationOfUseFile" />
+          {UB({ value: d.durationOfUseFile, field: "durationOfUseFile" })}
         </div>
       </div>
 
@@ -2449,7 +2470,7 @@ export default function AyurvedaAaharaApplicationForm() {
         <div style={{ ...secCard, order: -20 }}>
           <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8, color: COLORS.primary }}>Product Label *</div>
           <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 8 }}>Upload the proposed product label / label artwork (jpg/pdf, max 10 MB).</div>
-          <UB value={d.productLabel} field="productLabel" />
+          {UB({ value: d.productLabel, field: "productLabel" })}
           {errMsg('productLabel')}
         </div>
       )}
@@ -2475,7 +2496,7 @@ export default function AyurvedaAaharaApplicationForm() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                 <div>
                   <label style={S.label}>Supporting Document (Health Benefit)</label>
-                  <UB value={d.b1HealthBenefitFile} field="b1HealthBenefitFile" />
+                  {UB({ value: d.b1HealthBenefitFile, field: "b1HealthBenefitFile" })}
                   {errMsg('b1HealthBenefitFile')}
                 </div>
                 <div>
@@ -2486,7 +2507,7 @@ export default function AyurvedaAaharaApplicationForm() {
                 </div>
               </div>
               <div style={{ marginTop: 8, marginBottom: 4, fontWeight: 600, fontSize: 12, color: catColor }}>Health Benefit Evidence</div>
-              <EvidenceDosageTable field="catB1HealthBenefitEvidenceRows" rows={d.catB1HealthBenefitEvidenceRows} pending={pendingCatB1HealthBenefitEvidence} setPending={setPendingCatB1HealthBenefitEvidence} />
+              {EvidenceDosageTable({ field: "catB1HealthBenefitEvidenceRows", rows: d.catB1HealthBenefitEvidenceRows, pending: pendingCatB1HealthBenefitEvidence, setPending: setPendingCatB1HealthBenefitEvidence })}
               {errMsg('catB1HealthBenefitEvidenceRows')}
             </>
           )}
@@ -2516,7 +2537,7 @@ export default function AyurvedaAaharaApplicationForm() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <label style={S.label}>Supporting Document</label>
-                  <UB value={d.b1LabelDiseaseRiskFile} field="b1LabelDiseaseRiskFile" />
+                  {UB({ value: d.b1LabelDiseaseRiskFile, field: "b1LabelDiseaseRiskFile" })}
                   {errMsg('b1LabelDiseaseRiskFile')}
                 </div>
                 <div>
@@ -2527,7 +2548,7 @@ export default function AyurvedaAaharaApplicationForm() {
                 </div>
               </div>
               <div style={{ marginTop: 12, marginBottom: 4, fontWeight: 600, fontSize: 12, color: catColor }}>Scientific Evidence</div>
-              <EvidenceDosageTable field="catB1DiseaseRiskEvidenceRows" rows={d.catB1DiseaseRiskEvidenceRows} pending={pendingCatB1DiseaseEvidence} setPending={setPendingCatB1DiseaseEvidence} />
+              {EvidenceDosageTable({ field: "catB1DiseaseRiskEvidenceRows", rows: d.catB1DiseaseRiskEvidenceRows, pending: pendingCatB1DiseaseEvidence, setPending: setPendingCatB1DiseaseEvidence })}
             </>
           )}
         </div>
@@ -2554,7 +2575,7 @@ export default function AyurvedaAaharaApplicationForm() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                 <div>
                   <label style={S.label}>Supporting Document (Specified)</label>
-                  <UB value={d.catB2HealthBenefit1File} field="catB2HealthBenefit1File" />
+                  {UB({ value: d.catB2HealthBenefit1File, field: "catB2HealthBenefit1File" })}
                 </div>
                 <div>
                   <label style={S.label}>Abstract / Summary</label>
@@ -2563,7 +2584,7 @@ export default function AyurvedaAaharaApplicationForm() {
                 </div>
               </div>
               <div style={{ marginTop: 8, marginBottom: 4, fontWeight: 600, fontSize: 12, color: catColor }}>Health Benefit Claim 1 Evidence</div>
-              <EvidenceDosageTable field="catB2HealthBenefit1EvidenceRows" rows={d.catB2HealthBenefit1EvidenceRows} pending={pendingCatB2HealthBenefit1Evidence} setPending={setPendingCatB2HealthBenefit1Evidence} />
+              {EvidenceDosageTable({ field: "catB2HealthBenefit1EvidenceRows", rows: d.catB2HealthBenefit1EvidenceRows, pending: pendingCatB2HealthBenefit1Evidence, setPending: setPendingCatB2HealthBenefit1Evidence })}
               {errMsg('catB2HealthBenefit1EvidenceRows')}
             </>
           )}
@@ -2582,7 +2603,7 @@ export default function AyurvedaAaharaApplicationForm() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 4 }}>
                 <div>
                   <label style={S.label}>Supporting Document (Not Specified)</label>
-                  <UB value={d.catB2HealthBenefit2File} field="catB2HealthBenefit2File" />
+                  {UB({ value: d.catB2HealthBenefit2File, field: "catB2HealthBenefit2File" })}
                 </div>
                 <div>
                   <label style={S.label}>Abstract / Summary</label>
@@ -2591,7 +2612,7 @@ export default function AyurvedaAaharaApplicationForm() {
                 </div>
               </div>
               <div style={{ marginTop: 8, marginBottom: 4, fontWeight: 600, fontSize: 12, color: catColor }}>Health Benefit Claim 2 Evidence</div>
-              <EvidenceDosageTable field="catB2HealthBenefit2EvidenceRows" rows={d.catB2HealthBenefit2EvidenceRows} pending={pendingCatB2HealthBenefit2Evidence} setPending={setPendingCatB2HealthBenefit2Evidence} />
+              {EvidenceDosageTable({ field: "catB2HealthBenefit2EvidenceRows", rows: d.catB2HealthBenefit2EvidenceRows, pending: pendingCatB2HealthBenefit2Evidence, setPending: setPendingCatB2HealthBenefit2Evidence })}
               {errMsg('catB2HealthBenefit2EvidenceRows')}
             </>
           )}
@@ -2622,7 +2643,7 @@ export default function AyurvedaAaharaApplicationForm() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                 <div>
                   <label style={S.label}>Supporting Document</label>
-                  <UB value={d.catB2DiseaseRisk1File} field="catB2DiseaseRisk1File" />
+                  {UB({ value: d.catB2DiseaseRisk1File, field: "catB2DiseaseRisk1File" })}
                 </div>
                 <div>
                   <label style={S.label}>Abstract</label>
@@ -2682,7 +2703,7 @@ export default function AyurvedaAaharaApplicationForm() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <label style={S.label}>Supporting Document</label>
-                  <UB value={d.catB2DiseaseRisk2File} field="catB2DiseaseRisk2File" />
+                  {UB({ value: d.catB2DiseaseRisk2File, field: "catB2DiseaseRisk2File" })}
                 </div>
                 <div>
                   <label style={S.label}>Abstract</label>
@@ -2746,11 +2767,11 @@ export default function AyurvedaAaharaApplicationForm() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
             <div>
               <label style={S.label}>Supporting Document for Format Rationale</label>
-              <UB value={d.differentFormatRationaleFile} field="differentFormatRationaleFile" />
+              {UB({ value: d.differentFormatRationaleFile, field: "differentFormatRationaleFile" })}
             </div>
             <div>
               <label style={S.label}>Efficacy Data Upload *</label>
-              <UB value={d.efficacyDataFile} field="efficacyDataFile" />
+              {UB({ value: d.efficacyDataFile, field: "efficacyDataFile" })}
               {errMsg('efficacyDataFile')}
             </div>
           </div>
@@ -2761,7 +2782,7 @@ export default function AyurvedaAaharaApplicationForm() {
             {errMsg('efficacyDataAbstract')}
           </div>
           <div style={{ marginTop: 12, marginBottom: 4, fontWeight: 600, fontSize: 12, color: catColor }}>Efficacy Evidence</div>
-          <EvidenceDosageTable field="catB1EfficacyEvidenceRows" rows={d.catB1EfficacyEvidenceRows} pending={pendingCatB1EfficacyEvidence} setPending={setPendingCatB1EfficacyEvidence} />
+          {EvidenceDosageTable({ field: "catB1EfficacyEvidenceRows", rows: d.catB1EfficacyEvidenceRows, pending: pendingCatB1EfficacyEvidence, setPending: setPendingCatB1EfficacyEvidence })}
           {errMsg('catB1EfficacyEvidenceRows')}
         </div>
       )}
@@ -2770,7 +2791,7 @@ export default function AyurvedaAaharaApplicationForm() {
       <div style={{ ...secCard, display: 'none' }}>
         <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8, color: COLORS.primary }}>Product Label *</div>
         <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 8 }}>Upload the proposed product label / label artwork (jpg/pdf, max 10 MB).</div>
-        <UB value={d.productLabel} field="productLabel" />
+        {UB({ value: d.productLabel, field: "productLabel" })}
       </div>
 
       {/* Part III — Existing Registration / License Details */}
@@ -2815,11 +2836,11 @@ export default function AyurvedaAaharaApplicationForm() {
             </div>
             <div style={row}>
               <label style={fieldLabel}>Upload Registration Certificate</label>
-              <UB value={d.registrationCertificate} field="registrationCertificate" />
+              {UB({ value: d.registrationCertificate, field: "registrationCertificate" })}
             </div>
             <div style={row}>
               <label style={fieldLabel}>Upload License Certificate</label>
-              <UB value={d.licenseCertificate} field="licenseCertificate" />
+              {UB({ value: d.licenseCertificate, field: "licenseCertificate" })}
             </div>
           </>
         )}
