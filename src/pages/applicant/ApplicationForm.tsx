@@ -62,6 +62,19 @@ const fieldLabel: React.CSSProperties = {
   paddingTop: 4, lineHeight: 1.5,
 };
 
+// Deep-merge loaded JSON with defaults so missing step keys never crash the form
+function mergeWithDefaults(loaded: unknown): AppFormData {
+  const empty = emptyFormData();
+  const src   = (loaded ?? {}) as Partial<AppFormData>;
+  return {
+    step1: { ...empty.step1, ...(src.step1 ?? {}) },
+    step2: { ...empty.step2, ...(src.step2 ?? {}) },
+    step3: { ...empty.step3, ...(src.step3 ?? {}) },
+    step4: { ...empty.step4, ...(src.step4 ?? {}) },
+    step5: { ...empty.step5, ...(src.step5 ?? {}) },
+  };
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function ApplicationForm() {
   const [params]   = useSearchParams();
@@ -83,7 +96,7 @@ export default function ApplicationForm() {
     if (idParam) {
       fetchApplication(idParam).then((app) => {
         setAppId(app.id);
-        if (app.formData) setFormData(app.formData as AppFormData);
+        setFormData(mergeWithDefaults(app.formData));
       }).catch(() => toast.error('Could not load draft'));
     } else {
       // Reuse an existing draft of the same type rather than creating a duplicate
@@ -94,7 +107,7 @@ export default function ApplicationForm() {
           );
           if (existing) {
             setAppId(existing.id);
-            if (existing.formData) setFormData(existing.formData as AppFormData);
+            setFormData(mergeWithDefaults(existing.formData));
           } else {
             return createDraftApplication(typeParam, user?.username || 'Draft')
               .then((app) => setAppId(app.id));
