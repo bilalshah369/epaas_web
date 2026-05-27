@@ -166,7 +166,7 @@ export default function TechAssessment() {
     fetchQueries(id).then(setQueries).catch(() => {});
   }, [id]);
 
-  const fd      = app?.formData as AppFormData | null | undefined;
+  const fd      = app?.formData as unknown as Record<string, unknown> | null | undefined;
   const appId   = id ?? '';
   const profile  = getProfileDisplay(app);
   const docRows  = getDocRows(app);
