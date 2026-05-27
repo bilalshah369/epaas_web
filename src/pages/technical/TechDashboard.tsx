@@ -157,22 +157,23 @@ const [appealType, setAppealType] = useState('Appeal');
 
   const PENDING_SECTIONS = [
     { key: 'docscrutiny', label: 'Document Scrutinization',  count: apps.length },
-    { key: 'fboedit',     label: 'Application with Editing', count: 0 },
-    { key: 'withdrawal',  label: 'Withdrawal of Approval',   count: 0 },
+    { key: 'fboedit',     label: 'Application with Editing', count: allApps.filter((a) => a.stage === 'QuerySent').length },
+    { key: 'withdrawal',  label: 'Withdrawal of Approval',   count: withdrawnCount },
   ];
   const unread        = NOTIFICATIONS.filter((n) => !n.read).length;
-  const approvedCount = allApps.filter((a) => ['Approved', 'Closed'].includes(a.stage)).length;
-  const rejectedCount = allApps.filter((a) => a.stage === 'Rejected').length;
-  const withdrawnCount= allApps.filter((a) => a.stage === 'Withdrawn').length;
-  const pendingCount  = allApps.filter((a) => !['Approved', 'Closed', 'Rejected', 'Withdrawn', 'Draft'].includes(a.stage)).length;
+  const approvedCount    = allApps.filter((a) => ['Approved', 'Closed'].includes(a.stage)).length;
+  const rejectedCount    = allApps.filter((a) => a.stage === 'Rejected').length;
+  const withdrawnCount   = allApps.filter((a) => ['Withdrawn', 'WithdrawnByAuthority'].includes(a.stage)).length;
+  const appealReviewCount= allApps.filter((a) => ['WithCEO', 'WithChairperson'].includes(a.stage)).length;
+  const pmsCount         = allApps.filter((a) => ['Approved', 'Closed'].includes(a.stage) && !!(a.toDecision as Record<string, unknown>)?.withPms).length;
 
   const DASH_CARDS = [
-    { key: 'approved',     icon: '✅', label: 'Applications Approved',           count: approvedCount,  color: COLORS.success },
-    { key: 'rejected',     icon: '❌', label: 'Application Rejected',            count: rejectedCount,  color: COLORS.danger  },
-    { key: 'pms',          icon: '📋', label: 'Application Approved with PMS',   count: null,           color: COLORS.info    },
-    { key: 'withdrawn',    icon: '🔄', label: 'Application Withdrawn / Closed',  count: withdrawnCount, color: COLORS.warning },
-    { key: 'status',       icon: '📊', label: 'Application Status',              count: null,           color: COLORS.primary },
-    { key: 'appealreview', icon: '⚖️', label: 'Application for Appeal / Review', count: null,           color: '#2C5282'      },
+    { key: 'approved',     icon: '✅', label: 'Applications Approved',           count: approvedCount,     color: COLORS.success },
+    { key: 'rejected',     icon: '❌', label: 'Application Rejected',            count: rejectedCount,     color: COLORS.danger  },
+    { key: 'pms',          icon: '📋', label: 'Application Approved with PMS',   count: pmsCount,          color: COLORS.info    },
+    { key: 'withdrawn',    icon: '🔄', label: 'Application Withdrawn / Closed',  count: withdrawnCount,    color: COLORS.warning },
+    { key: 'status',       icon: '📊', label: 'Application Status',              count: null,              color: COLORS.primary },
+    { key: 'appealreview', icon: '⚖️', label: 'Application for Appeal / Review', count: appealReviewCount, color: '#2C5282'      },
   ];
 
   // ── Dashboard ──────────────────────────────────────────────────────────────
@@ -288,11 +289,11 @@ const [appealType, setAppealType] = useState('Appeal');
       ]);
     }
     if (dashboardSection === 'pms') {
-      return subPageLayout('Application Approved with PMS', approvedApps, [
-        { label: 'Total Received',   value: allApps.length,      color: COLORS.primary },
-        { label: 'Approved',         value: approvedApps.length, color: COLORS.success },
-        { label: 'Rejected',         value: rejectedApps.length, color: COLORS.danger  },
-        { label: 'Withdrawn/Closed', value: closedApps.length,   color: COLORS.warning },
+      const pmsApps = approvedApps.filter((a) => !!(a.toDecision as Record<string, unknown>)?.withPms);
+      return subPageLayout('Application Approved with PMS', pmsApps, [
+        { label: 'Total Received',       value: allApps.length,      color: COLORS.primary },
+        { label: 'Approved with PMS',    value: pmsApps.length,      color: COLORS.info    },
+        { label: 'Approved (All)',        value: approvedApps.length, color: COLORS.success },
       ]);
     }
     if (dashboardSection === 'status') {
@@ -369,7 +370,12 @@ const [appealType, setAppealType] = useState('Appeal');
       );
     }
     if (dashboardSection === 'appealreview') {
-      const filteredApps = allApps;
+      const appealRows  = allApps.filter((a) => a.workflowType === 'Appeal');
+      const reviewRows  = allApps.filter((a) => a.workflowType === 'Review');
+      const activeRows  = appealType === 'Appeal' ? appealRows : reviewRows;
+      const activeApproved = activeRows.filter((a) => ['Approved', 'Closed'].includes(a.stage)).length;
+      const activeRejected = activeRows.filter((a) => a.stage === 'Rejected').length;
+      const activePending  = activeRows.filter((a) => !['Approved', 'Closed', 'Rejected', 'Withdrawn', 'WithdrawnByAuthority'].includes(a.stage)).length;
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
@@ -377,27 +383,19 @@ const [appealType, setAppealType] = useState('Appeal');
             <span style={{ fontSize: 14, fontWeight: 700, color: COLORS.text }}>Application for Appeal / Review</span>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {['Appeal', 'Review'].map((t) => (
+            {(['Appeal', 'Review'] as const).map((t) => (
               <button key={t} onClick={() => setAppealType(t)}
                 style={{ padding: '5px 16px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: `1px solid ${appealType === t ? COLORS.primary : COLORS.border}`, background: appealType === t ? COLORS.primary : 'transparent', color: appealType === t ? '#fff' : COLORS.textMuted }}>
-                {t}
-              </button>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 2 }}>
-            {(['category', 'yearwise'] as const).map((t) => (
-              <button key={t} onClick={() => setDashSubTab(t)}
-                style={{ padding: '5px 16px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: `1px solid ${dashSubTab === t ? COLORS.primary : COLORS.border}`, background: dashSubTab === t ? COLORS.primary : 'transparent', color: dashSubTab === t ? '#fff' : COLORS.textMuted }}>
-                {t === 'category' ? 'Category-wise' : 'Year-wise'}
+                {t} ({(t === 'Appeal' ? appealRows : reviewRows).length})
               </button>
             ))}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
             {[
-              { label: 'Total Received',   value: allApps.length,      color: COLORS.primary },
-              { label: 'Approved',         value: approvedApps.length, color: COLORS.success },
-              { label: 'Rejected',         value: rejectedApps.length, color: COLORS.danger  },
-              { label: 'Withdrawn/Closed', value: closedApps.length,   color: COLORS.warning },
+              { label: `Total ${appealType}s`, value: activeRows.length,   color: COLORS.primary },
+              { label: 'Approved',             value: activeApproved,       color: COLORS.success },
+              { label: 'Rejected',             value: activeRejected,       color: COLORS.danger  },
+              { label: 'Pending',              value: activePending,        color: COLORS.warning },
             ].map((sc) => (
               <div key={sc.label} style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderTop: `3px solid ${sc.color}`, borderRadius: 8, padding: '14px 16px', textAlign: 'center' }}>
                 <div style={{ fontSize: 26, fontWeight: 700, color: sc.color, fontFamily: "'Libre Baskerville',Georgia,serif" }}>{sc.value}</div>
@@ -405,7 +403,7 @@ const [appealType, setAppealType] = useState('Appeal');
               </div>
             ))}
           </div>
-          {reportTable(filteredApps)}
+          {reportTable(activeRows)}
         </div>
       );
     }

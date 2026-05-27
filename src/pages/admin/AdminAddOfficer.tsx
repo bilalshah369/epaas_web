@@ -11,6 +11,7 @@ const ALL_CATEGORIES = [
   { value: 'ClaimApproval',  label: 'Claim Approval' },
   { value: 'AyurvedaAahara', label: 'Ayurveda Aahara' },
   { value: 'RPET',           label: 'R-PET' },
+  { value: 'Vegan',          label: 'Vegan' },
   { value: 'AnyOther',       label: 'Any Other' },
 ];
 

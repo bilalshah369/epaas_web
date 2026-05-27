@@ -6,10 +6,11 @@ import { COLORS, S } from "@/utils/colors";
 import { resolveFoodCategory } from "@/utils/docResolver";
 import StatusBadge from "@/components/ui/StatusBadge";
 import {
-  fetchNodalAAll, fetchWithdrawalRequests, approveWithdrawalRequest,
+  fetchNodalAAll, fetchNodalAPmsApplications, fetchWithdrawalRequests, approveWithdrawalRequest,
   rejectWithdrawalRequest, withdrawByAuthority,
   type WithdrawalRequestRecord,
 } from "@/services/officer.service";
+import { API_BASE } from "@/services/api";
 import type { Application } from "@/services/application.service";
 import toast from "react-hot-toast";
 
@@ -528,6 +529,7 @@ export default function NodalADashboard() {
   const [activeBin, setActiveBin] = useState("dashboard");
   const [pendingSection, setPendingSection] = useState("docscrutiny");
   const [apps, setApps] = useState<Application[]>([]);
+  const [pmsApps, setPmsApps] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [dashboardSection, setDashboardSection] = useState<string | null>(null);
   const [dashSubTab, setDashSubTab] = useState<"category" | "yearwise">("category");
@@ -547,7 +549,9 @@ export default function NodalADashboard() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setApps(await fetchNodalAAll());
+      const [all, pms] = await Promise.all([fetchNodalAAll(), fetchNodalAPmsApplications()]);
+      setApps(all);
+      setPmsApps(pms);
     } finally {
       setLoading(false);
     }
@@ -568,14 +572,15 @@ export default function NodalADashboard() {
     ["Approved", "Closed"].includes(a.stage),
   );
   const rejectedApps = apps.filter((a) => a.stage === "Rejected");
-  const closedApps = apps.filter((a) => a.stage === "Closed");
+  const closedApps = apps.filter((a) => ["Withdrawn", "WithdrawnByAuthority", "Closed"].includes(a.stage));
   const pendingApps = apps.filter(
-    (a) => !["Approved", "Closed", "Rejected"].includes(a.stage),
+    (a) => !["Approved", "Closed", "Rejected", "Withdrawn", "WithdrawnByAuthority"].includes(a.stage),
   );
   const scrutinyQueue = apps.filter((a) =>
     ["WithNodalOfficerA", "Submitted"].includes(a.stage),
   );
   const editQueue = apps.filter((a) => a.stage === "QuerySent");
+  const appealReviewApps = apps.filter((a) => ["WithCEO", "WithChairperson"].includes(a.stage));
   const unread = NOTIFICATIONS.filter((n) => !n.read).length;
 
   const pendingWithdrawals = withdrawalRequests.filter((w) => w.status === 'Pending');
@@ -592,7 +597,7 @@ export default function NodalADashboard() {
       count: editQueue.length,
     },
     { key: "withdrawal", label: "Withdrawal of Approval", count: pendingWithdrawals.length },
-    { key: "appeal", label: "Application for Appeal/Review", count: 0 },
+    { key: "appeal", label: "Application for Appeal/Review", count: appealReviewApps.length },
   ];
 
   const dashCards = [
@@ -614,7 +619,7 @@ export default function NodalADashboard() {
       key: "pms",
       icon: "📋",
       label: "Application Approved with PMS",
-      count: 0,
+      count: pmsApps.length,
       color: COLORS.info,
     },
     {
@@ -635,7 +640,7 @@ export default function NodalADashboard() {
       key: "appealreview",
       icon: "⚖️",
       label: "Application for Appeal / Review",
-      count: 0,
+      count: appealReviewApps.length,
       color: "#2C5282",
     },
   ];
@@ -777,11 +782,54 @@ export default function NodalADashboard() {
       ]);
 
     if (dashboardSection === "pms")
-      return subPageLayout("Application Approved with PMS", approvedApps, [
-        { label: "Total Applications Received", value: apps.length },
-        { label: "Total Approved", value: approvedApps.length },
-        { label: "Total Withdrawn/Closed", value: closedApps.length },
-      ]);
+      return (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <button onClick={() => setDashboardSection(null)} style={{ background: 'transparent', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '4px 12px', fontSize: 11, cursor: 'pointer', color: COLORS.text }}>← Back</button>
+            <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville',Georgia,serif" }}>Applications Approved with PMS</div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+            {[{ label: 'Total PMS Reports Received', value: pmsApps.length }, { label: 'Total Approved', value: approvedApps.length }].map((sc) => (
+              <div key={sc.label} style={{ flex: 1, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '12px 16px', background: '#fff' }}>
+                <div style={{ fontSize: 28, fontWeight: 700, color: COLORS.primary, fontFamily: "'Libre Baskerville',Georgia,serif" }}>{sc.value}</div>
+                <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>{sc.label}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ background: '#fff', border: `1px solid ${COLORS.border}`, borderRadius: 8, overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr>{['S.No.', 'App. Ref. No.', 'Company', 'Product', 'Category', 'Approval No.', 'PMS Report'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {loading && <tr><td colSpan={7} style={{ ...S.td, textAlign: 'center', padding: 32, color: COLORS.textMuted }}>Loading…</td></tr>}
+                {!loading && pmsApps.length === 0 && <tr><td colSpan={7} style={{ ...S.td, textAlign: 'center', padding: 32, color: COLORS.textMuted }}>No PMS reports submitted yet.</td></tr>}
+                {pmsApps.map((a, i) => {
+                  const pmsDoc = a.documents?.find((d) => d.fieldName === 'pmsReport');
+                  return (
+                    <tr key={a.id} style={{ background: i % 2 === 0 ? '#fff' : COLORS.bg }}>
+                      <td style={S.td}>{i + 1}</td>
+                      <td style={{ ...S.td, color: COLORS.primary, fontWeight: 600 }}>{a.referenceNumber}</td>
+                      <td style={S.td}>{a.companyName}</td>
+                      <td style={S.td}>{a.productName ?? '—'}</td>
+                      <td style={S.td}>{a.applicationType}</td>
+                      <td style={S.td}>{a.approvalNumber ?? '—'}</td>
+                      <td style={S.td}>
+                        {pmsDoc ? (
+                          <a href={`${API_BASE}/uploads/${pmsDoc.storedName}`} target="_blank" rel="noreferrer"
+                            style={{ color: COLORS.primary, fontWeight: 600, textDecoration: 'none', fontSize: 12 }}>
+                            📎 {pmsDoc.originalName}
+                          </a>
+                        ) : <span style={{ color: COLORS.textMuted }}>—</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
 
     if (dashboardSection === "status") return (
       <div>
@@ -866,45 +914,44 @@ export default function NodalADashboard() {
       </div>
     );
 
-    if (dashboardSection === "appealreview") return (
-      <div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-          <button onClick={() => setDashboardSection(null)} style={{ background: "transparent", border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "4px 12px", fontSize: 11, cursor: "pointer", color: COLORS.text }}>← Back</button>
-          <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville',Georgia,serif" }}>Application for Appeal / Review</div>
-        </div>
-        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-          {["Appeal", "Review"].map((t) => (
-            <button key={t} onClick={() => setAppealType(t)}
-              style={{ padding: "7px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer", border: `1px solid ${COLORS.border}`, background: appealType === t ? COLORS.primary : "#fff", color: appealType === t ? "#fff" : COLORS.text, borderRadius: 6 }}>
-              {t}
-            </button>
-          ))}
-        </div>
-        <div style={{ display: "flex", gap: 0, marginBottom: 14 }}>
-          {(["category", "yearwise"] as const).map((tab) => (
-            <button key={tab} onClick={() => setDashSubTab(tab)}
-              style={{ padding: "7px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer", border: `1px solid ${COLORS.border}`, background: dashSubTab === tab ? COLORS.primary : "#fff", color: dashSubTab === tab ? "#fff" : COLORS.text, borderRadius: tab === "category" ? "6px 0 0 6px" : "0 6px 6px 0", marginRight: tab === "category" ? -1 : 0 }}>
-              {tab === "category" ? "Category-wise Summary" : "Year-wise / Specific Period"}
-            </button>
-          ))}
-        </div>
-        <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
-          {[{ label: "Total Applications Received", value: apps.length }, { label: "Total Approved", value: approvedApps.length }, { label: "Total Withdrawn/Closed", value: closedApps.length }].map((sc) => (
-            <div key={sc.label} style={{ flex: 1, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "12px 16px", background: "#fff" }}>
-              <div style={{ fontSize: 28, fontWeight: 700, color: COLORS.primary, fontFamily: "'Libre Baskerville',Georgia,serif" }}>{sc.value}</div>
-              <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>{sc.label}</div>
-            </div>
-          ))}
-        </div>
-        {dashSubTab === "yearwise" && (
-          <div style={{ background: "#fff", border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "14px 16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>CLICK TO VIEW YEAR WISE WITH SPECIFIC PERIOD</div>
-            <OfficerFilterBar fields={YEAR_WISE_FILTERS} />
+    if (dashboardSection === "appealreview") {
+      const appealRows = apps.filter((a) => a.workflowType === 'Appeal');
+      const reviewRows = apps.filter((a) => a.workflowType === 'Review');
+      const activeRows = appealType === 'Appeal' ? appealRows : reviewRows;
+      const activeApproved = activeRows.filter((a) => ['Approved', 'Closed'].includes(a.stage)).length;
+      const activeRejected = activeRows.filter((a) => a.stage === 'Rejected').length;
+      const activePending  = activeRows.filter((a) => !['Approved', 'Closed', 'Rejected', 'Withdrawn', 'WithdrawnByAuthority'].includes(a.stage)).length;
+      return (
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+            <button onClick={() => setDashboardSection(null)} style={{ background: "transparent", border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "4px 12px", fontSize: 11, cursor: "pointer", color: COLORS.text }}>← Back</button>
+            <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville',Georgia,serif" }}>Application for Appeal / Review</div>
           </div>
-        )}
-        {reportTable(apps)}
-      </div>
-    );
+          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+            {(["Appeal", "Review"] as const).map((t) => (
+              <button key={t} onClick={() => setAppealType(t)}
+                style={{ padding: "7px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer", border: `1px solid ${COLORS.border}`, background: appealType === t ? COLORS.primary : "#fff", color: appealType === t ? "#fff" : COLORS.text, borderRadius: 6 }}>
+                {t} <span style={{ fontSize: 11, marginLeft: 4, opacity: 0.8 }}>({(t === 'Appeal' ? appealRows : reviewRows).length})</span>
+              </button>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+            {[
+              { label: `Total ${appealType}s`, value: activeRows.length },
+              { label: 'Approved', value: activeApproved },
+              { label: 'Rejected', value: activeRejected },
+              { label: 'Pending', value: activePending },
+            ].map((sc) => (
+              <div key={sc.label} style={{ flex: 1, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "12px 16px", background: "#fff" }}>
+                <div style={{ fontSize: 28, fontWeight: 700, color: COLORS.primary, fontFamily: "'Libre Baskerville',Georgia,serif" }}>{sc.value}</div>
+                <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>{sc.label}</div>
+              </div>
+            ))}
+          </div>
+          {reportTable(activeRows)}
+        </div>
+      );
+    }
 
     // ── Main dashboard ──────────────────────────────────────────────────────
     return (

@@ -48,22 +48,24 @@ function getFoodCategory(r: Application): string {
 
 // ── Static bin definitions ────────────────────────────────────────────────────
 const BINS: Array<{ key: Bin; icon: string; label: string; color: string; alert?: boolean }> = [
-  { key: 'all',        icon: '📂', label: 'Click to View All Applications',              color: COLORS.primary },
-  { key: 'incomplete', icon: '📋', label: 'Incomplete Application',                       color: COLORS.warning },
-  { key: 'submitted',  icon: '✅', label: 'Submitted Applications with Successful Payment', color: COLORS.info },
-  { key: 'reverted',   icon: '🔄', label: 'Reverted Application by Authority',             color: COLORS.accent, alert: true },
-  { key: 'rejected',   icon: '❌', label: 'Rejected Application',                           color: COLORS.danger },
-  { key: 'approved',   icon: '🏅', label: 'Approval Issued',                                color: COLORS.success },
+  { key: 'all',         icon: '📂', label: 'Click to View All Applications',               color: COLORS.primary },
+  { key: 'incomplete',  icon: '📋', label: 'Incomplete Application',                        color: COLORS.warning },
+  { key: 'submitted',   icon: '✅', label: 'Submitted Applications with Successful Payment', color: COLORS.info },
+  { key: 'reverted',    icon: '🔄', label: 'Reverted Application by Authority',              color: COLORS.accent, alert: true },
+  { key: 'rejected',    icon: '❌', label: 'Rejected Application',                            color: COLORS.danger },
+  { key: 'approved',    icon: '🏅', label: 'Approval Issued',                                 color: COLORS.success },
+  { key: 'approvedPms', icon: '🔬', label: 'Approved with PMS',                               color: COLORS.info },
 ];
 
 // ── Column definitions per bin ────────────────────────────────────────────────
 const BIN_COLS: Record<Bin, string[]> = {
-  all:        ['Sr. No.', 'Reference No.', 'Application Type', 'Status', 'Last Updated On', 'Action'],
-  incomplete: ['Sr. No.', 'Reference No.', 'Address', 'Application Type', 'Food Category', 'Last Updated On', 'Action'],
-  submitted:  ['Sr. No.', 'Reference No.', 'Address', 'Application Type', 'Food Category', 'Last Updated On', 'Status', 'Action'],
-  reverted:   ['Sr. No.', 'Reference No.', 'Address', 'Application Type', 'Food Category', 'Last Updated On', 'Status', 'Action', 'Query / Ext. Time'],
-  rejected:   ['Sr. No.', 'Reference No.', 'Address', 'Application Type', 'Food Category', 'Rejected Date', 'Status', 'Action'],
-  approved:   ['Sr. No.', 'Reference No.', 'Address', 'Application Type', 'Food Category', 'Issued Date', 'Status', 'Action'],
+  all:         ['Sr. No.', 'Reference No.', 'Application Type', 'Status', 'Last Updated On', 'Action'],
+  incomplete:  ['Sr. No.', 'Reference No.', 'Address', 'Application Type', 'Food Category', 'Last Updated On', 'Action'],
+  submitted:   ['Sr. No.', 'Reference No.', 'Address', 'Application Type', 'Food Category', 'Last Updated On', 'Status', 'Action'],
+  reverted:    ['Sr. No.', 'Reference No.', 'Address', 'Application Type', 'Food Category', 'Last Updated On', 'Status', 'Action', 'Query / Ext. Time'],
+  rejected:    ['Sr. No.', 'Reference No.', 'Address', 'Application Type', 'Food Category', 'Rejected Date', 'Status', 'Action'],
+  approved:    ['Sr. No.', 'Reference No.', 'Address', 'Application Type', 'Food Category', 'Issued Date', 'Status', 'Action'],
+  approvedPms: ['Sr. No.', 'Reference No.', 'Address', 'Application Type', 'Food Category', 'Issued Date', 'Status', 'Action'],
 };
 
 // ── Shared table styles ───────────────────────────────────────────────────────
@@ -166,7 +168,7 @@ interface BinFilters {
 function emptyFilters(): BinFilters {
   return { search: '', filterType: '', filterWorkflow: '', filterCat: '', filterStatus: '', filterRef: '', filterFrom: '', filterTo: '' };
 }
-const ALL_BINS: Bin[] = ['all', 'incomplete', 'submitted', 'reverted', 'rejected', 'approved'];
+const ALL_BINS: Bin[] = ['all', 'incomplete', 'submitted', 'reverted', 'rejected', 'approved', 'approvedPms'];
 function initBinFilters(): Record<Bin, BinFilters> {
   return Object.fromEntries(ALL_BINS.map((k) => [k, emptyFilters()])) as Record<Bin, BinFilters>;
 }
@@ -200,15 +202,17 @@ export default function ApplicantDashboard() {
   useEffect(() => { loadApps(); }, [loadApps]);
 
   const binned = useMemo(() => {
-    const groups: Record<Bin, Application[]> = { all: apps, incomplete: [], submitted: [], reverted: [], rejected: [], approved: [] };
+    const groups: Record<Bin, Application[]> = { all: apps, incomplete: [], submitted: [], reverted: [], rejected: [], approved: [], approvedPms: [] };
     for (const a of apps) groups[getBin(a.stage)].push(a);
+    // approvedPms is a subset of approved: only those with withPms flag
+    groups.approvedPms = groups.approved.filter((a) => !!(a.toDecision as Record<string, unknown> | null)?.withPms);
     return groups;
   }, [apps]);
 
   // Only the active bin's own filters affect the displayed list
   const f = binFilters[activeBin];
   const displayed = useMemo(() => {
-    let list = activeBin === 'all' ? apps : binned[activeBin];
+    let list = activeBin === 'all' ? apps : (binned[activeBin] ?? []);
     if (f.search)       list = list.filter((a) => a.referenceNumber.toLowerCase().includes(f.search.toLowerCase()));
     if (f.filterRef)    list = list.filter((a) => a.referenceNumber.toLowerCase().includes(f.filterRef.toLowerCase()));
     if (f.filterType)   list = list.filter((a) => (NORM_TYPE[a.applicationType] ?? a.applicationType) === f.filterType);
@@ -278,8 +282,8 @@ export default function ApplicantDashboard() {
           <td style={td}>{CATEGORY_OPTIONS.find((o) => o.value === (NORM_TYPE[r.applicationType] ?? r.applicationType))?.label ?? r.applicationType}</td>
           {bin !== 'all' && <td style={td}><span style={{ color: COLORS.primary, fontWeight: 600 }}>{getFoodCategory(r)}</span></td>}
           {bin === 'all' && <td style={td}><StatusBadge status={r.stage} /></td>}
-          <td style={td}>{fmtDate(bin === 'rejected' || bin === 'approved' ? r.submittedAt : r.updatedAt)}</td>
-          {(bin === 'submitted' || bin === 'reverted' || bin === 'rejected' || bin === 'approved') && (
+          <td style={td}>{fmtDate(bin === 'rejected' || bin === 'approved' || bin === 'approvedPms' ? r.submittedAt : r.updatedAt)}</td>
+          {(bin === 'submitted' || bin === 'reverted' || bin === 'rejected' || bin === 'approved' || bin === 'approvedPms') && (
             <td style={td}><StatusBadge status={r.stage} /></td>
           )}
           <td style={td}>
@@ -305,6 +309,18 @@ export default function ApplicantDashboard() {
               <ActionBtn label="View History"  variant="outline" onClick={() => navigate(`/app/applications/${r.id}`)} />
               <ActionBtn label="Tax Invoice"   variant="info"    onClick={() => navigate('/app/tax-invoice')} />
             </>}
+            {bin === 'approvedPms' && (() => {
+              const pmsDoc = r.documents?.find((d) => d.fieldName === 'pmsReport');
+              return (<>
+                <ActionBtn label="View Receipt"  variant="outline" onClick={() => getPayment(r.id).then((p) => openInvoiceWindow(r, p)).catch(() => openInvoiceWindow(r, null))} />
+                <ActionBtn label="View History"  variant="outline" onClick={() => navigate(`/app/applications/${r.id}`)} />
+                <ActionBtn label="Tax Invoice"   variant="info"    onClick={() => navigate('/app/tax-invoice')} />
+                {pmsDoc
+                  ? <ActionBtn label="📎 View PMS Doc" variant="warning" onClick={() => window.open(`${import.meta.env.VITE_API_URL ?? '/api'}/uploads/${pmsDoc.storedName}`, '_blank')} />
+                  : <ActionBtn label="Upload PMS Doc" variant="warning" onClick={() => navigate(`/app/applications/${r.id}`)} />
+                }
+              </>);
+            })()}
             {bin === 'all' && r.stage === 'Draft'      && <ActionBtn label="Edit"         variant="primary" onClick={() => navigate(getEditPath(r))} />}
             {bin === 'all' && r.stage === 'Draft'      && <ActionBtn label="Delete Draft" variant="danger"  onClick={() => handleDeleteDraft(r.id)} />}
             {bin === 'all' && r.stage === 'QuerySent'  && <>
@@ -434,13 +450,13 @@ export default function ApplicantDashboard() {
       {/* ── Applications Table Card ───────────────────────────────────── */}
       <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
         {/* Bin cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: vw >= 1024 ? 'repeat(6, 1fr)' : vw >= 640 ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', gap: 10, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: vw >= 1280 ? 'repeat(7, 1fr)' : vw >= 1024 ? 'repeat(4, 1fr)' : vw >= 640 ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', gap: 10, marginBottom: 16 }}>
           {BINS.map((b) => (
             <BinCard
               key={b.key}
               icon={b.icon}
               label={b.label}
-              count={b.key === 'all' ? apps.length : binned[b.key].length}
+              count={b.key === 'all' ? apps.length : binned[b.key]?.length ?? 0}
               color={b.color}
               active={activeBin === b.key}
               onClick={() => setActiveBin(b.key)}

@@ -15,6 +15,7 @@ const ALL_CATEGORIES = [
   { value: 'ClaimApproval', label: 'Claim Approval' },
   { value: 'AyurvedaAahara',label: 'Ayurveda Aahara' },
   { value: 'RPET',          label: 'R-PET' },
+  { value: 'Vegan',         label: 'Vegan' },
   { value: 'AnyOther',      label: 'Any Other' },
 ];
 
@@ -26,7 +27,7 @@ function fmtDate(iso: string | null | undefined) {
 function CategoryBadges({ cats }: { cats: string[] }) {
   if (!cats || cats.length === 0) return <span style={{ color: COLORS.textMuted, fontSize: 11 }}>—</span>;
   const labels: Record<string, string> = {
-    NSF: 'NSF', ClaimApproval: 'CA', AyurvedaAahara: 'AA', RPET: 'R-PET', AnyOther: 'AO',
+    NSF: 'NSF', ClaimApproval: 'CA', AyurvedaAahara: 'AA', RPET: 'R-PET', Vegan: 'Vegan', AnyOther: 'AO',
   };
   return (
     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>

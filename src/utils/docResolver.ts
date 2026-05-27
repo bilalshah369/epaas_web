@@ -152,6 +152,22 @@ export function getDocRows(app: Application | null): DocRow[] {
     ].filter(d => d.val);
   }
 
+  // ── Vegan (flat structure) ───────────────────────────────────────────────
+  if (type === 'Vegan') {
+    return [
+      { label: 'Source of Ingredients Document',       val: docValue(app, 'sourceDoc',            raw.sourceDoc) },
+      { label: 'Manufacturing Process Document',        val: docValue(app, 'manufacturingProcess', raw.manufacturingProcess) },
+      { label: 'Certificate of Analysis (CoA)',         val: docValue(app, 'coaFile',              raw.coaFile) },
+      { label: 'Existing Label',                        val: docValue(app, 'existingLabel',        raw.existingLabel) },
+      { label: 'Prototype Label',                       val: docValue(app, 'prototypeLabel',       raw.prototypeLabel) },
+      { label: 'Final CoA (from NABL Lab)',             val: docValue(app, 'finalCoaFile',         raw.finalCoaFile) },
+      { label: 'Third-Party CoA — 1',                  val: docValue(app, 'thirdPartyCoA1',       raw.thirdPartyCoA1) },
+      { label: 'Third-Party CoA — 2',                  val: docValue(app, 'thirdPartyCoA2',       raw.thirdPartyCoA2) },
+      { label: 'Third-Party Certification Document',   val: docValue(app, 'certificationDoc',     raw.certificationDoc) },
+      { label: 'Annexure-D Declaration',               val: docValue(app, 'annexureDFile',        raw.annexureDFile) },
+    ].filter(d => d.val);
+  }
+
   // ── NSF / AnyOther — nested step3 ───────────────────────────────────────
   const fd    = raw as unknown as AppFormData;
   const step3 = fd.step3;
@@ -190,7 +206,7 @@ export function getComplianceItems(app: Application | null): ComplianceRow[] {
       { label: 'Manufacturing Process Attached',      passed: has('manufacturingProcessFile') },
       { label: 'Specifications Document Attached',    passed: has('specificationsFile') },
       { label: 'Product Label Uploaded',              passed: has('productLabel') },
-      { label: 'Payment Reference Provided',          passed: has('paymentReference') },
+      { label: 'Payment Completed',                    passed: !!app.submittedAt },
     ];
   }
 
@@ -206,7 +222,7 @@ export function getComplianceItems(app: Application | null): ComplianceRow[] {
       { label: 'Analysis Method Document Provided',   passed: has('analysisMethodFile') },
       { label: 'Disease Risk Studies Provided',       passed: has('diseaseRiskStudiesFile') },
       { label: 'Product Category Identified',         passed: has('productCategory') },
-      { label: 'Payment Reference Provided',          passed: has('paymentReference') },
+      { label: 'Payment Completed',                   passed: !!app.submittedAt },
     ];
   }
 
@@ -227,7 +243,25 @@ export function getComplianceItems(app: Application | null): ComplianceRow[] {
       { label: 'FSS Packaging Compliance Attached',      passed: has('fssPackagingRegFile') },
       { label: 'Sensory Analysis Attached',              passed: has('sensoryAnalysisFile') },
       { label: 'All Manufacturer Declarations Signed',   passed: !!(raw.declPostConsumer && raw.declAuditReport && raw.declDocuments && raw.declFcmSymbol) },
-      { label: 'Payment Reference Provided',             passed: has('paymentReference') },
+      { label: 'Payment Completed',                       passed: !!app.submittedAt },
+    ];
+  }
+
+  // ── Vegan (flat structure) ────────────────────────────────────────────────
+  if (type === 'Vegan') {
+    const hasDoc = (field: string) =>
+      !!(app.documents?.some((d) => d.fieldName === field) || has(field));
+    return [
+      { label: 'FBO Details Complete',                   passed: has('fboName') && has('fboAddress') && has('licenseNo') },
+      { label: 'Authorised Person Provided',             passed: has('authorisedPerson') && has('authorisedContact') },
+      { label: 'Product Details Complete',               passed: has('productName') && has('foodCategory') && has('ingredients') },
+      { label: 'Source of Ingredients Document',         passed: hasDoc('sourceDoc') },
+      { label: 'Manufacturing Process Document',         passed: hasDoc('manufacturingProcess') },
+      { label: 'Certificate of Analysis Attached',       passed: hasDoc('coaFile') },
+      { label: 'Prototype Label Uploaded',               passed: hasDoc('prototypeLabel') },
+      { label: 'Final CoA Attached',                     passed: hasDoc('finalCoaFile') },
+      { label: 'Annexure-D Declaration Uploaded',        passed: hasDoc('annexureDFile') },
+      { label: 'Payment Completed',                      passed: !!app.submittedAt },
     ];
   }
 
@@ -246,7 +280,7 @@ export function getComplianceItems(app: Application | null): ComplianceRow[] {
     { label: 'Manufacturing Process Flow Attached', passed: !!(step3?.manufacturingProcess) },
     { label: 'Prototype Label Uploaded',            passed: !!(step3?.prototypeLabel) },
     { label: 'Regulatory Status Document Provided', passed: !!(step3?.regulatoryStatusFile) },
-    { label: 'Payment Reference Provided',          passed: !!(step5?.paymentReference) },
+    { label: 'Payment Completed',                    passed: !!app.submittedAt },
   ];
 }
 
@@ -334,6 +368,25 @@ export function getProfileDisplay(app: Application | null): ProfileDisplay {
       paymentReference: str(raw.paymentReference),
       mfgAddress:       str(raw.addressOfPremise),
       justification:    str(raw.recyclingTechnologyDetails),
+    };
+  }
+
+  // ── Vegan (flat structure) ────────────────────────────────────────────────
+  if (type === 'Vegan') {
+    return {
+      applicantName:    str(raw.authorisedPerson),
+      orgName:          str(raw.fboName),
+      licenseNumber:    str(raw.licenseNo),
+      mobileNo:         str(raw.authorisedContact),
+      email:            str(raw.authorisedEmail),
+      natureOfBusiness: 'Food Business Operator',
+      productName:      str(raw.productName),
+      productCategory:  str(raw.foodCategory),
+      source:           str(raw.domesticImported),
+      gstNo:            '',
+      paymentReference: str(raw.paymentReference),
+      mfgAddress:       str(raw.mfgAddress),
+      justification:    str(raw.ingredients),
     };
   }
 

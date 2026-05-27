@@ -32,7 +32,7 @@ export interface ApplicationDocument {
   uploadedAt:    string;
 }
 
-export type Bin = 'all' | 'incomplete' | 'submitted' | 'reverted' | 'rejected' | 'approved';
+export type Bin = 'all' | 'incomplete' | 'submitted' | 'reverted' | 'rejected' | 'approved' | 'approvedPms';
 
 // ── Form data shape (mirrors 5-step ApplicationForm) ─────────────────────────
 export interface Step1Data {

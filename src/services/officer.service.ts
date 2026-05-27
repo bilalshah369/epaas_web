@@ -35,6 +35,11 @@ export async function fetchNodalAAll(): Promise<Application[]> {
   return data.applications;
 }
 
+export async function fetchNodalAPmsApplications(): Promise<Application[]> {
+  const { data } = await api.get<{ applications: Application[] }>('/nodal-a/pms-applications');
+  return data.applications;
+}
+
 // Only WithNodalOfficerA — scrutiny queue
 export async function fetchNodalAPending(): Promise<Application[]> {
   const { data } = await api.get<{ applications: Application[] }>('/nodal-a/applications');

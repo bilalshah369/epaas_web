@@ -158,7 +158,8 @@ export default function TechAssessment() {
         // Pre-fill rPET fields from formData if available
         const fd = a?.formData as AppFormData | null | undefined;
         if (a.applicationType === 'RPET') {
-          setF2Material((fd as unknown as Record<string, unknown>)?.recyclingTechnologyType as string ?? '');
+          const rfd = fd as unknown as Record<string, unknown>;
+          setF2TechDetails(rfd?.recyclingTechnologyDetails as string ?? '');
         }
       })
       .catch(() => toast.error('Could not load application'))
@@ -264,6 +265,12 @@ export default function TechAssessment() {
       form2Data['manufacturerName']  = app?.companyName;
       form2Data['materialType']      = f2Material;
       form2Data['techDetails']       = f2TechDetails;
+    } else if (appType === 'Vegan') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const vfd = app?.formData as any;
+      form2Data['licenseNo']      = vfd?.licenseNo ?? '—';
+      form2Data['contactDetails'] = [vfd?.authorisedContact, vfd?.authorisedEmail].filter(Boolean).join(' | ') || '—';
+      form2Data['composition']    = vfd?.ingredients ?? '—';
     } else {
       form2Data['composition'] = f2Composition;
     }

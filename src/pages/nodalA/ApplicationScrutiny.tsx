@@ -435,83 +435,124 @@ export default function ApplicationScrutiny() {
 
               {/* Full Form 2 card */}
               {form2 && f2Decision ? (
-                <div ref={form2Ref} style={{ border: `1px solid ${COLORS.border}`, borderRadius: 8, overflow: 'hidden', marginBottom: 12 }}>
-                  <div style={{ background: COLORS.primary, padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.7)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 }}>FSSAI — FORM II</div>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: '#fff', fontFamily: "'Libre Baskerville',Georgia,serif" }}>
-                        {app.applicationType === 'RPET' ? 'Authorization/Rejection of FCM-rPET' : 'Approval / Rejection'}
+                (() => {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const afd = app.formData as any;
+                  const nodalForm2Html = buildForm2Html({
+                    applicationType:   app.applicationType,
+                    appNo:             app.referenceNumber,
+                    approvalNumber:    app.approvalNumber,
+                    dateOfApplication: String(form2['dateOfApplication'] ?? fmtDate(app.submittedAt)),
+                    mfgName:           String(form2['orgName'] ?? afd?.fboName ?? app.companyName ?? '—'),
+                    applicantName:     String(form2['applicantName'] ?? afd?.authorisedPerson ?? '—'),
+                    address:           String(form2['address'] ?? afd?.fboAddress ?? app.address ?? '—'),
+                    authorizedPerson:  String(form2['authorizedPerson'] ?? afd?.authorisedPerson ?? '—'),
+                    productName:       String(form2['productName'] ?? app.productName ?? '—'),
+                    foodCategory:      String(form2['productCategory'] ?? app.foodCategory ?? '—'),
+                    materialType:      String(form2['materialType'] ?? ''),
+                    techDetails:       String(form2['techDetails'] ?? ''),
+                    licenseNo:         String((form2['licenseNo'] && form2['licenseNo'] !== '—') ? form2['licenseNo'] : (afd?.licenseNo ?? '—')),
+                    contactDetails:    String((form2['contactDetails'] && form2['contactDetails'] !== '—') ? form2['contactDetails'] : ([afd?.authorisedContact, afd?.authorisedEmail].filter(Boolean).join(' | ') || '—')),
+                    composition:       String((form2['composition'] && form2['composition'] !== '—') ? form2['composition'] : (afd?.ingredients ?? '—')),
+                    decision:          (f2Decision === 'Approved' ? 'Approved' : 'Rejected') as 'Approved' | 'Rejected',
+                    conditions:        String(toDecision?.['conditions'] ?? ''),
+                    reasons:           String(toDecision?.['reasons'] ?? ''),
+                    issuedOn:          fmtDate(app.updatedAt ?? app.submittedAt),
+                  });
+                  return (
+                    <div ref={form2Ref} style={{ border: `1px solid ${COLORS.border}`, borderRadius: 8, overflow: 'hidden', marginBottom: 12 }}>
+                      {/* Header */}
+                      <div style={{ background: COLORS.primary, padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.7)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 }}>FSSAI — {app.applicationType === 'Vegan' ? 'FORM B' : 'FORM II'}</div>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: '#fff', fontFamily: "'Libre Baskerville',Georgia,serif" }}>
+                            {app.applicationType === 'RPET' ? 'Authorization/Rejection of FCM-rPET' : app.applicationType === 'Vegan' ? 'Vegan Logo Approval/Rejection' : 'Approval / Rejection'}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            const win = window.open('', '_blank', 'width=900,height=700');
+                            if (!win) return;
+                            win.document.write(nodalForm2Html);
+                            win.document.close(); win.focus(); win.print(); win.close();
+                          }}
+                          style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: 6, padding: '5px 12px', fontSize: 11, fontWeight: 600, color: '#fff', cursor: 'pointer' }}
+                        >
+                          🖨 {app.applicationType === 'Vegan' ? 'Print Form B' : 'Print Form II'}
+                        </button>
                       </div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        const win = window.open('', '_blank', 'width=900,height=700');
-                        if (!win) return;
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        const fd = app.formData as any;
-                        win.document.write(buildForm2Html({
-                          applicationType:   app.applicationType,
-                          appNo:             app.referenceNumber,
-                          approvalNumber:    app.approvalNumber,
-                          dateOfApplication: String(form2?.['dateOfApplication'] ?? fmtDate(app.submittedAt)),
-                          mfgName:           String(form2?.['orgName'] ?? fd?.manufacturerName ?? fd?.fboName ?? app.companyName ?? '—'),
-                          applicantName:     String(form2?.['applicantName'] ?? app.companyName ?? '—'),
-                          address:           String(form2?.['address'] ?? app.address ?? '—'),
-                          authorizedPerson:  String(form2?.['authorizedPerson'] ?? fd?.authorizedPersonnel ?? fd?.authorisedPerson ?? '—'),
-                          productName:       String(form2?.['productName'] ?? app.productName ?? '—'),
-                          foodCategory:      String(form2?.['productCategory'] ?? app.foodCategory ?? '—'),
-                          materialType:      String(form2?.['materialType'] ?? ''),
-                          techDetails:       String(form2?.['techDetails'] ?? ''),
-                          licenseNo:         String(fd?.licenseNo ?? '—'),
-                          contactDetails:    [fd?.authorisedContact, fd?.authorisedEmail].filter(Boolean).join(' | ') || '—',
-                          composition:       String(fd?.ingredients ?? '—'),
-                          decision:          (f2Decision === 'Approved' ? 'Approved' : 'Rejected') as 'Approved' | 'Rejected',
-                          conditions:        String(toDecision?.['conditions'] ?? ''),
-                          reasons:           String(toDecision?.['reasons'] ?? ''),
-                          issuedOn:          fmtDate(app.updatedAt ?? app.submittedAt),
-                        }));
-                        win.document.close(); win.focus(); win.print(); win.close();
-                      }}
-                      style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: 6, padding: '5px 12px', fontSize: 11, fontWeight: 600, color: '#fff', cursor: 'pointer' }}
-                    >
-                      🖨 Print Form II
-                    </button>
-                  </div>
-                  <div style={{ padding: '12px 14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px' }}>
-                    {[
-                      ['Application No.', app.referenceNumber],
-                      ...(app.approvalNumber ? [[f2Decision === 'Approved' ? 'Approval No.' : 'Rejection No.', app.approvalNumber]] : []),
-                      ['Date', String(form2['dateOfApplication'] ?? '—')],
-                      ['Organisation', String(form2['orgName'] ?? app.companyName)],
-                      ['Applicant', String(form2['applicantName'] ?? '—')],
-                      ['Auth. Person', String(form2['authorizedPerson'] ?? '—')],
-                      ...(form2['productName'] ? [['Product', String(form2['productName'])]] : []),
-                      ...(form2['productCategory'] ? [['Category', String(form2['productCategory'])]] : []),
-                    ].map(([lbl, val]) => (
-                      <div key={lbl}>
-                        <div style={{ fontSize: 9, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 1 }}>{lbl}</div>
-                        <div style={{ fontSize: 11, fontWeight: lbl.includes('No.') ? 700 : 500, color: COLORS.text }}>{val}</div>
+                      {/* Fields grid */}
+                      <div style={{ padding: '12px 14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px' }}>
+                        {((): [string, string][] => {
+                          const appType = app.applicationType;
+                          if (appType === 'RPET') return [
+                            ['Application No.', app.referenceNumber],
+                            ...(app.approvalNumber ? [[f2Decision === 'Approved' ? 'Approval No.' : 'Rejection No.', app.approvalNumber] as [string,string]] : []),
+                            ['Date', String(form2['dateOfApplication'] ?? '—')],
+                            ['Manufacturer', String(form2['manufacturerName'] ?? form2['orgName'] ?? '—')],
+                            ['Applicant', String(form2['applicantName'] ?? '—')],
+                            ['Address', String(form2['address'] ?? app.address ?? '—')],
+                            ['Auth. Person', String(form2['authorizedPerson'] ?? '—')],
+                            ['Material Type', String(form2['materialType'] ?? '—')],
+                            ['Tech Details', String(form2['techDetails'] ?? '—')],
+                          ];
+                          if (appType === 'Vegan') {
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const vfd = app.formData as any;
+                            return [
+                              ['Application No.', app.referenceNumber],
+                              ...(app.approvalNumber ? [[f2Decision === 'Approved' ? 'Approval No.' : 'Rejection No.', app.approvalNumber] as [string,string]] : []),
+                              ['Date', String(form2['dateOfApplication'] ?? '—')],
+                              ['FBO Name', String(form2['orgName'] ?? '—')],
+                              ['Address', String(form2['address'] ?? app.address ?? '—')],
+                              ['License No.', String(vfd?.licenseNo ?? '—')],
+                              ['Auth. Person', String(form2['authorizedPerson'] ?? vfd?.authorisedPerson ?? '—')],
+                              ['Contact Details', [vfd?.authorisedContact, vfd?.authorisedEmail].filter(Boolean).join(' | ') || '—'],
+                              ['Product', String(form2['productName'] ?? app.productName ?? '—')],
+                              ['Category', String(form2['productCategory'] ?? app.foodCategory ?? '—')],
+                              ['Composition', String(form2['composition'] ?? vfd?.ingredients ?? '—')],
+                            ];
+                          }
+                          return [
+                            ['Application No.', app.referenceNumber],
+                            ...(app.approvalNumber ? [[f2Decision === 'Approved' ? 'Approval No.' : 'Rejection No.', app.approvalNumber] as [string,string]] : []),
+                            ['Date', String(form2['dateOfApplication'] ?? '—')],
+                            ['Organisation', String(form2['orgName'] ?? app.companyName)],
+                            ['Applicant', String(form2['applicantName'] ?? '—')],
+                            ['Auth. Person', String(form2['authorizedPerson'] ?? '—')],
+                            ...(form2['productName'] ? [['Product', String(form2['productName'])] as [string,string]] : []),
+                            ...(form2['productCategory'] ? [['Category', String(form2['productCategory'])] as [string,string]] : []),
+                          ];
+                        })().map(([lbl, val]) => (
+                          <div key={lbl}>
+                            <div style={{ fontSize: 9, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 1 }}>{lbl}</div>
+                            <div style={{ fontSize: 11, fontWeight: lbl.includes('No.') ? 700 : 500, color: COLORS.text }}>{val || '—'}</div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                  <div style={{ margin: '0 14px 12px', background: f2Decision === 'Approved' ? '#F0FDF4' : '#FEF2F2', border: `1px solid ${f2Decision === 'Approved' ? '#BBF7D0' : '#FECACA'}`, borderRadius: 6, padding: '8px 12px' }}>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: f2Decision === 'Approved' ? '#166534' : '#991B1B' }}>
-                      {f2Decision === 'Approved' ? '✓ APPROVED' : '✗ REJECTED'}
+                      {/* Decision badge */}
+                      <div style={{ margin: '0 14px 12px', background: f2Decision === 'Approved' ? '#F0FDF4' : '#FEF2F2', border: `1px solid ${f2Decision === 'Approved' ? '#BBF7D0' : '#FECACA'}`, borderRadius: 6, padding: '8px 12px' }}>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: f2Decision === 'Approved' ? '#166534' : '#991B1B' }}>
+                          {f2Decision === 'Approved' ? '✓ APPROVED' : '✗ REJECTED'}
+                        </div>
+                      </div>
+                      {!!toDecision?.['conditions'] && (
+                        <div style={{ margin: '0 14px 10px' }}>
+                          <div style={{ fontSize: 9, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 3 }}>
+                            {app.applicationType === 'RPET' ? 'Conditions for Authorization' : 'Conditions for Approval'}
+                          </div>
+                          <div style={{ fontSize: 11, color: COLORS.text, background: COLORS.bg, borderRadius: 4, padding: '6px 8px', whiteSpace: 'pre-wrap' }}>{String(toDecision['conditions'])}</div>
+                        </div>
+                      )}
+                      {!!toDecision?.['reasons'] && (
+                        <div style={{ margin: '0 14px 10px' }}>
+                          <div style={{ fontSize: 9, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 3 }}>Reasons for Rejection</div>
+                          <div style={{ fontSize: 11, color: COLORS.text, background: COLORS.bg, borderRadius: 4, padding: '6px 8px', whiteSpace: 'pre-wrap' }}>{String(toDecision['reasons'])}</div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  {!!toDecision?.['conditions'] && (
-                    <div style={{ margin: '0 14px 10px' }}>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 3 }}>Conditions for Approval</div>
-                      <div style={{ fontSize: 11, color: COLORS.text, background: COLORS.bg, borderRadius: 4, padding: '6px 8px', whiteSpace: 'pre-wrap' }}>{String(toDecision['conditions'])}</div>
-                    </div>
-                  )}
-                  {!!toDecision?.['reasons'] && (
-                    <div style={{ margin: '0 14px 10px' }}>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 3 }}>Reasons for Rejection</div>
-                      <div style={{ fontSize: 11, color: COLORS.text, background: COLORS.bg, borderRadius: 4, padding: '6px 8px', whiteSpace: 'pre-wrap' }}>{String(toDecision['reasons'])}</div>
-                    </div>
-                  )}
-                </div>
+                  );
+                })()
               ) : f2Decision ? (
                 <div style={{ background: f2Decision === 'Rejected' ? '#FFF1F2' : '#F0FDF4', border: `1px solid ${f2Decision === 'Rejected' ? '#FECDD3' : '#BBF7D0'}`, borderRadius: 8, padding: '10px 14px', marginBottom: 10 }}>
                   <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 2 }}>Technical Officer Final Decision</div>
