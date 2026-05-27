@@ -91,8 +91,6 @@ export default function ChairpersonSearchConsole() {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>CHAIRPERSON</div>
-        <div style={S.pageTitle}>Search Console</div>
         <div style={S.pageDesc}>Search across all applications and Chairperson decisions.</div>
       </div>
 

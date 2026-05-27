@@ -108,7 +108,6 @@ export default function CEOApplicationReview() {
       </button>
 
       <div style={{ marginBottom: 12, paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}` }}>
-        <div style={{ fontSize: 9, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 2 }}>CEO — APPLICATION REVIEW</div>
         <h2 style={{ fontSize: 15, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville',Georgia,serif", margin: 0 }}>{app.referenceNumber}</h2>
         <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 3 }}>
           {app.companyName} · {app.applicationType} · Stage: <strong>{app.stage}</strong>
@@ -262,13 +261,13 @@ export default function CEOApplicationReview() {
           </div>
 
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            {decision === 'Approve Appeal' && (
+            {app.stage === 'WithCEO' && decision === 'Approve Appeal' && (
               <button onClick={() => setDialog({ msg: 'Are you sure you want to approve this appeal? The application will be routed to Nodal Officer for dispatch.', action: handleSubmit })} disabled={saving || appeals.length === 0}
                 style={{ background: COLORS.success, color: '#fff', border: 'none', borderRadius: 6, padding: '8px 20px', fontSize: 12, fontWeight: 700, cursor: (saving || appeals.length === 0) ? 'not-allowed' : 'pointer', opacity: (saving || appeals.length === 0) ? 0.6 : 1 }}>
                 {saving ? 'Processing…' : '⚖️ Approve Appeal'}
               </button>
             )}
-            {decision === 'Reject Appeal' && (
+            {app.stage === 'WithCEO' && decision === 'Reject Appeal' && (
               <button onClick={() => setDialog({ msg: 'Are you sure you want to reject this appeal? The application will be routed to Nodal Officer.', action: handleSubmit, variant: 'danger' })} disabled={saving || appeals.length === 0}
                 style={{ background: 'transparent', color: COLORS.danger, border: `1.5px solid ${COLORS.danger}`, borderRadius: 6, padding: '8px 20px', fontSize: 12, fontWeight: 700, cursor: (saving || appeals.length === 0) ? 'not-allowed' : 'pointer', opacity: (saving || appeals.length === 0) ? 0.6 : 1 }}>
                 {saving ? 'Processing…' : '✗ Reject Appeal'}

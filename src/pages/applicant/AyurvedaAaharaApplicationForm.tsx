@@ -1624,14 +1624,14 @@ export default function AyurvedaAaharaApplicationForm() {
           <div style={row}>
             <label style={fieldLabel}>Reference Book / Pharmacopoeia *</label>
             <div>
-              <input
-                list="ref-books-cat-a"
-                style={eb(input, 'ayurvedaReferenceBook')}
-                placeholder="Type or select reference book…"
+              <select
+                style={eb(select, 'ayurvedaReferenceBook')}
                 value={d.ayurvedaReferenceBook}
                 onChange={(e) => setField('ayurvedaReferenceBook', e.target.value)}
-              />
-              <datalist id="ref-books-cat-a">{REFERENCE_BOOKS.map((b) => <option key={b} value={b} />)}</datalist>
+              >
+                <option value="">Select reference book…</option>
+                {REFERENCE_BOOKS.map((b) => <option key={b} value={b}>{b}</option>)}
+              </select>
               {errMsg('ayurvedaReferenceBook')}
             </div>
           </div>
@@ -2935,8 +2935,6 @@ export default function AyurvedaAaharaApplicationForm() {
   return (
     <div>
       <div style={{ marginBottom: 16, paddingLeft: 12, borderLeft: `4px solid ${COLORS.primary}` }}>
-        <div style={S.roleLabel}>START NEW APPLICATION</div>
-        <div style={S.pageTitle}>Application Form (Ayurveda Aahara)</div>
         <div style={S.pageDesc}>Ayurveda Aahara application. All data is auto-saved on each step.</div>
       </div>
 

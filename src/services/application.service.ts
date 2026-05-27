@@ -18,6 +18,7 @@ export interface Application {
   createdAt:       string;
   updatedAt:       string;
   documents?:      ApplicationDocument[];
+  queries?:        Array<{ id: string }>;
 }
 
 export interface ApplicationDocument {

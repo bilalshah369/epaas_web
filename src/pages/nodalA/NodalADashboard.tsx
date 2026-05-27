@@ -1202,12 +1202,14 @@ export default function NodalADashboard() {
                           >
                             View
                           </button>
+                          {a.stage === 'WithNodalOfficerA' && !(a.queries && a.queries.length > 0) && (
                           <button
                             onClick={() => navigate(`/nodal/scrutiny/${a.id}`)}
                             style={{ background: COLORS.primary, color: '#fff', border: 'none', padding: '4px 10px', borderRadius: 4, fontSize: 10, fontWeight: 600, cursor: 'pointer' }}
                           >
                             Proceed
                           </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1534,10 +1536,12 @@ export default function NodalADashboard() {
                               variant="outline"
                               onClick={() => navigate(`/nodal/view/${a.id}`)}
                             />
+                            {a.stage === 'WithNodalOfficerA' && !(a.queries && a.queries.length > 0) && (
                             <Btn
                               label="Proceed"
                               onClick={() => navigate(`/nodal/scrutiny/${a.id}`)}
                             />
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -1960,7 +1964,6 @@ export default function NodalADashboard() {
         </div>
       )}
 
-      <ScreenHeading role="Nodal Officer (A)" title="Dashboard" />
       <OfficerBins
         activeBin={activeBin}
         onSelect={setActiveBin}

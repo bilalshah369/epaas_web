@@ -30,8 +30,6 @@ export default function ChairpersonExtensionOfTime() {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>CHAIRPERSON</div>
-        <div style={S.pageTitle}>Extension of Time</div>
         <div style={S.pageDesc}>Applications where an extension of time has been requested by the applicant.</div>
       </div>
 

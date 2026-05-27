@@ -723,8 +723,6 @@ export default function NSFApplicationForm() {
     <div>
       {/* ── Page header ──────────────────────────────────────────────── */}
       <div style={{ marginBottom: 16, paddingLeft: 12, borderLeft: `4px solid ${COLORS.primary}` }}>
-        <div style={S.roleLabel}>START NEW APPLICATION</div>
-        <div style={S.pageTitle}>Application Form (NSF)</div>
         <div style={S.pageDesc}>Stage-driven workspace for Draft Submission. All data is auto-saved on each step.</div>
       </div>
 

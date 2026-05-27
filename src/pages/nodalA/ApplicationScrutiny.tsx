@@ -223,10 +223,6 @@ export default function ApplicationScrutiny() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <div style={S.roleLabel}>NODAL OFFICER — SCRUTINY</div>
-          <div style={{ ...S.pageTitle, display: 'flex', alignItems: 'center', gap: 10 }}>
-            {app.referenceNumber} <StatusBadge status={app.stage} />
-          </div>
           <div style={S.pageDesc}>{TYPE_LABELS[app.applicationType] ?? app.applicationType} · {app.companyName}</div>
         </div>
       </div>

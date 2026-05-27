@@ -47,8 +47,6 @@ export default function AdminRoles() {
   return (
     <div>
       <div style={{ marginBottom: 16, paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}` }}>
-        <div style={S.roleLabel}>SYSTEM ADMIN</div>
-        <div style={S.pageTitle}>Role Management</div>
         <div style={S.pageDesc}>Define new system roles and review existing ones. Roles control which module each officer can access.</div>
       </div>
 

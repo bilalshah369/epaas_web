@@ -104,7 +104,6 @@ export default function ApplicantExtensionRequest() {
       </button>
 
       <div style={{ marginBottom: 18 }}>
-        <div style={{ fontSize: 9, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 3 }}>APPLICANT — REQUEST EXTENSION OF TIME</div>
         <h2 style={{ fontSize: 17, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville',Georgia,serif", margin: 0 }}>
           Extension of Time Request
         </h2>

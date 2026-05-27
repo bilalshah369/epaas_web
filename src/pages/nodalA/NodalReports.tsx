@@ -362,8 +362,6 @@ const [trackError, setTrackError] = useState('');
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>NODAL OFFICER</div>
-        <div style={S.pageTitle}>Reports</div>
         <div style={S.pageDesc}>Standard reports for monitoring and compliance.</div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 0, border: `1px solid ${COLORS.border}`, borderRadius: 8, overflow: 'hidden', background: COLORS.white, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>

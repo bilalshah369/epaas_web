@@ -90,8 +90,6 @@ export default function NodalBSearchConsole() {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>NODAL POINT B</div>
-        <div style={S.pageTitle}>Search Console</div>
         <div style={S.pageDesc}>Search across all applications handled by Nodal Point B.</div>
       </div>
 

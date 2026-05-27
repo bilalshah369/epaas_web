@@ -255,13 +255,13 @@ export default function ApplicantDashboard() {
     setWithdrawSubmitting(true);
     try {
       await requestWithdrawal(withdrawApp.id, withdrawJustification);
-      toast.success('Withdrawal request submitted. Nodal Officer will be notified.');
+      toast.success('Application withdrawn successfully.');
       setWithdrawApp(null);
       setWithdrawJustification('');
       loadApps();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      toast.error(msg ?? 'Failed to submit withdrawal request');
+      toast.error(msg ?? 'Failed to withdraw application');
     } finally { setWithdrawSubmitting(false); }
   }
 

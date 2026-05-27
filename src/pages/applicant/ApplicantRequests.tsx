@@ -431,10 +431,6 @@ export default function ApplicantRequests() {
       {/* ── Page header ─────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <div style={S.roleLabel}>APPLICANT</div>
-          <div style={S.pageTitle}>
-            {activeTab === 'appeal' ? 'Appeal against Rejection' : activeTab === 'review' ? 'Review against Appellate Order' : 'Extension of Additional Time'}
-          </div>
           <div style={S.pageDesc}>
             {activeTab === 'appeal'
               ? "Appeal lies to CEO (Appellate Authority) after rejection. Routes to CEO's appellate worklist."

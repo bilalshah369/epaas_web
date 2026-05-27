@@ -345,8 +345,6 @@ export default function NodalBDashboard() {
   return (
     <div>
       <div style={{ marginBottom: 16, paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}` }}>
-        <div style={S.roleLabel}>NODAL POINT B</div>
-        <div style={S.pageTitle}>Dashboard</div>
         <div style={S.pageDesc}>Review EC-approved dossiers and forward to CEO for final approval.</div>
       </div>
       <OfficerBins activeBin={activeBin} onSelect={setActiveBin} pendingCount={pending} notifCount={unread} />

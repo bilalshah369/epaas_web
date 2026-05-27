@@ -93,8 +93,6 @@ export default function CEOSearchConsole() {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>CEO</div>
-        <div style={S.pageTitle}>Search Console</div>
         <div style={S.pageDesc}>Search across all applications and CEO decisions.</div>
       </div>
 

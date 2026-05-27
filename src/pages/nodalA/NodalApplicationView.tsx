@@ -57,9 +57,17 @@ export default function NodalApplicationView() {
     (q) => q.originStage === 'WithTechnicalOfficer' && !!q.nodalForwardedAt && !!q.response && !q.nodalFwdResponseAt,
   ) ?? null;
 
+  const activeECQueryToForward = queries.find(
+    (q) => q.originStage === 'WithExpertCommittee' && !q.nodalForwardedAt,
+  ) ?? null;
+
+  const activeECResponseToForward = queries.find(
+    (q) => q.originStage === 'WithExpertCommittee' && !!q.nodalForwardedAt && !!q.response && !q.nodalFwdResponseAt,
+  ) ?? null;
+
   const pendingApplicantResponse = app?.stage === 'QuerySent';
 
-  const hasQueryAlert = !!(activeTOQueryToForward || activeTOResponseToForward || pendingApplicantResponse);
+  const hasQueryAlert = !!(activeTOQueryToForward || activeTOResponseToForward || activeECQueryToForward || activeECResponseToForward || pendingApplicantResponse);
 
   async function handleForwardToApplicant(qId: string) {
     setFwding(true);
@@ -72,13 +80,15 @@ export default function NodalApplicationView() {
     finally { setFwding(false); }
   }
 
-  async function handleForwardResponseToTO(qId: string) {
+  async function handleForwardResponseToTO(qId: string, originStage: string) {
     setFwding(true);
     try {
       await nodalForwardResponseToTech(app!.id, qId);
-      toast.success('Response forwarded to Technical Officer');
-      const updated = await fetchQueries(app!.id);
-      setQueries(updated);
+      const dest = originStage === 'WithExpertCommittee' ? 'Expert Committee' : 'Technical Officer';
+      toast.success(`Response forwarded to ${dest}`);
+      const [updatedApp, updatedQueries] = await Promise.all([fetchApplication(app!.id), fetchQueries(app!.id)]);
+      setApp(updatedApp);
+      setQueries(updatedQueries);
     } catch { toast.error('Could not forward response'); }
     finally { setFwding(false); }
   }
@@ -102,18 +112,16 @@ export default function NodalApplicationView() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <div style={S.roleLabel}>NODAL OFFICER — APPLICATION VIEW</div>
-          <div style={{ ...S.pageTitle, display: 'flex', alignItems: 'center', gap: 10 }}>
-            {app.referenceNumber} <StatusBadge status={app.stage} />
-          </div>
           <div style={S.pageDesc}>{TYPE_LABELS[app.applicationType] ?? app.applicationType} · {app.companyName}</div>
         </div>
-        <button
-          onClick={() => navigate(`/nodal/scrutiny/${app.id}`)}
-          style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 7, padding: '9px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
-        >
-          Proceed →
-        </button>
+        {app.stage === 'WithNodalOfficerA' && !hasQueryAlert && (
+          <button
+            onClick={() => navigate(`/nodal/scrutiny/${app.id}`)}
+            style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 7, padding: '9px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+          >
+            Proceed →
+          </button>
+        )}
       </div>
 
       {/* ── Key info chips ─────────────────────────────────────────────────── */}
@@ -149,6 +157,10 @@ export default function NodalApplicationView() {
                 ? 'Query received from Technical Officer — action required'
                 : activeTOResponseToForward
                 ? 'Applicant responded — forward response to Technical Officer'
+                : activeECQueryToForward
+                ? 'Query received from Expert Committee — action required'
+                : activeECResponseToForward
+                ? 'Applicant responded — forward response to Expert Committee'
                 : 'Query sent — awaiting applicant response'}
             </div>
             <div style={{ fontSize: 11, color: '#B45309', marginTop: 1 }}>Click to open the Queries tab</div>
@@ -242,28 +254,31 @@ export default function NodalApplicationView() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {queries.map((q, i) => {
                 const isTechQuery = q.originStage === 'WithTechnicalOfficer';
-                const needsForwardToApplicant = isTechQuery && !q.nodalForwardedAt;
-                const needsForwardToTO = isTechQuery && !!q.response && !q.nodalFwdResponseAt;
+                const isECQuery   = q.originStage === 'WithExpertCommittee';
+                const isRoutedQuery = isTechQuery || isECQuery;
+                const needsForwardToApplicant = isRoutedQuery && !q.nodalForwardedAt;
+                const needsForwardBack = isRoutedQuery && !!q.response && !q.nodalFwdResponseAt;
                 const pr = q.response ? parseResponse(q.response) : null;
+                const originLabel = isECQuery ? 'Expert Committee' : 'Technical Officer';
 
                 return (
                   <div
                     key={q.id}
                     style={{
-                      border: `1px solid ${needsForwardToApplicant || needsForwardToTO ? COLORS.accent : COLORS.border}`,
+                      border: `1px solid ${needsForwardToApplicant || needsForwardBack ? COLORS.accent : COLORS.border}`,
                       borderRadius: 8, overflow: 'hidden',
-                      boxShadow: needsForwardToApplicant || needsForwardToTO ? `0 0 0 2px ${COLORS.accent}22` : 'none',
+                      boxShadow: needsForwardToApplicant || needsForwardBack ? `0 0 0 2px ${COLORS.accent}22` : 'none',
                     }}
                   >
                     {/* Query header */}
-                    <div style={{ background: isTechQuery ? '#FFF7ED' : COLORS.primaryLight, padding: '10px 14px' }}>
+                    <div style={{ background: isRoutedQuery ? '#FFF7ED' : COLORS.primaryLight, padding: '10px 14px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ width: 22, height: 22, borderRadius: '50%', background: isTechQuery ? COLORS.accent : COLORS.primary, color: '#fff', fontSize: 10, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <span style={{ width: 22, height: 22, borderRadius: '50%', background: isRoutedQuery ? COLORS.accent : COLORS.primary, color: '#fff', fontSize: 10, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                             {i + 1}
                           </span>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: isTechQuery ? COLORS.accent : COLORS.primary }}>
-                            {isTechQuery ? '🔀 Technical Officer Query' : '📋 Nodal Officer Query'}
+                          <span style={{ fontSize: 11, fontWeight: 700, color: isRoutedQuery ? COLORS.accent : COLORS.primary }}>
+                            {isECQuery ? '🔄 EC Query' : isTechQuery ? '🔀 Technical Officer Query' : '📋 Nodal Officer Query'}
                             {' — '}raised by {q.askedBy?.username ?? 'Officer'}
                           </span>
                         </div>
@@ -274,10 +289,10 @@ export default function NodalApplicationView() {
                       <p style={{ margin: 0, fontSize: 12, color: COLORS.text, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{q.text}</p>
                     </div>
 
-                    {/* Action: forward TO query to applicant */}
+                    {/* Action: forward routed query to applicant */}
                     {needsForwardToApplicant && !q.response && (
                       <div style={{ background: '#FFF7ED', borderTop: `1px solid #FED7AA`, padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: 11, color: '#92400E', fontWeight: 600 }}>⚠ Action Required — forward this query to the applicant</span>
+                        <span style={{ fontSize: 11, color: '#92400E', fontWeight: 600 }}>⚠ Action Required — forward this {originLabel} query to the applicant</span>
                         <button
                           disabled={fwding}
                           onClick={() => handleForwardToApplicant(q.id)}
@@ -288,8 +303,8 @@ export default function NodalApplicationView() {
                       </div>
                     )}
 
-                    {/* TO query forwarded to applicant — waiting */}
-                    {isTechQuery && !!q.nodalForwardedAt && !q.response && (
+                    {/* Query forwarded to applicant — waiting */}
+                    {isRoutedQuery && !!q.nodalForwardedAt && !q.response && (
                       <div style={{ background: '#F0F9FF', borderTop: `1px solid #BAE6FD`, padding: '8px 14px' }}>
                         <span style={{ fontSize: 11, color: '#0369A1' }}>✓ Forwarded to applicant on {fmtDate(q.nodalForwardedAt)} — awaiting response</span>
                       </div>
@@ -311,29 +326,29 @@ export default function NodalApplicationView() {
                       </div>
                     )}
 
-                    {/* Action: forward response back to TO */}
-                    {needsForwardToTO && (
+                    {/* Action: forward response back to originating officer */}
+                    {needsForwardBack && (
                       <div style={{ background: '#FFF7ED', borderTop: `1px solid #FED7AA`, padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: 11, color: '#92400E', fontWeight: 600 }}>⚠ Action Required — forward applicant's response to Technical Officer</span>
+                        <span style={{ fontSize: 11, color: '#92400E', fontWeight: 600 }}>⚠ Action Required — forward applicant's response to {originLabel}</span>
                         <button
                           disabled={fwding}
-                          onClick={() => handleForwardResponseToTO(q.id)}
+                          onClick={() => handleForwardResponseToTO(q.id, q.originStage ?? '')}
                           style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 5, padding: '5px 14px', fontSize: 11, fontWeight: 700, cursor: fwding ? 'wait' : 'pointer', opacity: fwding ? 0.7 : 1 }}
                         >
-                          {fwding ? 'Forwarding…' : 'Forward to Technical Officer →'}
+                          {fwding ? 'Forwarding…' : `Forward to ${originLabel} →`}
                         </button>
                       </div>
                     )}
 
-                    {/* Response forwarded to TO */}
-                    {isTechQuery && !!q.nodalFwdResponseAt && (
+                    {/* Response forwarded back */}
+                    {isRoutedQuery && !!q.nodalFwdResponseAt && (
                       <div style={{ background: '#F0FDF4', borderTop: `1px solid #BBF7D0`, padding: '8px 14px' }}>
-                        <span style={{ fontSize: 11, color: '#166534' }}>✓ Response forwarded to Technical Officer on {fmtDate(q.nodalFwdResponseAt)}</span>
+                        <span style={{ fontSize: 11, color: '#166534' }}>✓ Response forwarded to {originLabel} on {fmtDate(q.nodalFwdResponseAt)}</span>
                       </div>
                     )}
 
-                    {/* Regular query — responded */}
-                    {!isTechQuery && q.response && !needsForwardToTO && (
+                    {/* Regular nodal query — responded */}
+                    {!isRoutedQuery && q.response && !needsForwardBack && (
                       <div style={{ background: '#F0FDF4', borderTop: `1px solid #BBF7D0`, padding: '6px 14px' }}>
                         <span style={{ fontSize: 11, color: '#166534' }}>✓ Response received</span>
                       </div>

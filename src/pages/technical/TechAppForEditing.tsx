@@ -48,8 +48,6 @@ export default function TechAppForEditing() {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>TECHNICAL OFFICER</div>
-        <div style={S.pageTitle}>Application Forwarded for Editing / Clarification</div>
         <div style={S.pageDesc}>Applications returned to the Applicant for corrections or additional information.</div>
       </div>
 

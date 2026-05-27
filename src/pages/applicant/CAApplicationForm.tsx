@@ -660,8 +660,6 @@ export default function CAApplicationForm() {
     <div>
       {/* ── Page header ──────────────────────────────────────────────── */}
       <div style={{ marginBottom: 16, paddingLeft: 12, borderLeft: `4px solid ${COLORS.primary}` }}>
-        <div style={S.roleLabel}>START NEW APPLICATION</div>
-        <div style={S.pageTitle}>Application Form (CA)</div>
         <div style={S.pageDesc}>Claim Approval application. All data is auto-saved on each step.</div>
       </div>
 

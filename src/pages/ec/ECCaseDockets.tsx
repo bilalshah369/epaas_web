@@ -78,8 +78,6 @@ export default function ECCaseDockets() {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>EXPERT COMMITTEE</div>
-        <div style={S.pageTitle}>Case Docket View</div>
         <div style={S.pageDesc}>Review application dossiers assigned to the Expert Committee for evaluation.</div>
       </div>
 
@@ -153,8 +151,8 @@ export default function ECCaseDockets() {
                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                         <button style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 5, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
                           onClick={() => navigate(`/ec/dockets/${a.id}`)}>View Docket</button>
-                        <button style={{ background: 'transparent', color: COLORS.primary, border: `1px solid ${COLORS.primary}`, borderRadius: 5, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
-                          onClick={() => navigate(`/ec/dockets/${a.id}?tab=decision`)}>Record Decision</button>
+                        {a.stage === 'WithExpertCommittee' && <button style={{ background: 'transparent', color: COLORS.primary, border: `1px solid ${COLORS.primary}`, borderRadius: 5, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+                          onClick={() => navigate(`/ec/dockets/${a.id}?tab=decision`)}>Record Decision</button>}
                       </div>
                     </td>
                   </tr>

@@ -46,6 +46,14 @@ export async function ecRequestClarification(appId: string, text: string): Promi
   await api.post(`/ec/applications/${appId}/clarify`, { text });
 }
 
+export async function ecGrantExtension(id: string, remarks?: string): Promise<void> {
+  await api.post(`/ec/extension-requests/${id}/grant`, { remarks });
+}
+
+export async function ecRejectExtension(id: string, remarks?: string): Promise<void> {
+  await api.post(`/ec/extension-requests/${id}/reject`, { remarks });
+}
+
 export async function ecSaveAssessment(
   appId: string,
   checklist: Record<string, boolean>,

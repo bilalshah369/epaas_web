@@ -96,8 +96,6 @@ export default function ECAgenda() {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>EXPERT COMMITTEE</div>
-        <div style={S.pageTitle}>Meeting Agenda</div>
         <div style={S.pageDesc}>View scheduled EC meeting details, manage agenda items, and record session outcomes.</div>
       </div>
 

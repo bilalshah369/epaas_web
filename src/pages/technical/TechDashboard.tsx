@@ -155,15 +155,16 @@ const [appealType, setAppealType] = useState('Appeal');
 
   const pending       = apps.length;
 
+  const unread           = NOTIFICATIONS.filter((n) => !n.read).length;
+  const approvedCount    = allApps.filter((a) => ['Approved', 'Closed'].includes(a.stage)).length;
+  const rejectedCount    = allApps.filter((a) => a.stage === 'Rejected').length;
+  const withdrawnCount   = allApps.filter((a) => ['Withdrawn', 'WithdrawnByAuthority'].includes(a.stage)).length;
+
   const PENDING_SECTIONS = [
     { key: 'docscrutiny', label: 'Document Scrutinization',  count: apps.length },
     { key: 'fboedit',     label: 'Application with Editing', count: allApps.filter((a) => a.stage === 'QuerySent').length },
     { key: 'withdrawal',  label: 'Withdrawal of Approval',   count: withdrawnCount },
   ];
-  const unread        = NOTIFICATIONS.filter((n) => !n.read).length;
-  const approvedCount    = allApps.filter((a) => ['Approved', 'Closed'].includes(a.stage)).length;
-  const rejectedCount    = allApps.filter((a) => a.stage === 'Rejected').length;
-  const withdrawnCount   = allApps.filter((a) => ['Withdrawn', 'WithdrawnByAuthority'].includes(a.stage)).length;
   const appealReviewCount= allApps.filter((a) => ['WithCEO', 'WithChairperson'].includes(a.stage)).length;
   const pmsCount         = allApps.filter((a) => ['Approved', 'Closed'].includes(a.stage) && !!(a.toDecision as Record<string, unknown>)?.withPms).length;
 
@@ -468,7 +469,7 @@ const [appealType, setAppealType] = useState('Appeal');
                       <td style={S.td}>
                         <div style={{ display: 'flex', gap: 4 }}>
                           <Btn label="Open"    onClick={() => navigate(`/technical/assessment/${a.id}`)} />
-                          <Btn label="Forward" variant="outline" onClick={() => navigate(`/technical/assessment/${a.id}?tab=recommendation`)} />
+                          {a.stage === 'WithTechnicalOfficer' && <Btn label="Forward" variant="outline" onClick={() => navigate(`/technical/assessment/${a.id}?tab=recommendation`)} />}
                         </div>
                       </td>
                     </tr>
@@ -490,7 +491,7 @@ const [appealType, setAppealType] = useState('Appeal');
                 { label: 'Total applications received',         value: allApps.length },
                 { label: 'Applications Approved',               value: approvedCount  },
                 { label: 'Applications Rejected',               value: rejectedCount  },
-                { label: 'Applications Pending / Under Review', value: pendingCount   },
+                { label: 'Applications Pending / Under Review', value: pending        },
                 { label: 'Applications Withdrawn / Closed',     value: withdrawnCount },
               ].map((item, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: COLORS.bg, borderRadius: 6 }}>
@@ -562,9 +563,11 @@ const [appealType, setAppealType] = useState('Appeal');
                         <td style={{ ...S.td, color: (days ?? 0) > 14 ? COLORS.danger : COLORS.text, fontWeight: (days ?? 0) > 14 ? 700 : 400 }}>{days !== null ? `${days}d` : '—'}</td>
                         <td style={S.td}>
                           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                            <Btn label="Proceed"     onClick={() => navigate(`/technical/assessment/${a.id}`)} />
-                            <Btn label="Draft Query" variant="outline" onClick={() => navigate(`/technical/assessment/${a.id}?tab=query`)} />
-                            <Btn label="Forward"     variant="outline" onClick={() => navigate(`/technical/assessment/${a.id}?tab=recommendation`)} />
+                            {a.stage === 'WithTechnicalOfficer' && <>
+                              <Btn label="Proceed"     onClick={() => navigate(`/technical/assessment/${a.id}`)} />
+                              <Btn label="Draft Query" variant="outline" onClick={() => navigate(`/technical/assessment/${a.id}?tab=query`)} />
+                              <Btn label="Forward"     variant="outline" onClick={() => navigate(`/technical/assessment/${a.id}?tab=recommendation`)} />
+                            </>}
                           </div>
                         </td>
                       </tr>
@@ -658,7 +661,6 @@ const [appealType, setAppealType] = useState('Appeal');
 
   return (
     <div>
-      <ScreenHeading role="Technical Officer" title="Dashboard" />
       <OfficerBins
         activeBin={activeBin}
         onSelect={setActiveBin}

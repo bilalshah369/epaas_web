@@ -108,7 +108,6 @@ export default function ChairpersonApplicationReview() {
       </button>
 
       <div style={{ marginBottom: 12, paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}` }}>
-        <div style={{ fontSize: 9, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 2 }}>CHAIRPERSON — FINAL REVIEW &amp; DECISION</div>
         <h2 style={{ fontSize: 15, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville',Georgia,serif", margin: 0 }}>{app.referenceNumber}</h2>
         <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 3 }}>
           {app.companyName} · {app.applicationType} · Stage: <strong>{app.stage}</strong>
@@ -275,7 +274,7 @@ export default function ChairpersonApplicationReview() {
           </div>
 
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            {decision === 'Approve Review (Restart Workflow)' ? (
+            {app.stage === 'WithChairperson' && (decision === 'Approve Review (Restart Workflow)' ? (
               <button onClick={() => setDialog({ msg: 'Are you sure you want to approve this review petition? The application will restart the full workflow from Nodal Officer.', action: handleSubmit })} disabled={saving || reviews.length === 0}
                 style={{ background: COLORS.success, color: '#fff', border: 'none', borderRadius: 6, padding: '8px 20px', fontSize: 12, fontWeight: 700, cursor: (saving || reviews.length === 0) ? 'not-allowed' : 'pointer', opacity: (saving || reviews.length === 0) ? 0.6 : 1 }}>
                 {saving ? 'Processing…' : '✓ Approve Review — Restart Workflow'}
@@ -285,7 +284,7 @@ export default function ChairpersonApplicationReview() {
                 style={{ background: COLORS.info, color: '#fff', border: 'none', borderRadius: 6, padding: '8px 20px', fontSize: 12, fontWeight: 700, cursor: (saving || reviews.length === 0) ? 'not-allowed' : 'pointer', opacity: (saving || reviews.length === 0) ? 0.6 : 1 }}>
                 {saving ? 'Processing…' : '⚖️ Dispose Review (Uphold CEO Decision)'}
               </button>
-            )}
+            ))}
             <button onClick={() => navigate('/chairperson/dashboard')}
               style={{ background: 'transparent', color: COLORS.primary, border: `1px solid ${COLORS.primary}`, borderRadius: 6, padding: '8px 16px', fontSize: 12, cursor: 'pointer' }}>
               Cancel

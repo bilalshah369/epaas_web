@@ -13,8 +13,6 @@ export default function TechWithdrawal() {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>TECHNICAL OFFICER</div>
-        <div style={S.pageTitle}>Application for Withdrawal of Approval Granted</div>
         <div style={S.pageDesc}>Requests received from Applicants to withdraw a previously granted approval.</div>
       </div>
 

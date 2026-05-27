@@ -124,7 +124,7 @@ export default function ApplicationReports() {
         const all = await fetchNodalAAll();
         if (segment === 'approved')       data = all.filter((a) => ['Approved', 'Closed'].includes(a.stage));
         else if (segment === 'rejected')  data = all.filter((a) => a.stage === 'Rejected');
-        else                              data = all.filter((a) => a.stage === 'Withdrawn');
+        else                              data = all.filter((a) => a.stage === 'Withdrawn' && a.workflowType === 'WithdrawalByApplicant');
       }
       setApps(data);
     } finally { setLoading(false); }
@@ -158,8 +158,6 @@ export default function ApplicationReports() {
     <div>
       {/* Page header */}
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>NODAL OFFICER — APPLICATION BASED REPORTS</div>
-        <div style={S.pageTitle}>{cfg.title}</div>
         <div style={S.pageDesc}>{cfg.desc}</div>
       </div>
 

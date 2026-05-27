@@ -362,8 +362,6 @@ export default function CEODashboard() {
   return (
     <div>
       <div style={{ marginBottom: 16, paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}` }}>
-        <div style={S.roleLabel}>CEO</div>
-        <div style={S.pageTitle}>Appeal Dashboard</div>
         <div style={S.pageDesc}>Stage-driven workspace for Appeal &amp; Application Review.</div>
       </div>
       <OfficerBins activeBin={activeBin} onSelect={setActiveBin} pendingCount={apps.length} notifCount={unread} />

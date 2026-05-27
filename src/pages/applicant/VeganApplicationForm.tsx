@@ -611,8 +611,6 @@ export default function VeganApplicationForm() {
     <div>
       {/* Header */}
       <div style={{ marginBottom: 20, paddingLeft: 12, borderLeft: `4px solid ${COLORS.primary}` }}>
-        <div style={S.roleLabel}>NEW APPLICATION</div>
-        <div style={S.pageTitle}>Vegan</div>
         <div style={S.pageDesc}>For the endorsement of Vegan logo as per the Food Safety and Standards (Vegan Foods) Regulations, 2022</div>
       </div>
 

@@ -59,8 +59,6 @@ export default function TechExtensionOfTime() {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>TECHNICAL OFFICER</div>
-        <div style={S.pageTitle}>Applicant Request for Extension of Additional Time</div>
         <div style={S.pageDesc}>Manage applicant requests for additional time to respond to queries or submit documents.</div>
       </div>
 

@@ -255,8 +255,6 @@ export default function AppealReview() {
 
       {/* Page header */}
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>NODAL OFFICER</div>
-        <div style={S.pageTitle}>Applicant Request for Appeal and Review</div>
         <div style={S.pageDesc}>Appeal against rejection orders and review against appellate orders.</div>
       </div>
 

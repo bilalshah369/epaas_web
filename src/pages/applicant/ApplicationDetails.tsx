@@ -137,8 +137,6 @@ export default function ApplicationDetails() {
       {/* ── Page header ───────────────────────────────────────────────── */}
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <div style={S.roleLabel}>APPLICANT</div>
-          <div style={S.pageTitle}>Application Details</div>
           <div style={S.pageDesc}>Complete list of all your E-PAAS applications across all statuses.</div>
         </div>
         <button

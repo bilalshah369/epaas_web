@@ -2316,18 +2316,6 @@ export default function ApplicationView() {
           }}
         >
           <div>
-            <div style={S.roleLabel}>APPLICANT</div>
-            <div
-              style={{
-                ...S.pageTitle,
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-              }}
-            >
-              {app.referenceNumber}
-              <StatusBadge status={app.stage} />
-            </div>
             <div style={S.pageDesc}>
               {TYPE_LABELS[app.applicationType] ?? app.applicationType} ·{" "}
               {app.companyName}
