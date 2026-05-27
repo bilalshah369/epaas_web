@@ -2670,7 +2670,7 @@ export default function ApplicationView() {
                               <li>The Food Authority reserves the right to inspect the records, premises and/or manufacturing &amp; other related facilities of the applicant or manufacturing facility of exporting country prior/post authorization.</li>
                               <li>The recycled PET intended to be used as food contact material shall comply to all the criteria specified by FSSAI &amp; rules and regulations made under the Food Safety and Standards Act, 2006 &amp; as amended from time to time.</li>
                               <li>The applicant shall maintain all documents/records/details/certificates/audit &amp; test reports as specified in the 'Guidelines for acceptance of recycled Polyethylene terephthalate (PET) as Food Contact Material (FCM-rPET)'.</li>
-                              {isApproved && td?.conditions && <li>{td.conditions as string}</li>}
+                              {isApproved && td?.conditions && <li>{String(td.conditions)}</li>}
                             </ol>
                             <div style={{ fontSize: 12, color: COLORS.text, marginTop: 10 }}>This issues with the approval of the Competent Authority.</div>
                             <div style={{ fontSize: 12, color: COLORS.textMuted, textAlign: 'right', marginTop: 8, fontStyle: 'italic' }}>Authorized Signatory</div>

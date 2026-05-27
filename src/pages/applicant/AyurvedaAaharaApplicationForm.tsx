@@ -1427,7 +1427,7 @@ export default function AyurvedaAaharaApplicationForm() {
     // ── Step 1: Ingredients / Additives / Composition ─────────────────────
     <div key={1} style={{ display: 'flex', flexDirection: 'column' }}>
       {(cat === 'B' || cat === 'B1' || cat === 'B2') && CategoryReferenceBlock({ target: cat })}
-      {cat === 'B1' && B1FormatRationaleBlock({})}
+      {cat === 'B1' && B1FormatRationaleBlock()}
 
       {/* Category B — Other Botanicals (repeatable) — PDF Part II item i.d */}
       {cat === 'B' && (
