@@ -80,8 +80,6 @@ export default function AdminDashboard() {
         />
       )}
       <div style={{ marginBottom: 16, paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}` }}>
-        <div style={S.roleLabel}>SYSTEM ADMIN</div>
-        <div style={S.pageTitle}>Admin Dashboard</div>
         <div style={S.pageDesc}>System-wide monitoring — read-only view of all applications and workflow health.</div>
       </div>
 

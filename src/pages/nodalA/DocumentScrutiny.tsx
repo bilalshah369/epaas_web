@@ -244,8 +244,6 @@ export default function DocumentScrutiny() {
 
       {/* Page header */}
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>NODAL OFFICER</div>
-        <div style={S.pageTitle}>Document Scrutinization</div>
         <div style={S.pageDesc}>Review and scrutinize submitted applications before forwarding to Technical Officer.</div>
       </div>
 
@@ -318,8 +316,8 @@ export default function DocumentScrutiny() {
                     <td style={{ ...S.td, whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                         <Btn label="View"         variant="outline" onClick={() => navigate(`/nodal/scrutiny/${a.id}`)} />
-                        <Btn label="Proceed"      onClick={() => navigate(`/nodal/scrutiny/${a.id}`)} />
-                        <Btn label="Forward to TO" variant="outline" onClick={() => setForwardModal(a)} />
+                        {a.stage === 'WithNodalOfficerA' && <Btn label="Proceed" onClick={() => navigate(`/nodal/scrutiny/${a.id}`)} />}
+                        {a.stage === 'WithNodalOfficerA' && <Btn label="Forward to TO" variant="outline" onClick={() => setForwardModal(a)} />}
                         <Btn label="View Purpose" variant="outline" onClick={() => setPurposeModal(a)} />
                       </div>
                     </td>

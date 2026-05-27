@@ -130,8 +130,6 @@ export default function AdminAuditTrail() {
   return (
     <div>
       <div style={{ marginBottom: 16, paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}` }}>
-        <div style={S.roleLabel}>SYSTEM ADMIN</div>
-        <div style={S.pageTitle}>Audit Trail & Application History</div>
         <div style={S.pageDesc}>Full lifecycle event log for any application in the system.</div>
       </div>
 

@@ -100,10 +100,8 @@ export default function AdminAppMonitor() {
         />
       )}
       <div style={{ marginBottom: 16, paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}` }}>
-        <div style={S.roleLabel}>SYSTEM ADMIN</div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <div>
-            <div style={S.pageTitle}>All Applications Monitor</div>
             <div style={S.pageDesc}>Real-time read-only view of every application across all stages.</div>
           </div>
           <span style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, background: COLORS.bg, padding: '4px 10px', borderRadius: 4, border: `1px solid ${COLORS.border}` }}>READ-ONLY</span>

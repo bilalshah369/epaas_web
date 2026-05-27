@@ -158,7 +158,8 @@ export default function TechAssessment() {
         // Pre-fill rPET fields from formData if available
         const fd = a?.formData as AppFormData | null | undefined;
         if (a.applicationType === 'RPET') {
-          setF2Material((fd as unknown as Record<string, unknown>)?.recyclingTechnologyType as string ?? '');
+          const rfd = fd as unknown as Record<string, unknown>;
+          setF2TechDetails(rfd?.recyclingTechnologyDetails as string ?? '');
         }
       })
       .catch(() => toast.error('Could not load application'))
@@ -264,6 +265,12 @@ export default function TechAssessment() {
       form2Data['manufacturerName']  = app?.companyName;
       form2Data['materialType']      = f2Material;
       form2Data['techDetails']       = f2TechDetails;
+    } else if (appType === 'Vegan') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const vfd = app?.formData as any;
+      form2Data['licenseNo']      = vfd?.licenseNo ?? '—';
+      form2Data['contactDetails'] = [vfd?.authorisedContact, vfd?.authorisedEmail].filter(Boolean).join(' | ') || '—';
+      form2Data['composition']    = vfd?.ingredients ?? '—';
     } else {
       form2Data['composition'] = f2Composition;
     }
@@ -295,7 +302,6 @@ export default function TechAssessment() {
       </button>
 
       <div style={{ marginBottom: 12, paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}` }}>
-        <div style={{ fontSize: 9, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 2 }}>TECHNICAL OFFICER — ASSESSMENT</div>
         <h2 style={{ fontSize: 15, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville',Georgia,serif", margin: 0 }}>
           {app.referenceNumber}
         </h2>
@@ -482,8 +488,8 @@ export default function TechAssessment() {
             </div>
           )}
 
-          {/* Request Clarification form */}
-          <div style={card}>
+          {/* Request Clarification form — only when TO is active owner */}
+          {app.stage === 'WithTechnicalOfficer' && <div style={card}>
             <div style={cardTitle}>REQUEST CLARIFICATION FROM APPLICANT</div>
             <div style={{ marginBottom: 6, fontSize: 12, color: COLORS.textMuted, lineHeight: 1.6 }}>
               Use this to formally request clarification or additional documents from the applicant. The application will be routed to Nodal Officer, who will forward it to the applicant.
@@ -509,12 +515,12 @@ export default function TechAssessment() {
             <div style={{ marginTop: 14, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '10px 14px', fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6 }}>
               <strong style={{ color: COLORS.text }}>Stage transition:</strong> Application moves to <strong>QuerySent</strong> → Nodal Officer forwards to applicant for response.
             </div>
-          </div>
+          </div>}
         </div>
       )}
 
       {/* ── Recommendation tab ───────────────────────────────────── */}
-      {activeTab === 'recommendation' && (
+      {activeTab === 'recommendation' && app.stage === 'WithTechnicalOfficer' && (
         <div style={card}>
           <div style={cardTitle}>RECOMMENDATION TO EXPERT COMMITTEE</div>
           <div style={{ marginBottom: 6, fontSize: 12, color: COLORS.textMuted, lineHeight: 1.6 }}>

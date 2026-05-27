@@ -136,7 +136,6 @@ export default function TechSearchConsole() {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 9, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 2 }}>TECHNICAL OFFICER</div>
         <div style={{ fontSize: 20, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville',Georgia,serif" }}>Search Console</div>
         <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 4 }}>Comprehensive search across all applications, approvals, and lifecycle events.</div>
       </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
@@ -119,6 +119,7 @@ export default function VeganApplicationForm() {
 
   const [appId, setAppId]       = useState<string | null>(idParam);
   const [step, setStep]         = useState(0);
+  const hasLoaded = useRef(false);
   const [saving, setSaving]     = useState(false);
   const [dialog, setDialog]     = useState<{ msg: string; action: () => void } | null>(null);
   const [formData, setFormData] = useState<VeganFormData>(emptyVeganFormData);
@@ -138,6 +139,9 @@ export default function VeganApplicationForm() {
         setAppId(app.id);
         if (app.formData) setFormData(app.formData as unknown as VeganFormData);
         loadPayment(app.id);
+        const savedStep = sessionStorage.getItem(`_step_${app.id}`);
+        if (savedStep !== null) setStep(Number(savedStep));
+        hasLoaded.current = true;
       }).catch(() => toast.error('Could not load draft'));
     } else {
       fetchMyApplications()
@@ -147,14 +151,21 @@ export default function VeganApplicationForm() {
             setAppId(existing.id);
             if (existing.formData) setFormData(existing.formData as unknown as VeganFormData);
             loadPayment(existing.id);
+            const savedStep = sessionStorage.getItem(`_step_${existing.id}`);
+            if (savedStep !== null) setStep(Number(savedStep));
           } else {
             return createDraftApplication('Vegan', user?.username || 'Draft').then((app) => setAppId(app.id));
           }
+          hasLoaded.current = true;
         })
         .catch(() => toast.error('Could not start application'));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (appId && hasLoaded.current) sessionStorage.setItem(`_step_${appId}`, String(step));
+  }, [step, appId]);
 
   function setField(field: keyof VeganFormData, value: string) {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -600,8 +611,6 @@ export default function VeganApplicationForm() {
     <div>
       {/* Header */}
       <div style={{ marginBottom: 20, paddingLeft: 12, borderLeft: `4px solid ${COLORS.primary}` }}>
-        <div style={S.roleLabel}>NEW APPLICATION</div>
-        <div style={S.pageTitle}>Vegan</div>
         <div style={S.pageDesc}>For the endorsement of Vegan logo as per the Food Safety and Standards (Vegan Foods) Regulations, 2022</div>
       </div>
 

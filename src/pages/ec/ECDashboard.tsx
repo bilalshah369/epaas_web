@@ -207,7 +207,7 @@ export default function ECDashboard() {
                       <td style={S.td}>
                         <div style={{ display: 'flex', gap: 4 }}>
                           <Btn label="View Docket" onClick={() => navigate(`/ec/dockets/${a.id}`)} />
-                          <Btn label="Record Decision" variant="outline" onClick={() => navigate(`/ec/dockets/${a.id}?tab=decision`)} />
+                          {a.stage === 'WithExpertCommittee' && <Btn label="Record Decision" variant="outline" onClick={() => navigate(`/ec/dockets/${a.id}?tab=decision`)} />}
                         </div>
                       </td>
                     </tr>
@@ -319,7 +319,7 @@ export default function ECDashboard() {
                     <td style={S.td} onClick={(e) => e.stopPropagation()}>
                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                         <Btn label="View Docket"     onClick={() => navigate(`/ec/dockets/${a.id}`)} />
-                        <Btn label="Record Decision" variant="outline" onClick={() => navigate(`/ec/dockets/${a.id}?tab=decision`)} />
+                        {a.stage === 'WithExpertCommittee' && <Btn label="Record Decision" variant="outline" onClick={() => navigate(`/ec/dockets/${a.id}?tab=decision`)} />}
                       </div>
                     </td>
                   </tr>
@@ -355,7 +355,6 @@ export default function ECDashboard() {
 
   return (
     <div>
-      <ScreenHeading title="Dashboard" />
       <OfficerBins activeBin={activeBin} onSelect={setActiveBin} pendingCount={pending} notifCount={unread} />
       {activeBin === 'dashboard'     && renderDashboard()}
       {activeBin === 'pending'       && renderPendingActions()}

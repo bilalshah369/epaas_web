@@ -2316,18 +2316,6 @@ export default function ApplicationView() {
           }}
         >
           <div>
-            <div style={S.roleLabel}>APPLICANT</div>
-            <div
-              style={{
-                ...S.pageTitle,
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-              }}
-            >
-              {app.referenceNumber}
-              <StatusBadge status={app.stage} />
-            </div>
             <div style={S.pageDesc}>
               {TYPE_LABELS[app.applicationType] ?? app.applicationType} ·{" "}
               {app.companyName}
@@ -2485,35 +2473,38 @@ export default function ApplicationView() {
                 const isApproved =
                   decision === "Approved" || app.stage === "Approved";
 
+                const issuedOn = td?.recordedAt
+                  ? new Date(td.recordedAt as string).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })
+                  : new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const afd2 = app!.formData as any;
+                const form2Html = buildForm2Html({
+                  applicationType: app!.applicationType,
+                  appNo:           String(f2?.applicationNo ?? app!.referenceNumber),
+                  approvalNumber:  app!.approvalNumber,
+                  dateOfApplication: String(f2?.dateOfApplication ?? issuedOn),
+                  mfgName:         String(f2?.orgName ?? afd2?.fboName ?? app!.companyName ?? '—'),
+                  applicantName:   String(f2?.applicantName ?? afd2?.authorisedPerson ?? '—'),
+                  address:         String(f2?.address ?? afd2?.fboAddress ?? app!.address ?? '—'),
+                  authorizedPerson: String(f2?.authorizedPerson ?? afd2?.authorisedPerson ?? '—'),
+                  productName:     String(f2?.productName ?? app!.productName ?? '—'),
+                  foodCategory:    String(f2?.productCategory ?? app!.foodCategory ?? '—'),
+                  materialType:    String(f2?.materialType ?? ''),
+                  techDetails:     String(f2?.techDetails ?? ''),
+                  licenseNo:       String((f2?.licenseNo && f2.licenseNo !== '—') ? f2.licenseNo : (afd2?.licenseNo ?? '—')),
+                  contactDetails:  String((f2?.contactDetails && f2.contactDetails !== '—') ? f2.contactDetails : ([afd2?.authorisedContact, afd2?.authorisedEmail].filter(Boolean).join(' | ') || '—')),
+                  composition:     String((f2?.composition && f2.composition !== '—') ? f2.composition : (afd2?.ingredients ?? '—')),
+                  decision:        isApproved ? 'Approved' : 'Rejected',
+                  conditions:      String(td?.conditions ?? ''),
+                  reasons:         String(td?.reasons ?? ''),
+                  issuedOn,
+                });
+
                 function printForm2() {
                   const win = window.open("", "_blank", "width=900,height=700");
                   if (!win) return;
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  const fd = app!.formData as any;
-                  const issuedOn = td?.recordedAt
-                    ? new Date(td.recordedAt as string).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })
-                    : new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
-                  win.document.write(buildForm2Html({
-                    applicationType: app!.applicationType,
-                    appNo: String(f2?.applicationNo ?? app!.referenceNumber),
-                    approvalNumber: app!.approvalNumber,
-                    dateOfApplication: issuedOn,
-                    mfgName: (fd?.manufacturerName ?? fd?.fboName ?? String(f2?.orgName ?? '')) || app!.companyName || '—',
-                    applicantName: String(f2?.applicantName ?? '') || app!.companyName || '—',
-                    address: (fd?.addressOfPremise ?? fd?.fboAddress ?? String(f2?.address ?? '')) || app!.address || '—',
-                    authorizedPerson: (fd?.authorizedPersonnel ?? fd?.authorisedPerson ?? String(f2?.authorizedPerson ?? '')) || '—',
-                    productName: String(f2?.productName ?? '') || app!.productName || '—',
-                    foodCategory: String(f2?.productCategory ?? '') || app!.foodCategory || '—',
-                    materialType: String(f2?.materialType ?? fd?.recyclingTechnologyDetails ?? ''),
-                    techDetails: String(f2?.techDetails ?? fd?.recyclingTechnologyDetails ?? ''),
-                    licenseNo: String(fd?.licenseNo ?? '—'),
-                    contactDetails: [fd?.authorisedContact, fd?.authorisedEmail].filter(Boolean).join(' | ') || '—',
-                    composition: String(fd?.ingredients ?? '—'),
-                    decision: isApproved ? 'Approved' : 'Rejected',
-                    conditions: String(td?.conditions ?? ''),
-                    reasons: String(td?.reasons ?? ''),
-                    issuedOn,
-                  }));
+                  win.document.write(form2Html);
                   win.document.close();
                   win.focus();
                   win.print();
@@ -2594,160 +2585,121 @@ export default function ApplicationView() {
                       </div>
                     </div>
 
-                    <div
-                      style={{
-                        border: `1px solid ${COLORS.border}`,
-                        borderRadius: 10,
-                        overflow: "hidden",
-                      }}
-                    >
+                    {/* Form II card — reads exclusively from f2 (toDecision.form2Data saved by TO) */}
+                    <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden' }}>
                       {/* Header */}
-                      <div style={{ background: "#1A3C34", padding: "16px 24px", textAlign: "center" }}>
-                        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.7)", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 4 }}>
-                          Food Safety and Standards Authority of India
-                        </div>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", fontFamily: "'Libre Baskerville',Georgia,serif", marginBottom: 2 }}>
+                      <div style={{ background: '#1A3C34', padding: '16px 24px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>Food Safety and Standards Authority of India</div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: '#fff', fontFamily: "'Libre Baskerville',Georgia,serif", marginBottom: 2 }}>
                           {app!.applicationType === 'Vegan' ? 'FORM B' : 'FORM - II'}
                         </div>
-                        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.85)" }}>
-                          {app!.applicationType === 'RPET'  ? 'Authorization/Rejection of FCM-rPET'
-                          : app!.applicationType === 'Vegan' ? 'Annexure-C — Approval/Rejection for endorsement of vegan logo'
-                          : '(Approval/Rejection)'}
+                        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)' }}>
+                          {app!.applicationType === 'RPET' ? 'Authorization/Rejection of FCM-rPET'
+                            : app!.applicationType === 'Vegan' ? 'Annexure-C — Approval/Rejection for endorsement of vegan logo'
+                            : '(Approval/Rejection)'}
                         </div>
                       </div>
-                      <div style={{ padding: "20px 24px" }}>
-                        {/* Fields — source of truth: f2 (form2Data saved by TO) */}
-                        {(() => {
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          const afd = app!.formData as any;
-                          const appType = app!.applicationType;
-                          let rows: [string, string][] = [];
-
-                          if (appType === 'RPET') {
-                            rows = [
+                      <div style={{ padding: '20px 24px' }}>
+                        {/* Fields grid */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '12px 20px', marginBottom: 20 }}>
+                          {((): [string, string][] => {
+                            const appType = app!.applicationType;
+                            if (appType === 'RPET') return [
                               ['Application No.', String(f2?.applicationNo ?? app!.referenceNumber)],
-                              ...(app!.approvalNumber ? [[isApproved ? 'Approval No.' : 'Rejection No.', app!.approvalNumber] as [string,string]] : []),
                               ['Date of Application', String(f2?.dateOfApplication ?? '—')],
-                              ['Name of Manufacturer', String(f2?.manufacturerName ?? f2?.orgName ?? app!.companyName ?? '—')],
+                              ['Name of Manufacturer', String(f2?.manufacturerName ?? f2?.orgName ?? '—')],
                               ['Name of Applicant', String(f2?.applicantName ?? '—')],
                               ['Registered Address', String(f2?.address ?? '—')],
                               ['Authorized Person', String(f2?.authorizedPerson ?? '—')],
                               ['Type of Material Being Recycled', String(f2?.materialType ?? '—')],
                               ['Approval/NOC/Details of Technology', String(f2?.techDetails ?? '—')],
+                              ['Status of Application', `${isApproved ? 'Approved' : 'Rejected'}${app!.approvalNumber ? ` | Ref. No.: ${app!.approvalNumber}` : ''}`],
+                              ['Reasons for Rejection, if any', isApproved ? '—' : (String(td?.reasons ?? '—'))],
                             ];
-                          } else if (appType === 'Vegan') {
-                            rows = [
+                            if (appType === 'Vegan') {
+                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                              const vfd = app!.formData as any;
+                              return [
+                                ['Application No.', String(f2?.applicationNo ?? app!.referenceNumber)],
+                                ...(app!.approvalNumber ? [[isApproved ? 'Approval No.' : 'Rejection No.', app!.approvalNumber] as [string,string]] : []),
+                                ['Date of Application', String(f2?.dateOfApplication ?? '—')],
+                                ['Name of FBO', String(f2?.orgName ?? app!.companyName ?? '—')],
+                                ['FBO Address', String(f2?.address ?? app!.address ?? '—')],
+                                ['License No.', String(vfd?.licenseNo ?? '—')],
+                                ['Authorized Person', String(f2?.authorizedPerson ?? vfd?.authorisedPerson ?? '—')],
+                                ['Contact Details', [vfd?.authorisedContact, vfd?.authorisedEmail].filter(Boolean).join(' | ') || '—'],
+                                ['Name of Product', String(f2?.productName ?? app!.productName ?? '—')],
+                                ['Food Category (FSSR)', String(f2?.productCategory ?? app!.foodCategory ?? '—')],
+                                ['Composition', String((f2?.composition && f2.composition !== '—') ? f2.composition : (vfd?.ingredients ?? '—'))],
+                              ];
+                            }
+                            return [
                               ['Application No.', String(f2?.applicationNo ?? app!.referenceNumber)],
                               ...(app!.approvalNumber ? [[isApproved ? 'Approval No.' : 'Rejection No.', app!.approvalNumber] as [string,string]] : []),
                               ['Date of Application', String(f2?.dateOfApplication ?? '—')],
-                              ['Name of FBO', String(afd?.fboName ?? f2?.orgName ?? app!.companyName ?? '—')],
-                              ['FBO Address', String(afd?.fboAddress ?? f2?.address ?? app!.address ?? '—')],
-                              ['License No.', String(afd?.licenseNo ?? '—')],
-                              ['Authorized Person', String(f2?.authorizedPerson ?? afd?.authorisedPerson ?? '—')],
-                              ['Contact Details', [afd?.authorisedContact, afd?.authorisedEmail].filter(Boolean).join(' | ') || '—'],
-                              ['Name of Product', String(f2?.productName ?? app!.productName ?? '—')],
-                              ['Food Category (FSSR)', String(f2?.productCategory ?? app!.foodCategory ?? '—')],
-                              ['Composition', String(afd?.ingredients ?? '—')],
-                            ];
-                          } else {
-                            rows = [
-                              ['Application No.', String(f2?.applicationNo ?? app!.referenceNumber)],
-                              ...(app!.approvalNumber ? [[isApproved ? 'Approval No.' : 'Rejection No.', app!.approvalNumber] as [string,string]] : []),
-                              ['Date of Application', String(f2?.dateOfApplication ?? '—')],
-                              ['Organisation', String(f2?.orgName ?? app!.companyName ?? '—')],
+                              ['Organisation', String(f2?.orgName ?? '—')],
                               ['Applicant Name', String(f2?.applicantName ?? '—')],
                               ['Address', String(f2?.address ?? '—')],
                               ['Authorised Person', String(f2?.authorizedPerson ?? '—')],
                               ...(f2?.productName ? [['Product Name', String(f2.productName)] as [string,string]] : []),
                               ...(f2?.productCategory ? [['Product Category', String(f2.productCategory)] as [string,string]] : []),
+                              ...(f2?.claimStatement ? [['Claim Statement', String(f2.claimStatement)] as [string,string]] : []),
+                              ...(f2?.composition ? [['Composition', String(f2.composition)] as [string,string]] : []),
                             ];
-                          }
-
-                          return (
-                            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "12px 20px", marginBottom: 20 }}>
-                              {rows.map(([label, val]) => (
-                                <div key={label} style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "8px 12px" }}>
-                                  <div style={{ fontSize: 9, color: COLORS.primary, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 2 }}>{label}</div>
-                                  <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.text }}>{val || '—'}</div>
-                                </div>
-                              ))}
+                          })().map(([label, val]) => (
+                            <div key={label} style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '8px 12px' }}>
+                              <div style={{ fontSize: 9, color: COLORS.primary, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 2 }}>{label}</div>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.text }}>{val || '—'}</div>
                             </div>
-                          );
-                        })()}
+                          ))}
+                        </div>
                         {/* Decision badge */}
                         {app!.applicationType === 'Vegan' ? (
                           <div style={{ marginBottom: 16, fontSize: 13, fontWeight: 700, color: isApproved ? '#166534' : '#991B1B', background: isApproved ? '#F0FDF4' : '#FEF2F2', border: `1px solid ${isApproved ? '#BBF7D0' : '#FECACA'}`, borderRadius: 8, padding: '10px 14px' }}>
                             {isApproved ? '☑ Product approved for displaying vegan logo' : '☑ Product not approved for displaying vegan logo'}
                           </div>
                         ) : (
-                          <div style={{ background: isApproved ? "#F0FDF4" : "#FEF2F2", border: `1px solid ${isApproved ? "#BBF7D0" : "#FECACA"}`, borderRadius: 8, padding: "12px 16px", marginBottom: 16, fontSize: 14, fontWeight: 800, color: isApproved ? "#166534" : "#991B1B" }}>
-                            {isApproved ? "✓ APPROVED" : "✗ REJECTED"}
+                          <div style={{ background: isApproved ? '#F0FDF4' : '#FEF2F2', border: `1px solid ${isApproved ? '#BBF7D0' : '#FECACA'}`, borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: 14, fontWeight: 800, color: isApproved ? '#166534' : '#991B1B' }}>
+                            {isApproved ? '✓ APPROVED' : '✗ REJECTED'}
                           </div>
                         )}
-                        {!!td?.conditions && (
+                        {app!.applicationType === 'RPET' ? (
                           <div style={{ marginBottom: 14 }}>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: "uppercase", marginBottom: 4 }}>
-                              {app!.applicationType === 'RPET' ? 'Conditions for Authorization' : 'Conditions for Approval'}
-                            </div>
-                            <div
-                              style={{
-                                fontSize: 12,
-                                color: COLORS.text,
-                                lineHeight: 1.6,
-                                background: COLORS.bg,
-                                padding: "10px 12px",
-                                borderRadius: 6,
-                              }}
-                            >
-                              {td.conditions as string}
-                            </div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.text, marginBottom: 8 }}>Conditions for authorization*:</div>
+                            <ol style={{ margin: 0, paddingLeft: 20, fontSize: 12, color: COLORS.text, lineHeight: 1.7 }} type="i">
+                              <li>The Food Authority reserves the right to inspect the records, premises and/or manufacturing &amp; other related facilities of the applicant or manufacturing facility of exporting country prior/post authorization.</li>
+                              <li>The recycled PET intended to be used as food contact material shall comply to all the criteria specified by FSSAI &amp; rules and regulations made under the Food Safety and Standards Act, 2006 &amp; as amended from time to time.</li>
+                              <li>The applicant shall maintain all documents/records/details/certificates/audit &amp; test reports as specified in the 'Guidelines for acceptance of recycled Polyethylene terephthalate (PET) as Food Contact Material (FCM-rPET)'.</li>
+                              {isApproved && td?.conditions && <li>{td.conditions as string}</li>}
+                            </ol>
+                            <div style={{ fontSize: 12, color: COLORS.text, marginTop: 10 }}>This issues with the approval of the Competent Authority.</div>
+                            <div style={{ fontSize: 12, color: COLORS.textMuted, textAlign: 'right', marginTop: 8, fontStyle: 'italic' }}>Authorized Signatory</div>
+                            <div style={{ fontSize: 12, color: COLORS.text, marginTop: 12 }}>To,</div>
+                            <div style={{ fontSize: 12, color: COLORS.text }}>M/s {String(f2?.orgName ?? f2?.mfgName ?? app!.companyName)}, {String(f2?.address ?? app!.address ?? '')}</div>
+                            <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 8, fontStyle: 'italic' }}>Note: * Conditions for authorization may change based on the application.</div>
                           </div>
+                        ) : (
+                          <>
+                            {!!td?.conditions && (
+                              <div style={{ marginBottom: 14 }}>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', marginBottom: 4 }}>Conditions for Approval</div>
+                                <div style={{ fontSize: 12, color: COLORS.text, lineHeight: 1.6, background: COLORS.bg, padding: '10px 12px', borderRadius: 6, whiteSpace: 'pre-wrap' }}>
+                                  {td.conditions as string}
+                                </div>
+                              </div>
+                            )}
+                            {!!td?.reasons && (
+                              <div style={{ marginBottom: 14 }}>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', marginBottom: 4 }}>Reasons for Rejection</div>
+                                <div style={{ fontSize: 12, color: COLORS.text, lineHeight: 1.6, background: COLORS.bg, padding: '10px 12px', borderRadius: 6, whiteSpace: 'pre-wrap' }}>
+                                  {td.reasons as string}
+                                </div>
+                              </div>
+                            )}
+                          </>
                         )}
-                        {!!td?.reasons && (
-                          <div style={{ marginBottom: 14 }}>
-                            <div
-                              style={{
-                                fontSize: 10,
-                                fontWeight: 700,
-                                color: COLORS.textMuted,
-                                textTransform: "uppercase",
-                                marginBottom: 4,
-                              }}
-                            >
-                              Reasons for Rejection
-                            </div>
-                            <div
-                              style={{
-                                fontSize: 12,
-                                color: COLORS.text,
-                                lineHeight: 1.6,
-                                background: COLORS.bg,
-                                padding: "10px 12px",
-                                borderRadius: 6,
-                              }}
-                            >
-                              {td.reasons as string}
-                            </div>
-                          </div>
-                        )}
-                        <div
-                          style={{
-                            fontSize: 10,
-                            color: COLORS.textMuted,
-                            textAlign: "right",
-                            marginTop: 16,
-                          }}
-                        >
-                          Issued on:{" "}
-                          {td?.recordedAt
-                            ? new Date(
-                                td.recordedAt as string,
-                              ).toLocaleDateString("en-IN", {
-                                day: "2-digit",
-                                month: "long",
-                                year: "numeric",
-                              })
-                            : "—"}
+                        <div style={{ fontSize: 10, color: COLORS.textMuted, textAlign: 'right', marginTop: 16 }}>
+                          Issued on: {td?.recordedAt ? new Date(td.recordedAt as string).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}
                         </div>
                       </div>
                     </div>

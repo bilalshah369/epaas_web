@@ -93,7 +93,6 @@ export default function NodalBApplicationReview() {
       </button>
 
       <div style={{ marginBottom: 12, paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}` }}>
-        <div style={{ fontSize: 9, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 2 }}>NODAL POINT B — APPLICATION REVIEW</div>
         <h2 style={{ fontSize: 15, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville',Georgia,serif", margin: 0 }}>{app.referenceNumber}</h2>
         <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 3 }}>
           {app.companyName} · {app.applicationType} · Stage: <strong>{app.stage}</strong>
@@ -204,7 +203,7 @@ export default function NodalBApplicationReview() {
               placeholder="State grounds for this decision…"
               style={{ ...textarea, minHeight: 120, borderColor: remarks.length > 0 && remarks.trim().length < 10 ? COLORS.danger : COLORS.border }} />
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
+          {app.stage === 'WithNodalPointB' && <div style={{ display: 'flex', gap: 10 }}>
             {decision === 'Upload EC Decision' ? (
               <button onClick={handleSubmit} disabled={saving}
                 style={{ background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 6, padding: '8px 20px', fontSize: 12, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
@@ -220,7 +219,7 @@ export default function NodalBApplicationReview() {
               style={{ background: 'transparent', color: COLORS.primary, border: `1px solid ${COLORS.primary}`, borderRadius: 6, padding: '8px 16px', fontSize: 12, cursor: 'pointer' }}>
               Cancel
             </button>
-          </div>
+          </div>}
           <div style={{ marginTop: 16, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '12px 14px', fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6 }}>
             <strong style={{ color: COLORS.text }}>Stage transitions:</strong>
             <ul style={{ margin: '6px 0 0 0', paddingLeft: 16 }}>

@@ -101,8 +101,6 @@ export default function ECSearchConsole() {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>EXPERT COMMITTEE</div>
-        <div style={S.pageTitle}>Search Console</div>
         <div style={S.pageDesc}>Comprehensive search across all applications and EC decisions.</div>
       </div>
 

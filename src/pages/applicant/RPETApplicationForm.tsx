@@ -1,5 +1,5 @@
 // rPET (Recycled PET Packaging) application form. Flat 4-step structure — same pattern as CA form.
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
@@ -98,6 +98,7 @@ export default function RPETApplicationForm() {
 
   const [appId, setAppId]       = useState<string | null>(idParam);
   const [step, setStep]         = useState(0);
+  const hasLoaded = useRef(false);
   const [saving, setSaving]     = useState(false);
   const [dialog, setDialog]     = useState<{ msg: string; action: () => void } | null>(null);
   const [formData, setFormData] = useState<RPETFormData>(emptyRPETFormData);
@@ -117,6 +118,9 @@ export default function RPETApplicationForm() {
         setAppId(app.id);
         if (app.formData) setFormData(app.formData as unknown as RPETFormData);
         loadPayment(app.id);
+        const savedStep = sessionStorage.getItem(`_step_${app.id}`);
+        if (savedStep !== null) setStep(Number(savedStep));
+        hasLoaded.current = true;
       }).catch(() => toast.error('Could not load draft'));
     } else {
       fetchMyApplications()
@@ -126,14 +130,21 @@ export default function RPETApplicationForm() {
             setAppId(existing.id);
             if (existing.formData) setFormData(existing.formData as unknown as RPETFormData);
             loadPayment(existing.id);
+            const savedStep = sessionStorage.getItem(`_step_${existing.id}`);
+            if (savedStep !== null) setStep(Number(savedStep));
           } else {
             return createDraftApplication('RPET', user?.username || 'Draft').then((app) => setAppId(app.id));
           }
+          hasLoaded.current = true;
         })
         .catch(() => toast.error('Could not start application'));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (appId && hasLoaded.current) sessionStorage.setItem(`_step_${appId}`, String(step));
+  }, [step, appId]);
 
   function setField(field: keyof RPETFormData, value: string | boolean) {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -553,8 +564,6 @@ export default function RPETApplicationForm() {
     <div>
       {/* ── Page header ──────────────────────────────────────────────── */}
       <div style={{ marginBottom: 16, paddingLeft: 12, borderLeft: `4px solid ${COLORS.primary}` }}>
-        <div style={S.roleLabel}>START NEW APPLICATION</div>
-        <div style={S.pageTitle}>Application Form (rPET)</div>
         <div style={S.pageDesc}>Authorization of Recycled PET Packaging Manufacturer. All data is auto-saved on each step.</div>
       </div>
 

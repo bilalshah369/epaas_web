@@ -121,8 +121,6 @@ export default function TaxInvoice() {
     <div>
       {/* ── Page header ───────────────────────────────────────────── */}
       <div style={{ marginBottom: 20 }}>
-        <div style={S.roleLabel}>APPLICANT</div>
-        <div style={S.pageTitle}>Tax Invoice / Payments</div>
         <div style={S.pageDesc}>View and print GST tax invoices for all your submitted applications.</div>
       </div>
 

@@ -113,8 +113,6 @@ export default function TechDocScrutiny() {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>TECHNICAL OFFICER</div>
-        <div style={S.pageTitle}>Document Scrutinization</div>
         <div style={S.pageDesc}>Applications assigned for technical review and assessment.</div>
       </div>
 
@@ -171,8 +169,8 @@ export default function TechDocScrutiny() {
                     <td style={{ ...S.td, color: days > 14 ? COLORS.danger : COLORS.text, fontWeight: days > 14 ? 700 : 400 }}>{days}d</td>
                     <td style={S.td}>
                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                        <Btn label="Proceed"     onClick={() => navigate(`/technical/assessment/${a.id}`)} />
-                        <Btn label="Draft Query" variant="outline" onClick={() => navigate(`/technical/assessment/${a.id}?tab=query`)} />
+                        {a.stage === 'WithTechnicalOfficer' && <Btn label="Proceed" onClick={() => navigate(`/technical/assessment/${a.id}`)} />}
+                        {a.stage === 'WithTechnicalOfficer' && <Btn label="Draft Query" variant="outline" onClick={() => navigate(`/technical/assessment/${a.id}?tab=query`)} />}
                         <Btn label="Forward"     variant="outline" onClick={() => setForwardModal(a)} />
                       </div>
                     </td>

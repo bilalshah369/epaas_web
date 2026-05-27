@@ -92,8 +92,6 @@ export default function ApplicationTypeSelector() {
     <div style={{ maxWidth: 1450 }}>
       {/* Page header */}
       <div style={{ marginBottom: 20, paddingLeft: 12, borderLeft: `4px solid ${COLORS.primary}` }}>
-        <div style={S.roleLabel}>NEW APPLICATION</div>
-        <div style={S.pageTitle}>Select Application Category</div>
         <div style={S.pageDesc}>
           Choose the type of approval you are applying for. Each type has specific requirements, timelines and fee structures.
         </div>

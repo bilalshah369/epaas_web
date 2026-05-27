@@ -22,6 +22,14 @@ export async function fetchTechnicalExtensionRequests(): Promise<ExtensionRecord
   return data.requests;
 }
 
+export async function technicalGrantExtension(id: string, remarks?: string): Promise<void> {
+  await api.post(`/technical/extension-requests/${id}/grant`, { remarks });
+}
+
+export async function technicalRejectExtension(id: string, remarks?: string): Promise<void> {
+  await api.post(`/technical/extension-requests/${id}/reject`, { remarks });
+}
+
 export async function fetchTechnicalAppealsReport(): Promise<Application[]> {
   const { data } = await api.get<{ applications: Application[] }>('/technical/reports/appeals');
   return data.applications;

@@ -63,8 +63,6 @@ export default function TechApplicationReports() {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>TECHNICAL OFFICER — APPLICATION BASED REPORTS</div>
-        <div style={S.pageTitle}>{cfg.title}</div>
         <div style={S.pageDesc}>{cfg.desc}</div>
       </div>
 

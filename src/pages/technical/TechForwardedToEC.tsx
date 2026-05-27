@@ -205,8 +205,6 @@ export default function TechForwardedToEC() {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>TECHNICAL OFFICER</div>
-        <div style={S.pageTitle}>Scrutiny Completed — Forwarded to EC</div>
         <div style={S.pageDesc}>Read-only tracking of applications scrutinized and forwarded to the Expert Committee.</div>
       </div>
 

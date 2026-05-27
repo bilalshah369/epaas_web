@@ -18,6 +18,7 @@ export interface Application {
   createdAt:       string;
   updatedAt:       string;
   documents?:      ApplicationDocument[];
+  queries?:        Array<{ id: string }>;
 }
 
 export interface ApplicationDocument {
@@ -32,7 +33,7 @@ export interface ApplicationDocument {
   uploadedAt:    string;
 }
 
-export type Bin = 'all' | 'incomplete' | 'submitted' | 'reverted' | 'rejected' | 'approved';
+export type Bin = 'all' | 'incomplete' | 'submitted' | 'reverted' | 'rejected' | 'approved' | 'approvedPms';
 
 // ── Form data shape (mirrors 5-step ApplicationForm) ─────────────────────────
 export interface Step1Data {

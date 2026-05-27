@@ -43,8 +43,6 @@ export default function TechAppealReview() {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>TECHNICAL OFFICER</div>
-        <div style={S.pageTitle}>Applicant Request for Appeal and Review</div>
         <div style={S.pageDesc}>Appeal against rejection orders and review against appellate orders.</div>
       </div>
 
@@ -97,7 +95,7 @@ export default function TechAppealReview() {
                     <td style={S.td}>{fmtDate(r.filedAt)}</td>
                     <td style={{ ...S.td, color: left <= 5 ? COLORS.danger : COLORS.text, fontWeight: left <= 5 ? 700 : 400 }}>{left} days</td>
                    
-                    <td style={S.td}><button onClick={() => navigate(`/technical/assessment/${r.application.id}`)} style={{ padding: '4px 12px', background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Proceed</button></td>
+                    <td style={S.td}>{r.application.stage === 'WithTechnicalOfficer' && <button onClick={() => navigate(`/technical/assessment/${r.application.id}`)} style={{ padding: '4px 12px', background: COLORS.primary, color: '#fff', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Proceed</button>}</td>
                   </tr>
                 );
               })}

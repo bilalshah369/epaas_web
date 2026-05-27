@@ -165,7 +165,6 @@ export default function ECDocketReview() {
       </button>
 
       <div style={{ marginBottom: 12, paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}` }}>
-        <div style={{ fontSize: 9, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 2 }}>EXPERT COMMITTEE — DOCKET REVIEW</div>
         <h2 style={{ fontSize: 15, fontWeight: 700, color: COLORS.text, fontFamily: "'Libre Baskerville',Georgia,serif", margin: 0 }}>
           {app.referenceNumber}
         </h2>
@@ -332,17 +331,19 @@ export default function ECDocketReview() {
                 <option>Request Clarification from Applicant</option>
               </select>
             </div>
-            <div style={{ marginBottom: 18 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <label style={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>EC Remarks / Grounds *</label>
-                <span style={{ fontSize: 10, color: remarks.trim().length < 10 ? COLORS.danger : COLORS.textMuted }}>{remarks.trim().length} chars</span>
+            {decision !== 'Request Clarification from Applicant' && (
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>EC Remarks / Grounds *</label>
+                  <span style={{ fontSize: 10, color: remarks.trim().length < 10 ? COLORS.danger : COLORS.textMuted }}>{remarks.trim().length} chars</span>
+                </div>
+                <textarea rows={5} value={remarks} onChange={(e) => setRemarks(e.target.value)}
+                  placeholder="State the committee's findings, scientific basis, and grounds for decision…"
+                  style={{ ...textarea, minHeight: 120 }} />
               </div>
-              <textarea rows={5} value={remarks} onChange={(e) => setRemarks(e.target.value)}
-                placeholder="State the committee's findings, scientific basis, and grounds for decision…"
-                style={{ ...textarea, minHeight: 120 }} />
-            </div>
+            )}
 
-            {decision === 'Request Clarification from Applicant' ? (
+            {app.stage === 'WithExpertCommittee' && (decision === 'Request Clarification from Applicant' ? (
               <>
                 <div style={{ marginBottom: 14 }}>
                   <label style={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>Clarification Required *</label>
@@ -367,7 +368,7 @@ export default function ECDocketReview() {
                   {saving ? 'Processing…' : '✗ Recommend Rejection — Forward to Technical Officer'}
                 </button>
               </div>
-            )}
+            ))}
 
             <div style={{ marginTop: 16, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '12px 14px', fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6 }}>
               <strong style={{ color: COLORS.text }}>Stage transitions:</strong>

@@ -34,8 +34,6 @@ export default function ECAppealReview() {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>EXPERT COMMITTEE</div>
-        <div style={S.pageTitle}>Appeal and Review</div>
         <div style={S.pageDesc}>Applications filed for appeal or review that have EC involvement.</div>
       </div>
 

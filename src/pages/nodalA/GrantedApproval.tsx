@@ -61,8 +61,6 @@ export default function GrantedApproval() {
     <div>
       {/* ── Page header ─────────────────────────────────────────────────── */}
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>NODAL OFFICER</div>
-        <div style={S.pageTitle}>Granted Approval</div>
         <div style={S.pageDesc}>Applications where approval has been issued and Form II dispatched.</div>
       </div>
 

@@ -146,8 +146,6 @@ export default function SearchConsole() {
     <div>
       {/* Page header */}
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>NODAL OFFICER A</div>
-        <div style={S.pageTitle}>Search Console</div>
         <div style={S.pageDesc}>Comprehensive search across all applications, approvals, and lifecycle events.</div>
       </div>
 

@@ -407,8 +407,6 @@ export default function ChairpersonDashboard() {
   return (
     <div>
       <div style={{ marginBottom: 16, paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}` }}>
-        <div style={S.roleLabel}>CHAIRPERSON</div>
-        <div style={S.pageTitle}>Review Dashboard</div>
         <div style={S.pageDesc}>Final authority for review petitions and application approvals.</div>
       </div>
       <OfficerBins activeBin={activeBin} onSelect={setActiveBin} pendingCount={apps.length} notifCount={unread} />

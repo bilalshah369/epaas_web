@@ -11,6 +11,7 @@ const ALL_CATEGORIES = [
   { value: 'ClaimApproval',  label: 'Claim Approval' },
   { value: 'AyurvedaAahara', label: 'Ayurveda Aahara' },
   { value: 'RPET',           label: 'R-PET' },
+  { value: 'Vegan',          label: 'Vegan' },
   { value: 'AnyOther',       label: 'Any Other' },
 ];
 
@@ -80,10 +81,8 @@ export default function AdminAddOfficer() {
   return (
     <div>
       <div style={{ marginBottom: 20, paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}` }}>
-        <div style={S.roleLabel}>SYSTEM ADMIN</div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <div>
-            <div style={S.pageTitle}>Add New Officer</div>
             <div style={S.pageDesc}>Create a new officer account and assign role and categories.</div>
           </div>
           <button

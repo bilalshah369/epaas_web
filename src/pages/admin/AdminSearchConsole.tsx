@@ -116,8 +116,6 @@ export default function AdminSearchConsole() {
         />
       )}
       <div style={{ marginBottom: 16 }}>
-        <div style={S.roleLabel}>SYSTEM ADMIN</div>
-        <div style={S.pageTitle}>Search Console</div>
         <div style={S.pageDesc}>Comprehensive search across all applications and decisions.</div>
       </div>
 
